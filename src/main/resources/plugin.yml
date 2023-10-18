@@ -1,0 +1,4 @@
+name: UnlimitedNametags
+version: '${version}'
+main: org.alexdev.unlimitednametags.UnlimitedNametags
+api-version: '1.19'
