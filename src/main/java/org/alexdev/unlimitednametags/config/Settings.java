@@ -12,8 +12,8 @@ public class Settings {
 
 
     private Map<String, Nametag> nametags = Map.of(
-            "staffer", new Nametag("nametag.staffer", List.of("%prefix% %username% %suffix%")),
-            "default", new Nametag("nametag.default", List.of("%prefix% %username% %suffix%", "%money%"))
+            "staffer", new Nametag("nametag.staffer", List.of("%prefix% %username% %suffix%"), 1),
+            "default", new Nametag("nametag.default", List.of("%prefix% %username% %suffix%", "%money%"), 1)
     );
 
     public Nametag getNametag(Player player) {
@@ -30,6 +30,6 @@ public class Settings {
 
 
 
-    public record Nametag(String permission, List<String> lines) {
+    public record Nametag(String permission, List<String> lines, int space) {
     }
 }

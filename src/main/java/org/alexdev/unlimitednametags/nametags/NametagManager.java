@@ -17,11 +17,11 @@ import java.util.UUID;
 public class NametagManager {
 
     private final UnlimitedNametags plugin;
-    private final Map<UUID, TextDisplay> nametags;
+    private final Map<UUID, TextDisplay> nameTags;
 
     public NametagManager(UnlimitedNametags plugin) {
         this.plugin = plugin;
-        this.nametags = new HashMap<>();
+        this.nameTags = new HashMap<>();
         loadAll();
         startTask();
     }
@@ -50,7 +50,8 @@ public class NametagManager {
     }
 
     public void refreshPlayer(Player player) {
-        plugin.getPlaceholderManager().applyPlaceholders(player, plugin.getConfigManager().getSettings().getNametag(player).lines())
+        final Settings.Nametag nametag = plugin.getConfigManager().getSettings().getNametag(player);
+        plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
                 .thenAccept(lines -> editDisplay(player, lines))
                 .exceptionally(throwable -> {
                     throwable.printStackTrace();
@@ -61,13 +62,19 @@ public class NametagManager {
 
     private void editDisplay(Player player, Component component) {
         Bukkit.getScheduler().runTask(plugin, () -> {
-            TextDisplay display = nametags.get(player.getUniqueId());
+            final TextDisplay display = nameTags.get(player.getUniqueId());
             if (display != null) {
                 display.text(component);
+            }
+        });
+    }
 
-                if(!player.getPassengers().contains(display)) {
-                    player.addPassenger(display);
-                }
+    public void applyPassenger(Player player) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            final TextDisplay display = nameTags.get(player.getUniqueId());
+            if (display != null) {
+                player.addPassenger(display);
+                player.hideEntity(plugin, display);
             }
         });
     }
@@ -75,7 +82,7 @@ public class NametagManager {
     @SuppressWarnings("deprecation")
     private void createDisplay(Player player, Component component) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            TextDisplay display = player.getLocation().getWorld().spawn(player.getLocation(), TextDisplay.class);
+            final TextDisplay display = player.getLocation().getWorld().spawn(player.getLocation(), TextDisplay.class);
             display.text(component);
             display.setInvulnerable(true);
             display.setPersistent(false);
@@ -83,18 +90,18 @@ public class NametagManager {
             display.setShadowed(false);
             display.setBackgroundColor(Color.BLACK.setAlpha(0));
 
-            Transformation transformation = display.getTransformation();
+            final Transformation transformation = display.getTransformation();
             transformation.getTranslation().add(0, 0.3f, 0);
             display.setTransformation(transformation);
 
             player.addPassenger(display);
             player.hideEntity(plugin, display);
-            nametags.put(player.getUniqueId(), display);
+            nameTags.put(player.getUniqueId(), display);
         }, 15);
     }
 
     public void removePlayer(Player player) {
-        TextDisplay display = nametags.remove(player.getUniqueId());
+        final TextDisplay display = nameTags.remove(player.getUniqueId());
         if (display != null) {
             player.removePassenger(display);
             display.remove();
@@ -102,16 +109,22 @@ public class NametagManager {
     }
 
     public void removeAll() {
-        nametags.forEach((uuid, display) -> {
-            Player player = Bukkit.getPlayer(uuid);
+        nameTags.forEach((uuid, display) -> {
+            final Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
                 player.removePassenger(display);
             }
             display.remove();
         });
 
-        nametags.clear();
+        nameTags.clear();
     }
 
 
+    public void removePassenger(Player player) {
+        final TextDisplay display = nameTags.get(player.getUniqueId());
+        if (display != null) {
+            player.removePassenger(display);
+        }
+    }
 }

@@ -2,6 +2,7 @@ package org.alexdev.unlimitednametags.events;
 
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNametags;
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -26,7 +27,8 @@ public class JoinQuitListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent e) {
-        plugin.getNametagManager().refreshPlayer(e.getPlayer());
+        plugin.getNametagManager().removePassenger(e.getPlayer());
+        Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.getNametagManager().applyPassenger(e.getPlayer()), 5);
     }
 
 
