@@ -1,6 +1,6 @@
 package org.alexdev.unlimitednametags.events;
 
-import org.alexdev.unlimitednametags.UnlimitedNametags;
+import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.TextDisplay;
@@ -14,9 +14,9 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 
 public class PlayerListener implements Listener {
 
-    private final UnlimitedNametags plugin;
+    private final UnlimitedNameTags plugin;
 
-    public PlayerListener(UnlimitedNametags plugin) {
+    public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
     }
 

@@ -4,7 +4,7 @@ import de.themoep.minedown.adventure.MineDown;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
-import org.alexdev.unlimitednametags.UnlimitedNametags;
+import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -15,11 +15,11 @@ import java.util.concurrent.Executors;
 
 public class PlaceholderManager {
 
-    private final UnlimitedNametags plugin;
+    private final UnlimitedNameTags plugin;
     private final ExecutorService executorService;
     private int index = 16777215;
 
-    public PlaceholderManager(UnlimitedNametags plugin) {
+    public PlaceholderManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.executorService = Executors.newCachedThreadPool();
         startIndexTask();

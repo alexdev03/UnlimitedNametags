@@ -4,17 +4,17 @@ import de.exlll.configlib.ConfigLib;
 import de.exlll.configlib.YamlConfigurationProperties;
 import de.exlll.configlib.YamlConfigurations;
 import lombok.Getter;
-import org.alexdev.unlimitednametags.UnlimitedNametags;
+import org.alexdev.unlimitednametags.UnlimitedNameTags;
 
 import java.io.File;
 
 @Getter
 public class ConfigManager {
 
-    private final UnlimitedNametags plugin;
+    private final UnlimitedNameTags plugin;
     private Settings settings;
 
-    public ConfigManager(UnlimitedNametags plugin) {
+    public ConfigManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         loadConfigs();
     }

@@ -2,7 +2,7 @@ package org.alexdev.unlimitednametags.nametags;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
-import org.alexdev.unlimitednametags.UnlimitedNametags;
+import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -13,15 +13,17 @@ import org.bukkit.util.Transformation;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@SuppressWarnings("UnstableApiUsage")
 public class NameTagManager {
 
-    private final UnlimitedNametags plugin;
+    private final UnlimitedNameTags plugin;
     private final Map<UUID, TextDisplay> nameTags;
 
-    public NameTagManager(UnlimitedNametags plugin) {
+    public NameTagManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.nameTags = new HashMap<>();
         loadAll();
@@ -74,10 +76,15 @@ public class NameTagManager {
     public void applyPassenger(Player player) {
         Bukkit.getScheduler().runTask(plugin, () -> {
             final TextDisplay display = nameTags.get(player.getUniqueId());
-            player.hideEntity(plugin, display);
+//            player.hideEntity(plugin, display);
+
+            final boolean isVanished = plugin.getVanishManager().isVanished(player);
 
             //show to all players except the player itself after tp
-            Bukkit.getOnlinePlayers().stream().filter(p -> p != player).forEach(p -> p.showEntity(plugin, display));
+            Bukkit.getOnlinePlayers().stream()
+                    .filter(p -> isVanished && plugin.getVanishManager().canSee(p, player))
+                    .forEach(p -> p.showEntity(plugin, display));
+
             player.addPassenger(display);
         });
     }
@@ -93,14 +100,20 @@ public class NameTagManager {
             display.setShadowed(false);
             display.setSeeThrough(true);
             display.setBackgroundColor(Color.BLACK.setAlpha(0));
-            display.setVisibleByDefault(true);
+            display.setVisibleByDefault(false);
 
             final Transformation transformation = display.getTransformation();
             transformation.getTranslation().add(0, 0.3f, 0);
             display.setTransformation(transformation);
 
             player.addPassenger(display);
-            player.hideEntity(plugin, display);
+
+            final boolean isVanished = plugin.getVanishManager().isVanished(player);
+
+            Bukkit.getOnlinePlayers().stream()
+                    .filter(p -> isVanished && plugin.getVanishManager().canSee(p, player))
+                    .forEach(p -> p.showEntity(plugin, display));
+
             nameTags.put(player.getUniqueId(), display);
         }, 1);
     }
@@ -152,5 +165,31 @@ public class NameTagManager {
                 audience.sendMessage(Component.text(player.getName() + " -> " + player.getPassengers().stream().map(entity -> entity.getType().name()).reduce((a, b) -> a + ", " + b).orElse("")));
             }
         });
+    }
+
+
+    public void vanishPlayer(Player player) {
+        final TextDisplay display = nameTags.get(player.getUniqueId());
+
+        List<? extends Player> canSee = Bukkit.getOnlinePlayers()
+                .stream()
+                .filter(p -> plugin.getVanishManager().canSee(p, player))
+                .toList();
+
+        List<? extends Player> cannotSee = Bukkit.getOnlinePlayers()
+                .stream()
+                .filter(p -> !canSee.contains(p))
+                .toList();
+
+        canSee.forEach(p -> p.hideEntity(plugin, display));
+    }
+
+    public void unVanishPlayer(Player player) {
+        final TextDisplay display = nameTags.get(player.getUniqueId());
+
+        Bukkit.getOnlinePlayers()
+                .stream()
+                .filter(p -> p != player)
+                .forEach(p -> p.showEntity(plugin, display));
     }
 }

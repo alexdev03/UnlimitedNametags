@@ -5,14 +5,14 @@ import com.jonahseguin.drink.annotation.Require;
 import com.jonahseguin.drink.annotation.Sender;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.alexdev.unlimitednametags.UnlimitedNametags;
+import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.command.CommandSender;
 
 @RequiredArgsConstructor
 @SuppressWarnings("unused")
 public class MainCommand {
 
-    private final UnlimitedNametags plugin;
+    private final UnlimitedNameTags plugin;
 
     @Command(name = "reload", desc = "Reloads the plugin", usage = "/unt reload")
     @Require("unt.reload")
