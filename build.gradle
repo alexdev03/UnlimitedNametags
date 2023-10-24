@@ -4,7 +4,7 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'org.alexdev'
+group = 'com.github.alexdev03'
 version = '1.0'
 
 repositories {
