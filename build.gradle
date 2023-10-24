@@ -38,7 +38,7 @@ dependencies {
     implementation 'com.github.Exlll.ConfigLib:configlib-paper:dev-SNAPSHOT'
     implementation 'org.jetbrains:annotations:24.0.0'
     implementation 'de.themoep:minedown-adventure:1.7.2-SNAPSHOT'
-
+    implementation 'com.github.alexdev03:drink:1.5.1'
 }
 
 shadowJar {

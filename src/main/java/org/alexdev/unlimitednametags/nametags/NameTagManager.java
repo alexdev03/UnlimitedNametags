@@ -1,5 +1,6 @@
 package org.alexdev.unlimitednametags.nametags;
 
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNametags;
 import org.alexdev.unlimitednametags.config.Settings;
@@ -9,17 +10,18 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Transformation;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class NametagManager {
+public class NameTagManager {
 
     private final UnlimitedNametags plugin;
     private final Map<UUID, TextDisplay> nameTags;
 
-    public NametagManager(UnlimitedNametags plugin) {
+    public NameTagManager(UnlimitedNametags plugin) {
         this.plugin = plugin;
         this.nameTags = new HashMap<>();
         loadAll();
@@ -38,7 +40,7 @@ public class NametagManager {
 
 
     public void addPlayer(Player player) {
-        Settings.Nametag nametag = plugin.getConfigManager().getSettings().getNametag(player);
+        final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
                 .thenAccept(lines -> createDisplay(player, lines))
@@ -50,7 +52,7 @@ public class NametagManager {
     }
 
     public void refreshPlayer(Player player) {
-        final Settings.Nametag nametag = plugin.getConfigManager().getSettings().getNametag(player);
+        final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
                 .thenAccept(lines -> editDisplay(player, lines))
                 .exceptionally(throwable -> {
@@ -72,10 +74,11 @@ public class NametagManager {
     public void applyPassenger(Player player) {
         Bukkit.getScheduler().runTask(plugin, () -> {
             final TextDisplay display = nameTags.get(player.getUniqueId());
-            if (display != null) {
-                player.addPassenger(display);
-                player.hideEntity(plugin, display);
-            }
+            player.hideEntity(plugin, display);
+
+            //show to all players except the player itself after tp
+            Bukkit.getOnlinePlayers().stream().filter(p -> p != player).forEach(p -> p.showEntity(plugin, display));
+            player.addPassenger(display);
         });
     }
 
@@ -88,7 +91,9 @@ public class NametagManager {
             display.setPersistent(false);
             display.setBillboard(Display.Billboard.CENTER);
             display.setShadowed(false);
+            display.setSeeThrough(true);
             display.setBackgroundColor(Color.BLACK.setAlpha(0));
+            display.setVisibleByDefault(true);
 
             final Transformation transformation = display.getTransformation();
             transformation.getTranslation().add(0, 0.3f, 0);
@@ -97,7 +102,7 @@ public class NametagManager {
             player.addPassenger(display);
             player.hideEntity(plugin, display);
             nameTags.put(player.getUniqueId(), display);
-        }, 15);
+        }, 1);
     }
 
     public void removePlayer(Player player) {
@@ -121,10 +126,31 @@ public class NametagManager {
     }
 
 
-    public void removePassenger(Player player) {
+    public @NotNull TextDisplay removePassenger(Player player) {
+        final TextDisplay display = nameTags.get(player.getUniqueId());
+        player.removePassenger(display);
+        return display;
+    }
+
+    public void updateSneaking(Player player, boolean sneaking) {
         final TextDisplay display = nameTags.get(player.getUniqueId());
         if (display != null) {
-            player.removePassenger(display);
+            display.setSeeThrough(!sneaking);
+            display.setTextOpacity((byte) (sneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
         }
+    }
+
+    public void reload() {
+        Bukkit.getOnlinePlayers().forEach(this::refreshPlayer);
+    }
+
+    public void debug(Audience audience) {
+        audience.sendMessage(Component.text("Nametags:"));
+        nameTags.forEach((uuid, display) -> {
+            final Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                audience.sendMessage(Component.text(player.getName() + " -> " + player.getPassengers().stream().map(entity -> entity.getType().name()).reduce((a, b) -> a + ", " + b).orElse("")));
+            }
+        });
     }
 }
