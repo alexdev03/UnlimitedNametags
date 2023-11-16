@@ -9,12 +9,13 @@ import java.util.List;
 import java.util.Map;
 
 @Configuration
-@SuppressWarnings("FieldMayBeFinal")
+@SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
+@Getter
 public class Settings {
 
     private Map<String, NameTag> nameTags = Map.of(
-            "staffer", new NameTag("nametag.staffer", List.of("%prefix% %username% %suffix%"), 1),
-            "default", new NameTag("nametag.default", List.of("%prefix% %username% %suffix%", "%money%"), 1)
+            "staffer", new NameTag("nametag.staffer", List.of("%prefix% %username% %suffix%")),
+            "default", new NameTag("nametag.default", List.of("%prefix% %username% %suffix%", "%money%"))
     );
 
     public NameTag getNametag(Player player) {
@@ -25,15 +26,21 @@ public class Settings {
                 .orElse(nameTags.get("default"));
     }
 
-    @Getter
     private int taskInterval = 20;
 
     @Comment(value = {"This is opacity that will be applied to the nametag when a player sneaks. So, the value is from -128 to 127. ",
             "Similar to the background, the text rendering is discarded when it is less than 26. Defaults to -1, which represents 255 and is completely opaque."})
-    @Getter
     private int sneakOpacity = 70;
+    private float yOffset = 0.7f;
+    private float viewDistance = 60;
 
+    @Comment("The format of the nametag. Can be either LEGACY, MINEDOWN or MINIMESSAGE")
+    private Formatter format = Formatter.LEGACY;
 
-    public record NameTag(String permission, List<String> lines, int space) {
+    public float getViewDistance() {
+        return viewDistance / 160;
+    }
+
+    public record NameTag(String permission, List<String> lines) {
     }
 }

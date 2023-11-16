@@ -1,6 +1,5 @@
 package org.alexdev.unlimitednametags.placeholders;
 
-import de.themoep.minedown.adventure.MineDown;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
@@ -13,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@SuppressWarnings("deprecation")
 public class PlaceholderManager {
 
     private final UnlimitedNameTags plugin;
@@ -29,7 +29,8 @@ public class PlaceholderManager {
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
             index -= 1;
             if (index == 0) {
-                index = 16777215;
+//                index = 16777215;
+                index = 10000;
             }
         }, 0, 1);
     }
@@ -47,8 +48,13 @@ public class PlaceholderManager {
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
                 .map(text -> PlaceholderAPI.setPlaceholders(player, text))
                 .map(t -> t.replace("#val#", String.valueOf(index)))
-                .map(MineDown::parse)
+                .map(this::format)
                 .toArray(Component[]::new));
     }
+
+    private Component format(String value) {
+        return plugin.getConfigManager().getSettings().getFormat().format(value);
+    }
+
 
 }

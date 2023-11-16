@@ -1,23 +1,3 @@
-/*
- * This file is part of Velocitab, licensed under the Apache License 2.0.
- *
- *  Copyright (c) William278 <will27528@gmail.com>
- *  Copyright (c) contributors
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
-
 package org.alexdev.unlimitednametags.api;
 
 
@@ -118,11 +98,11 @@ import org.jetbrains.annotations.NotNull;
     static final class NotRegisteredException extends IllegalStateException {
 
         private static final String MESSAGE = """
-                Could not access the Velocitab API as it has not yet been registered. This could be because:
-                1) Velocitab has failed to enable successfully
-                2) You are attempting to access Velocitab on plugin construction/before your plugin has enabled.
-                3) You have shaded Velocitab into your plugin jar and need to fix your maven/gradle/build script
-                   to only include Velocitab as a dependency and not as a shaded dependency.""";
+                Could not access the UnlimitedNameTags API as it has not yet been registered. This could be because:
+                1) UnlimitedNameTags has failed to enable successfully
+                2) You are attempting to access UnlimitedNameTags on plugin construction/before your plugin has enabled.
+                3) You have shaded UnlimitedNameTags into your plugin jar and need to fix your maven/gradle/build script
+                   to only include UnlimitedNameTags as a dependency and not as a shaded dependency.""";
 
         NotRegisteredException() {
             super(MESSAGE);

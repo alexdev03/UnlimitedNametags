@@ -7,6 +7,7 @@ import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.events.PlayerListener;
+import org.alexdev.unlimitednametags.events.PurpurListener;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
 import org.alexdev.unlimitednametags.vanish.VanishManager;
@@ -30,11 +31,33 @@ public final class UnlimitedNameTags extends JavaPlugin {
         vanishManager = new VanishManager(this);
 
         loadCommands();
-        getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
+        loadListeners();
 
         UNTAPI.register(this);
 
-        getLogger().info("UnlimitedNametags has been enabled!");
+        getLogger().info("API registered");
+
+        getLogger().info("UnlimitedNameTags has been enabled!");
+    }
+
+    private void loadListeners() {
+        Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
+
+        if (isPurpur()) {
+            Bukkit.getPluginManager().registerEvents(new PurpurListener(this), this);
+            getLogger().info("Purpur found, teleporting with passengers will work");
+        } else {
+            getLogger().warning("Purpur not found, teleporting with passengers will not work. This could create problems with teleports");
+        }
+    }
+
+    private boolean isPurpur() {
+        try {
+            Class.forName("org.purpurmc.purpur.event.entity.EntityTeleportHinderedEvent");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     private void loadCommands() {
