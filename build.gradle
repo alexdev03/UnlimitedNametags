@@ -40,11 +40,14 @@ dependencies {
 
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
+
+
     implementation 'com.github.Exlll.ConfigLib:configlib-paper:dev-SNAPSHOT'
     implementation 'org.jetbrains:annotations:24.0.0'
     implementation 'de.themoep:minedown-adventure:1.7.2-SNAPSHOT'
     implementation 'com.github.alexdev03:drink:1.5.1'
 }
+
 
 shadowJar {
     relocate 'org.jetbrains', 'org.alexdev.libraries'
@@ -58,8 +61,10 @@ shadowJar {
 
     destinationDirectory.set(file("$rootDir/target"))
     archiveClassifier.set('')
+
+    minimize()
 }
-jar.dependsOn shadowJar
+build.dependsOn shadowJar
 clean.delete "$rootDir/target"
 
 def targetJavaVersion = 17

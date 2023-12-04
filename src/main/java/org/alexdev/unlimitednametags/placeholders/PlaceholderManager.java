@@ -1,6 +1,5 @@
 package org.alexdev.unlimitednametags.placeholders;
 
-import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -12,16 +11,17 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@SuppressWarnings("deprecation")
 public class PlaceholderManager {
 
     private final UnlimitedNameTags plugin;
     private final ExecutorService executorService;
     private int index = 16777215;
+    private final PAPIManager papiManager;
 
     public PlaceholderManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.executorService = Executors.newCachedThreadPool();
+        this.papiManager = new PAPIManager(plugin);
         startIndexTask();
     }
 
@@ -29,8 +29,8 @@ public class PlaceholderManager {
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
             index -= 1;
             if (index == 0) {
-//                index = 16777215;
-                index = 10000;
+                index = 16777215;
+//                index = 10000;
             }
         }, 0, 1);
     }
@@ -46,7 +46,8 @@ public class PlaceholderManager {
 
     private Component createComponent(Player player, List<String> strings) {
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
-                .map(text -> PlaceholderAPI.setPlaceholders(player, text))
+//                .map(text -> PlaceholderAPI.setPlaceholders(player, text))
+                .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
                 .map(t -> t.replace("#val#", String.valueOf(index)))
                 .map(this::format)
                 .toArray(Component[]::new));
