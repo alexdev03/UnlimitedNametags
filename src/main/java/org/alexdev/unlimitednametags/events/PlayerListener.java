@@ -27,12 +27,9 @@ public class PlayerListener implements Listener {
         this.ejectCache = new ArrayList<>();
     }
 
-
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        Bukkit.getScheduler().runTaskLater(plugin,
-                () -> plugin.getNametagManager().addPlayer(event.getPlayer()),
-                5);
+        plugin.getNametagManager().addPlayer(event.getPlayer());
 
         plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer());
     }

@@ -1,5 +1,7 @@
 package org.alexdev.unlimitednametags.nametags;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -8,6 +10,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -18,20 +21,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 @SuppressWarnings("UnstableApiUsage")
 public class NameTagManager {
 
     private final UnlimitedNameTags plugin;
     private final Map<UUID, UUID> nameTags;
+    private final Map<UUID, UUID> white;
     private final List<UUID> creating;
+    private final List<UUID> blocked;
 
     public NameTagManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.nameTags = new ConcurrentHashMap<>();
-        this.creating = new CopyOnWriteArrayList<>();
+        this.nameTags = Maps.newConcurrentMap();
+        this.creating = Lists.newCopyOnWriteArrayList();
+        this.white = Maps.newConcurrentMap();
+        this.blocked = Lists.newCopyOnWriteArrayList();
         this.loadAll();
         this.startTask();
     }
@@ -46,6 +51,14 @@ public class NameTagManager {
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
     }
 
+    public void blockPlayer(@NotNull Player player) {
+        blocked.add(player.getUniqueId());
+    }
+
+    public void unblockPlayer(@NotNull Player player) {
+        blocked.remove(player.getUniqueId());
+    }
+
     public void addPlayer(@NotNull Player player) {
         if (nameTags.containsKey(player.getUniqueId())) {
             return;
@@ -54,6 +67,12 @@ public class NameTagManager {
         if (creating.contains(player.getUniqueId())) {
             return;
         }
+
+        if (blocked.contains(player.getUniqueId())) {
+            return;
+        }
+
+        createBlankDisplay(player);
 
         creating.add(player.getUniqueId());
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
@@ -64,8 +83,17 @@ public class NameTagManager {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), throwable);
                     creating.remove(player.getUniqueId());
                     return null;
-                })
-        ;
+                });
+    }
+
+    private void createBlankDisplay(@NotNull Player player) {
+        final TextDisplay display = player.getWorld().spawn(player.getLocation().clone().add(0, 1.80, 0), TextDisplay.class);
+        white.put(player.getUniqueId(), display.getUniqueId());
+        display.text(Component.empty());
+        display.setInvulnerable(true);
+        display.setPersistent(false);
+        display.setBillboard(Display.Billboard.CENTER);
+        player.addPassenger(display);
     }
 
     public void refreshPlayer(@NotNull Player player) {
@@ -134,39 +162,44 @@ public class NameTagManager {
     @SuppressWarnings("deprecation")
     private void createDisplay(Player player, Component component) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            final Location location = player.getLocation().clone();
-            //add 1.80 to make a perfect tp animation
-            location.setY(location.getY() + 1.80);
+            try {
+                final Location location = player.getLocation().clone();
+                //add 1.80 to make a perfect tp animation
+                location.setY(location.getY() + 1.80);
 
-            final TextDisplay display = location.getWorld().spawn(location, TextDisplay.class);
-            nameTags.put(player.getUniqueId(), display.getUniqueId());
-            creating.remove(player.getUniqueId());
-            display.text(component);
-            display.setInvulnerable(true);
-            display.setPersistent(false);
-            display.setBillboard(Display.Billboard.CENTER);
-            display.setShadowed(false);
-            display.setSeeThrough(true);
-            //invisible background
-            display.setBackgroundColor(Color.BLACK.setAlpha(0));
-            display.setVisibleByDefault(false);
-            display.setMetadata("nametag", new FixedMetadataValue(plugin, player.getUniqueId()));
+                final TextDisplay display = location.getWorld().spawn(location, TextDisplay.class);
+                nameTags.put(player.getUniqueId(), display.getUniqueId());
+                creating.remove(player.getUniqueId());
+                display.text(component);
+                display.setInvulnerable(true);
+                display.setPersistent(false);
+                display.setBillboard(Display.Billboard.CENTER);
+                display.setShadowed(false);
+                display.setSeeThrough(true);
+                //invisible background
+                display.setBackgroundColor(Color.BLACK.setAlpha(0));
+                display.setVisibleByDefault(false);
+                display.setMetadata("nametag", new FixedMetadataValue(plugin, player.getUniqueId()));
 
-            final Transformation transformation = display.getTransformation();
-            transformation.getTranslation().add(0, plugin.getConfigManager().getSettings().getYOffset(), 0);
-            display.setTransformation(transformation);
+                final Transformation transformation = display.getTransformation();
+                transformation.getTranslation().add(0, plugin.getConfigManager().getSettings().getYOffset(), 0);
+                display.setTransformation(transformation);
 
-            display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
+                display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
-            player.addPassenger(display);
+                Optional.ofNullable(Bukkit.getEntity(white.remove(player.getUniqueId()))).ifPresent(Entity::remove);
+                player.addPassenger(display);
 
-            final boolean isVanished = plugin.getVanishManager().isVanished(player);
+                final boolean isVanished = plugin.getVanishManager().isVanished(player);
 
-            //if player is vanished, hide display for all players except for who can see the player
-            Bukkit.getOnlinePlayers().stream()
-                    .filter(p -> p != player)
-                    .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
-                    .forEach(p -> p.showEntity(plugin, display));
+                //if player is vanished, hide display for all players except for who can see the player
+                Bukkit.getOnlinePlayers().stream()
+                        .filter(p -> p != player)
+                        .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
+                        .forEach(p -> p.showEntity(plugin, display));
+            } catch (Exception e) {
+                plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), e);
+            }
 
         }, 5);
     }
@@ -184,41 +217,27 @@ public class NameTagManager {
         nameTags.remove(player.getUniqueId());
     }
 
-    public void removeDeadDisplay(TextDisplay textDisplay) {
-        for (Map.Entry<UUID, UUID> entry : nameTags.entrySet()) {
-            if (entry.getValue().equals(textDisplay.getUniqueId())) {
-                nameTags.remove(entry.getKey(), entry.getValue());
-                Optional.ofNullable(Bukkit.getPlayer(entry.getKey())).ifPresent(this::addPlayer);
-                break;
+    public void hideAllDisplays(Player player) {
+        Bukkit.getScheduler().runTask(plugin, () -> nameTags.forEach((uuid, display) -> {
+            final TextDisplay textDisplay = (TextDisplay) Bukkit.getEntity(display);
+
+            if (textDisplay == null) {
+                return;
             }
-        }
+
+            player.hideEntity(plugin, textDisplay);
+        }));
     }
 
-//    public void hideNameTag(@NotNull Player player) {
-//        final UUID uuid = nameTags.get(player.getUniqueId());
-//        if (uuid == null) return;
-//        final TextDisplay display = (TextDisplay) Bukkit.getEntity(uuid);
-//        if (display == null) return;
-//
-//        Bukkit.getOnlinePlayers()
-////                .filter(p -> p != player)
-//                .forEach(p -> p.hideEntity(plugin, display));
-//    }
-//
-//    public void showNameTag(@NotNull Player player) {
-//        final UUID uuid = nameTags.get(player.getUniqueId());
-//        if (uuid == null) return;
-//        final TextDisplay display = (TextDisplay) Bukkit.getEntity(uuid);
-//        if (display == null) return;
-//
-//        final boolean isVanished = plugin.getVanishManager().isVanished(player);
-//
-//        //if player is vanished, hide display for all players except for who can see the player
-//        Bukkit.getOnlinePlayers().stream()
-//                .filter(p -> p != player)
-//                .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
-//                .forEach(p -> p.showEntity(plugin, display));
-//    }
+    public void removeDeadDisplay(TextDisplay textDisplay) {
+//        for (Map.Entry<UUID, UUID> entry : nameTags.entrySet()) {
+//            if (entry.getValue().equals(textDisplay.getUniqueId())) {
+//                nameTags.remove(entry.getKey(), entry.getValue());
+//                Optional.ofNullable(Bukkit.getPlayer(entry.getKey())).ifPresent(this::removePlayer);
+//                break;
+//            }
+//        }
+    }
 
 
     public void teleportAndApply(@NotNull Player player) {

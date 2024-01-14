@@ -8,6 +8,7 @@ import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.events.PlayerListener;
 import org.alexdev.unlimitednametags.events.PurpurListener;
+import org.alexdev.unlimitednametags.events.TypeWriterListener;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
 import org.alexdev.unlimitednametags.vanish.VanishManager;
@@ -48,6 +49,11 @@ public final class UnlimitedNameTags extends JavaPlugin {
             getLogger().info("Purpur found, teleporting with passengers will work");
         } else {
             getLogger().warning("Purpur not found, teleporting with passengers will not work. This could create problems with teleports");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("TypeWriter")) {
+            Bukkit.getPluginManager().registerEvents(new TypeWriterListener(this), this);
+            getLogger().info("TypeWriter found, hooking into it");
         }
     }
 

@@ -8,14 +8,14 @@ group = 'com.github.alexdev03'
 version = '1.0'
 
 repositories {
+    maven {
+        name = 'jitpack'
+        url = 'https://jitpack.io'
+    }
     mavenCentral()
     maven {
         name = "papermc-repo"
         url = "https://repo.papermc.io/repository/maven-public/"
-    }
-    maven {
-        name = 'jitpack'
-        url = 'https://jitpack.io'
     }
     maven {
         url "https://repo.purpurmc.org/snapshots"
@@ -36,7 +36,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'com.github.gabber235:typewriter:develop-SNAPSHOT'
+    compileOnly 'com.github.gabber235:typewriter:ee4fc95cce'
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-RC")
     compileOnly("com.github.dyam0:LirandAPI:96cc59d4fb")
     compileOnly("net.kyori:adventure-api:4.13.1")
