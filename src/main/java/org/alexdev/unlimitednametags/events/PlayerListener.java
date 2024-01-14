@@ -49,7 +49,7 @@ public class PlayerListener implements Listener {
 
         if (!textDisplay.hasMetadata("nametag")) return;
 
-        if(ejectCache.contains(player.getUniqueId())) return;
+        if (ejectCache.contains(player.getUniqueId())) return;
 
         ejectCache.add(player.getUniqueId());
         Bukkit.getScheduler().runTaskLater(plugin, () -> ejectCache.remove(player.getUniqueId()), 10);
@@ -114,8 +114,7 @@ public class PlayerListener implements Listener {
         if (inPortal) {
             event.getPlayer().eject();
             plugin.getNametagManager().removePlayer(event.getPlayer(), false);
-        }
-        else {
+        } else {
             plugin.getNametagManager().addPlayer(event.getPlayer());
         }
     }
