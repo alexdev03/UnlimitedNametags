@@ -9,6 +9,7 @@ import org.bukkit.entity.TextDisplay;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.spigotmc.event.entity.EntityDismountEvent;
 
@@ -81,6 +82,16 @@ public class PlayerListener implements Listener {
         if (event.getEntity() instanceof TextDisplay textDisplay) {
             plugin.getNametagManager().removeDeadDisplay(textDisplay);
         }
+    }
+
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        plugin.getNametagManager().removePlayer(event.getEntity(), false);
+    }
+
+    @EventHandler
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+        plugin.getNametagManager().addPlayer(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
