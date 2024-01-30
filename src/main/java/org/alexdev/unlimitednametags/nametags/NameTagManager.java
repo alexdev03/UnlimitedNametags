@@ -2,6 +2,8 @@ package org.alexdev.unlimitednametags.nametags;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -17,12 +19,10 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.util.Transformation;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @SuppressWarnings("UnstableApiUsage")
+@Getter
 public class NameTagManager {
 
     private final UnlimitedNameTags plugin;
@@ -30,6 +30,7 @@ public class NameTagManager {
     private final Map<UUID, UUID> white;
     private final List<UUID> creating;
     private final List<UUID> blocked;
+    private final Set<UUID> ejectable;
 
     public NameTagManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -37,6 +38,7 @@ public class NameTagManager {
         this.creating = Lists.newCopyOnWriteArrayList();
         this.white = Maps.newConcurrentMap();
         this.blocked = Lists.newCopyOnWriteArrayList();
+        this.ejectable = Sets.newConcurrentHashSet();
         this.loadAll();
         this.startTask();
     }
@@ -132,7 +134,7 @@ public class NameTagManager {
 
         //show to all players except the player itself after tp
         Bukkit.getOnlinePlayers().stream()
-                .filter(p -> isVanished && plugin.getVanishManager().canSee(p, player))
+                .filter(p -> p != player && (isVanished || plugin.getVanishManager().canSee(p, player)))
                 .forEach(p -> p.showEntity(plugin, display));
 
         player.addPassenger(display);
@@ -229,27 +231,27 @@ public class NameTagManager {
         }));
     }
 
-    public void removeDeadDisplay(TextDisplay textDisplay) {
-//        for (Map.Entry<UUID, UUID> entry : nameTags.entrySet()) {
-//            if (entry.getValue().equals(textDisplay.getUniqueId())) {
-//                nameTags.remove(entry.getKey(), entry.getValue());
-//                Optional.ofNullable(Bukkit.getPlayer(entry.getKey())).ifPresent(this::removePlayer);
-//                break;
-//            }
-//        }
-    }
-
-
     public void teleportAndApply(@NotNull Player player) {
         final UUID uuid = nameTags.get(player.getUniqueId());
-        if (uuid == null) return;
+        if (uuid == null) {
+            return;
+        }
         final TextDisplay display = (TextDisplay) Bukkit.getEntity(uuid);
-        if (display == null) return;
+        if (display == null) {
+            return;
+        }
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        if (player.getPassengers().contains(display) && display.getWorld() == player.getWorld() && display.getLocation().distance(player.getLocation()) < 4) {
+            return;
+        }
+
+        System.out.println("teleporting " + player.getName() + " to " + display.getLocation());
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             display.teleport(player.getLocation().clone().add(0, 1.8, 0));
             applyPassenger(player);
-        });
+            ejectable.remove(player.getUniqueId());
+        }, 1);
     }
 
 
@@ -352,5 +354,17 @@ public class NameTagManager {
                     .filter(p -> p != player)
                     .forEach(p -> p.showEntity(plugin, display));
         }, 1);
+    }
+
+    @NotNull
+    public Optional<TextDisplay> getEntityById(int entityId) {
+        for (UUID uuid : nameTags.values()) {
+            final Entity entity = Bukkit.getEntity(uuid);
+            if (entity == null) continue;
+            if (entity.getEntityId() == entityId) {
+                return Optional.of((TextDisplay) entity);
+            }
+        }
+        return Optional.empty();
     }
 }

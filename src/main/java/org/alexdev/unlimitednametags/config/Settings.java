@@ -14,8 +14,8 @@ import java.util.Map;
 public class Settings {
 
     private Map<String, NameTag> nameTags = Map.of(
-            "staffer", new NameTag("nametag.staffer", List.of("%prefix% %username% %suffix%")),
-            "default", new NameTag("nametag.default", List.of("%prefix% %username% %suffix%", "%money%"))
+            "staffer", new NameTag("nametag.staffer", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%")),
+            "default", new NameTag("nametag.default", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%", "%vault_eco_balance_formatted%"))
     );
 
     public NameTag getNametag(Player player) {
@@ -36,6 +36,9 @@ public class Settings {
 
     @Comment("The format of the nametag. Can be either LEGACY, MINEDOWN or MINIMESSAGE")
     private Formatter format = Formatter.LEGACY;
+
+    @Comment("Whether to disable the default name tag or not. Only works if PacketEvents is installed.")
+    private boolean disableDefaultNameTag = false;
 
     public float getViewDistance() {
         return viewDistance / 160;

@@ -6,6 +6,7 @@ import lombok.Getter;
 import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
+import org.alexdev.unlimitednametags.events.PacketEventsListener;
 import org.alexdev.unlimitednametags.events.PlayerListener;
 import org.alexdev.unlimitednametags.events.PurpurListener;
 import org.alexdev.unlimitednametags.events.TypeWriterListener;
@@ -22,6 +23,16 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private NameTagManager nametagManager;
     private PlaceholderManager placeholderManager;
     private VanishManager vanishManager;
+    private PacketEventsListener packetEventsListener;
+
+    @Override
+    public void onLoad() {
+        if (Bukkit.getPluginManager().isPluginEnabled("PacketEvents")) {
+            getLogger().info("PacketEvents found, hooking into it");
+            packetEventsListener = new PacketEventsListener(this);
+            packetEventsListener.onLoad();
+        }
+    }
 
     @Override
     public void onEnable() {
@@ -55,6 +66,10 @@ public final class UnlimitedNameTags extends JavaPlugin {
             Bukkit.getPluginManager().registerEvents(new TypeWriterListener(this), this);
             getLogger().info("TypeWriter found, hooking into it");
         }
+
+        if (packetEventsListener != null) {
+            packetEventsListener.onEnable();
+        }
     }
 
     private boolean isPurpur() {
@@ -81,4 +96,5 @@ public final class UnlimitedNameTags extends JavaPlugin {
         placeholderManager.close();
         Bukkit.getScheduler().cancelTasks(this);
     }
+
 }
