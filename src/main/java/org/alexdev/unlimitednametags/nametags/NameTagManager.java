@@ -245,8 +245,6 @@ public class NameTagManager {
             return;
         }
 
-        System.out.println("teleporting " + player.getName() + " to " + display.getLocation());
-
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             display.teleport(player.getLocation().clone().add(0, 1.8, 0));
             applyPassenger(player);
@@ -256,12 +254,10 @@ public class NameTagManager {
 
 
     public void removeAll() {
-        nameTags.forEach((uuid, display) -> {
-            Optional.ofNullable(Bukkit.getEntity(display)).ifPresent(entity -> {
-                entity.removeMetadata("nametag", plugin);
-                entity.remove();
-            });
-        });
+        nameTags.forEach((uuid, display) -> Optional.ofNullable(Bukkit.getEntity(display)).ifPresent(entity -> {
+            entity.removeMetadata("nametag", plugin);
+            entity.remove();
+        }));
 
         nameTags.clear();
     }
@@ -282,13 +278,11 @@ public class NameTagManager {
         final float viewDistance = plugin.getConfigManager().getSettings().getViewDistance();
 
 
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            Bukkit.getOnlinePlayers().forEach(p -> {
-                refreshPlayer(p);
-                setYOffset(p, yOffset);
-                setViewDistance(p, viewDistance);
-            });
-        });
+        plugin.getServer().getScheduler().runTask(plugin, () -> Bukkit.getOnlinePlayers().forEach(p -> {
+            refreshPlayer(p);
+            setYOffset(p, yOffset);
+            setViewDistance(p, viewDistance);
+        }));
     }
 
     public void debug(@NotNull Audience audience) {

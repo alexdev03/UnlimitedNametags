@@ -102,6 +102,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         final WrapperPlayServerTeams packet = new WrapperPlayServerTeams(event);
         if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
             packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
+            event.markForReEncode(true);
         }
     }
 }
