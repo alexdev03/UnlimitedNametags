@@ -7,14 +7,11 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.TextDisplay;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
-import org.spigotmc.event.entity.EntityDismountEvent;
 
 import java.util.Set;
 import java.util.UUID;
@@ -23,47 +20,49 @@ import java.util.UUID;
 public class PlayerListener implements Listener {
 
     private final UnlimitedNameTags plugin;
-    private final Set<UUID> ejectCache;
+    private final Set<UUID> justJoined;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.ejectCache = Sets.newConcurrentHashSet();
+        this.justJoined = Sets.newConcurrentHashSet();
+    }
+
+    public boolean isJustJoined(UUID uuid) {
+        return justJoined.contains(uuid);
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         plugin.getNametagManager().addPlayer(event.getPlayer());
-
-        plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(PlayerQuitEvent event) {
-        plugin.getNametagManager().removePlayer(event.getPlayer(), false);
+        plugin.getNametagManager().removePlayer(event.getPlayer());
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEject(EntityDismountEvent event) {
-        if (!(event.getEntity() instanceof TextDisplay textDisplay)) return;
-        if (!(event.getDismounted() instanceof Player player)) return;
-
-        if (!textDisplay.hasMetadata("nametag")) return;
-
-        if (ejectCache.contains(player.getUniqueId())) return;
-
-        if(plugin.getNametagManager().getEjectable().contains(player.getUniqueId())) return;
-
-        ejectCache.add(player.getUniqueId());
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            if (player.isOnline()) {
-                plugin.getNametagManager().teleportAndApply(player);
-            }
-        }, 3);
-    }
+//    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+//    public void onEject(EntityDismountEvent event) {
+//        if (!(event.getEntity() instanceof TextDisplay textDisplay)) return;
+//        if (!(event.getDismounted() instanceof Player player)) return;
+//
+//        if (!textDisplay.hasMetadata("nametag")) return;
+//
+//        if (ejectCache.contains(player.getUniqueId())) return;
+//
+//        if(plugin.getNametagManager().getEjectable().contains(player.getUniqueId())) return;
+//
+//        ejectCache.add(player.getUniqueId());
+//        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+//            if (player.isOnline()) {
+//                plugin.getNametagManager().teleportAndApply(player);
+//            }
+//        }, 3);
+//    }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleportComplete(PlayerTeleportEvent event) {
-        plugin.getNametagManager().teleportAndApply(event.getPlayer());
+        plugin.getNametagManager().teleportAndApply(event.getPlayer(), event.getTo());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -76,13 +75,13 @@ public class PlayerListener implements Listener {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
             plugin.getNametagManager().addPlayer(e.getPlayer());
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().removePlayer(e.getPlayer(), true);
+            plugin.getNametagManager().removePlayer(e.getPlayer());
         }
     }
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
-        plugin.getNametagManager().removePlayer(event.getEntity(), false);
+        plugin.getNametagManager().removePlayer(event.getEntity());
     }
 
     @EventHandler
@@ -115,12 +114,12 @@ public class PlayerListener implements Listener {
             }
         }
 
-        if (inPortal) {
-            event.getPlayer().eject();
-            plugin.getNametagManager().removePlayer(event.getPlayer(), false);
-        } else {
-            plugin.getNametagManager().addPlayer(event.getPlayer());
-        }
+//        if (inPortal) {
+//            event.getPlayer().eject();
+//            plugin.getNametagManager().removePlayer(event.getPlayer());
+//        } else {
+//            plugin.getNametagManager().addPlayer(event.getPlayer());
+//        }
     }
 
 

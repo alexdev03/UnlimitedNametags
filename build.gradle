@@ -48,10 +48,10 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.30'
     compileOnly 'me.clip:placeholderapi:2.11.3'
     compileOnly 'io.github.miniplaceholders:miniplaceholders-api:2.1.0'
-    compileOnly 'com.github.retrooper.packetevents:spigot:2.2.0'
+    implementation 'com.github.retrooper.packetevents:spigot:2.2.0'
     compileOnly 'com.viaversion:viaversion-api:4.9.2'
     compileOnly 'com.viaversion:viaversion:4.9.2'
-    compileOnly 'net.kyori:adventure-nbt:4.8.1'
+    compileOnly 'net.kyori:adventure-api:4.8.1'
 
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
@@ -59,17 +59,29 @@ dependencies {
     implementation 'org.jetbrains:annotations:24.0.0'
     implementation 'de.themoep:minedown-adventure:1.7.2-SNAPSHOT'
     implementation 'com.github.alexdev03:drink:1.5.1'
+    implementation 'com.github.Tofaa2:EntityLib:v1.2.1-SNAPSHOT'
 }
 
 
 shadowJar {
-    relocate 'org.jetbrains', 'org.alexdev.libraries'
-    relocate 'org.intellij', 'org.alexdev.libraries'
-    relocate 'de.themoep', 'org.alexdev.libraries'
+    relocate 'org.jetbrains', 'org.alexdev.libraries.jetbrains'
+    relocate 'org.intellij', 'org.alexdev.libraries.intellij'
+    relocate 'de.themoep', 'org.alexdev.libraries.themoep'
+    relocate 'me.tofaa.entitylib', 'org.alexdev.libraries.entitylib'
+    relocate 'com.github.retrooper.packetevents', 'org.alexdev.libraries.packetevents.api'
+    relocate 'io.github.retrooper.packetevents', 'org.alexdev.libraries.packetevents.impl'
+    relocate 'com.jonahseguin.drink', 'org.alexdev.libraries.drink'
+    relocate 'de.exlll.configlib', 'org.alexdev.libraries.configlib'
+    relocate 'net.kyori', 'org.alexdev.libraries.kyori'
+    relocate 'javax.annotation', 'org.alexdev.libraries.annotation'
 
     dependencies {
         //noinspection GroovyAssignabilityCheck
         exclude dependency(':slf4j-api')
+        //gson
+        exclude dependency('com.google.code.gson:gson')
+        //kyori all submodules
+
     }
 
     destinationDirectory.set(file("$rootDir/target"))

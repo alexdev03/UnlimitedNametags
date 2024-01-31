@@ -19,7 +19,7 @@ public class TypeWriterListener implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin,
                 () -> {
                     plugin.getNametagManager().hideAllDisplays(event.getPlayer());
-                    plugin.getNametagManager().removePlayer(event.getPlayer(), true);
+                    plugin.getNametagManager().removePlayer(event.getPlayer());
                 },
                 1);
     }

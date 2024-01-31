@@ -3,24 +3,23 @@ package org.alexdev.unlimitednametags.events;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
-import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
+import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.User;
-import com.github.retrooper.packetevents.util.FakeChannelUtil;
-import com.github.retrooper.packetevents.util.Vector3f;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
+import com.github.retrooper.packetevents.wrapper.play.server.*;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import io.github.retrooper.packetevents.injector.SpigotChannelInjector;
-import io.github.retrooper.packetevents.util.FoliaCompatUtil;
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.packet.PacketDisplayText;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.TextDisplay;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class PacketEventsListener extends PacketListenerAbstract {
@@ -48,16 +47,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
             SpigotChannelInjector injector = (SpigotChannelInjector) PacketEvents.getAPI().getInjector();
 
             User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
-            if (user == null) {
-                //We did not inject this user
-                Object channel = PacketEvents.getAPI().getPlayerManager().getChannel(player);
-                //Check if it is a fake connection...
-                if (!FakeChannelUtil.isFakeChannel(channel)) {
-                    //Kick them, if they are not a fake player.
-                    FoliaCompatUtil.runTaskForEntity(player, plugin, () -> player.kickPlayer("PacketEvents 2.0 failed to inject"), null, 0);
-                }
-                return;
-            }
 
             // Set bukkit player object in the injectors
             injector.updatePlayer(user, player);
@@ -65,33 +54,88 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     public void onPacketSend(PacketSendEvent event) {
-        if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
-            handleMetaData(event);
-        } else if (event.getPacketType() == PacketType.Play.Server.TEAMS) {
+        if (event.getPacketType() == PacketType.Play.Server.TEAMS) {
             handleTeams(event);
+        } else if (event.getPacketType() == PacketType.Play.Server.SET_PASSENGERS) {
+            handlePassengers(event);
+        } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY) {
+            handleSpawnPlayer(event);
+        } else if (event.getPacketType() == PacketType.Play.Server.DESTROY_ENTITIES) {
+            handleDestroyEntities(event);
         }
     }
 
-    private void handleMetaData(@NotNull PacketSendEvent event) {
-        if(event.getUser().getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_20_2)) {
+    private void handleDestroyEntities(PacketSendEvent event) {
+        if(!(event.getPlayer() instanceof Player player)) {
             return;
         }
-        final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
-        final @NotNull Optional<TextDisplay> textDisplay = plugin.getNametagManager().getEntityById(packet.getEntityId());
+        WrapperPlayServerDestroyEntities destroyEntities = new WrapperPlayServerDestroyEntities(event);
+        Arrays.stream(destroyEntities.getEntityIds())
+                .mapToObj(id -> Bukkit.getOnlinePlayers().stream().filter(p -> p.getEntityId() == id).findFirst())
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .forEach(target -> {
+//                    System.out.println("Found player " + target.getName() + " for " + player.getName());
+                    plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
+                        if (packetDisplayText.canPlayerSee(player)) {
+                            packetDisplayText.hideFromPlayer(player);
+                        }
+                    });
+                });
+    }
 
-        if (textDisplay.isEmpty()) {
+    private void handleSpawnPlayer(PacketSendEvent event) {
+        WrapperPlayServerSpawnEntity spawnEntity = new WrapperPlayServerSpawnEntity(event.clone());
+        if (spawnEntity.getEntityType() != EntityTypes.PLAYER) {
+            return;
+        }
+        final WrapperPlayServerSpawnPlayer packet = new WrapperPlayServerSpawnPlayer(event);
+        final Optional<Player> targetOptional = Optional.ofNullable(Bukkit.getPlayer(packet.getUUID()));
+        if (targetOptional.isEmpty()) {
+            return;
+        }
+        final Player target = targetOptional.get();
+        if (!(event.getPlayer() instanceof Player player)) {
             return;
         }
 
-        for (final EntityData eData : packet.getEntityMetadata()) {
-            if (eData.getIndex() == 10) {
-                final Vector3f old = (Vector3f) eData.getValue();
-                final Vector3f newV = new Vector3f(old.getX(), old.getY() + 0.45f, old.getZ());
-                eData.setValue(newV);
-                event.markForReEncode(true);
-                return;
-            }
+        if (plugin.getPlayerListener().isJustJoined(player.getUniqueId())) {
+            return;
         }
+
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
+                packetDisplayText.hideFromPlayerSilenty(player);
+                if (!packetDisplayText.canPlayerSee(player)) {
+                    packetDisplayText.showToPlayer(player);
+                }
+            });
+        });
+    }
+
+    private void handlePassengers(PacketSendEvent event) {
+        final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(event);
+        final Optional<? extends Player> player = Bukkit.getOnlinePlayers().stream().filter(p -> p.getEntityId() == packet.getEntityId()).findFirst();
+        if (player.isEmpty()) {
+            return;
+        }
+
+        final Optional<PacketDisplayText> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player.get());
+        if (optionalPacketDisplayText.isEmpty()) {
+            return;
+        }
+
+        plugin.getPacketManager().setPassengers(player.get(), Arrays.stream(packet.getPassengers()).boxed().toList());
+        final Set<Integer> passengers = Arrays.stream(packet.getPassengers()).boxed().collect(Collectors.toSet());
+        if (passengers.contains(packet.getEntityId()) || true) {
+            return;
+        }
+        passengers.add(packet.getEntityId());
+        plugin.getPacketManager().setPassengers(player.get(), passengers);
+        packet.setPassengers(passengers.stream().mapToInt(i -> i).toArray());
+        event.markForReEncode(true);
+        System.out.println("Handled packet");
+//        System.out.println("Received passengers packet from " + player.get().getName() + " with " + Arrays.toString(packet.getPassengers()) + " passengers of " + packet.getEntityId() + "(" + player.get().getName() + ")");
     }
 
     private void handleTeams(@NotNull PacketSendEvent event) {
@@ -104,5 +148,10 @@ public class PacketEventsListener extends PacketListenerAbstract {
             packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
             event.markForReEncode(true);
         }
+    }
+
+    public void onDisable() {
+        PacketEvents.getAPI().getEventManager().unregisterListener(this);
+        PacketEvents.getAPI().terminate();
     }
 }

@@ -4,3 +4,9 @@ main: org.alexdev.unlimitednametags.UnlimitedNameTags
 api-version: '1.19'
 softdepend:
   - PlaceholderAPI
+  - ProtocolLib
+  - ProtocolSupport
+  - ViaVersion
+  - ViaBackwards
+  - ViaRewind
+  - Geyser-Spigot
