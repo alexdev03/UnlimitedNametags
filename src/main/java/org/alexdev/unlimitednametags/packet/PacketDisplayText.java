@@ -100,6 +100,9 @@ public class PacketDisplayText {
     }
 
     public void showToPlayer(@NotNull Player player) {
+        if(player == owner) {
+            return;
+        }
         if (blocked.contains(player.getUniqueId())) {
             return;
         }

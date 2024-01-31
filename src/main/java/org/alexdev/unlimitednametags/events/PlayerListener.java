@@ -40,7 +40,7 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         plugin.getNametagManager().addPlayer(event.getPlayer());
-        plugin.getNametagManager().showPlayer(event.getPlayer());
+        plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer());
         justJoined.add(event.getPlayer().getUniqueId());
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> justJoined.remove(event.getPlayer().getUniqueId()), 20);
     }

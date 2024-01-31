@@ -278,41 +278,36 @@ public class NameTagManager {
 
 
     public void vanishPlayer(@NotNull Player player) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            //TODO: fix this
-//            final UUID uuid = nameTags.get(player.getUniqueId());
-//            if (uuid == null) return;
-//            final TextDisplay display = (TextDisplay) Bukkit.getEntity(uuid);
-//            if (display == null) return;
-//
-//            List<? extends Player> canSee = Bukkit.getOnlinePlayers()
-//                    .stream()
-//                    .filter(p -> plugin.getVanishManager().canSee(p, player))
-//                    .toList();
-//
-//            List<? extends Player> cannotSee = Bukkit.getOnlinePlayers()
-//                    .stream()
-//                    .filter(p -> !canSee.contains(p))
-//                    .toList();
-//
-//            cannotSee.forEach(p -> p.hideEntity(plugin, display));
-        }, 1);
+        getPacketDisplayText(player).ifPresent(packetDisplayText -> {
+            final Set<UUID> viewers = new HashSet<>(packetDisplayText.getEntity().getViewers());
+            final boolean isVanished = plugin.getVanishManager().isVanished(player);
+            viewers.forEach(uuid -> {
+                final Player viewer = Bukkit.getPlayer(uuid);
+                if (viewer == null || viewer == player) {
+                    return;
+                }
+                if (isVanished && !plugin.getVanishManager().canSee(viewer, player)) {
+                    return;
+                }
+                packetDisplayText.hideFromPlayer(viewer);
+            });
+        });
+
     }
 
     public void unVanishPlayer(@NotNull Player player) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            //TODO: fix this
-//            final UUID uuid = nameTags.get(player.getUniqueId());
-//            if (uuid == null) return;
-//            final TextDisplay display = (TextDisplay) Bukkit.getEntity(uuid);
-//            if (display == null) return;
-//
-//            Bukkit.getOnlinePlayers()
-//                    .stream()
-//                    .filter(p -> p != player)
-//                    .forEach(p -> p.showEntity(plugin, display));
-        }, 1);
+        getPacketDisplayText(player).ifPresent(packetDisplayText -> {
+            final Set<UUID> viewers = new HashSet<>(packetDisplayText.getEntity().getViewers());
+            viewers.forEach(uuid -> {
+                final Player viewer = Bukkit.getPlayer(uuid);
+                if (viewer == null || viewer == player) {
+                    return;
+                }
+                packetDisplayText.showToPlayer(viewer);
+            });
+        });
     }
+
 
     public Optional<PacketDisplayText> getPacketDisplayText(Player player) {
         return Optional.ofNullable(nameTags.get(player.getUniqueId()));
@@ -320,13 +315,12 @@ public class NameTagManager {
 
     public void updateDisplaysForPlayer(Player player) {
         nameTags.forEach((uuid, display) -> {
-            display.getBlocked().remove(player.getUniqueId());
-            display.showToPlayer(player);
-        });
-    }
+            final Player owner = display.getOwner();
 
-    public void showPlayer(Player player) {
-        nameTags.forEach((uuid, display) -> {
+            if (plugin.getVanishManager().isVanished(owner) && !plugin.getVanishManager().canSee(player, owner)) {
+                return;
+            }
+
             if (!display.canPlayerSee(player)) {
                 display.showToPlayer(player);
             }
