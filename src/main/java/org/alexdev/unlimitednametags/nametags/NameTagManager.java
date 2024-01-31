@@ -4,7 +4,6 @@ import com.github.retrooper.packetevents.util.Vector3f;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import lombok.Getter;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
@@ -12,6 +11,7 @@ import org.alexdev.unlimitednametags.packet.PacketDisplayText;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -90,7 +90,7 @@ public class NameTagManager {
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
                 .thenAccept(lines -> editDisplay(player, lines, update))
                 .exceptionally(throwable -> {
-                    plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), throwable);
+                    plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to edit nametag for " + player.getName(), throwable);
                     return null;
                 });
     }
@@ -142,16 +142,24 @@ public class NameTagManager {
         }
     }
 
-    public void removePlayer(@NotNull Player player) {
+    public void removePlayer(@NotNull Player player, boolean quit) {
         final PacketDisplayText packetDisplayText = nameTags.remove(player.getUniqueId());
         if (packetDisplayText == null) {
             return;
         }
         packetDisplayText.remove();
         nameTags.forEach((uuid, display) -> {
+            if (quit) {
+                display.handleQuit(player);
+            } else {
+                display.hideFromPlayerSilenty(player);
+            }
             display.getBlocked().remove(player.getUniqueId());
-            display.hideFromPlayerSilenty(player);
         });
+    }
+
+    public void removePlayer(@NotNull Player player) {
+        removePlayer(player, false);
     }
 
     public void hideAllDisplays(Player player) {
@@ -162,12 +170,35 @@ public class NameTagManager {
     }
 
     public void teleportAndApply(@NotNull Player player, @NotNull Location location) {
-        getPacketDisplayText(player).ifPresent(d -> new HashSet<>(d.getEntity().getViewers()).stream()
-                .map(Bukkit::getPlayer)
-                .filter(p -> p != player)
-                .filter(Objects::nonNull)
-                .filter(p -> location.getWorld() != player.getWorld())
-                .forEach(d::hideFromPlayer));
+        //used to hide the nametag when teleporting to another world to near players
+        getPacketDisplayText(player).ifPresent(d -> {
+            new HashSet<>(d.getEntity().getViewers()).stream()
+                    .map(Bukkit::getPlayer)
+                    .filter(p -> p != player)
+                    .filter(Objects::nonNull)
+                    .forEach(p -> {
+                        //hide if player is in another world
+                        if (location.getWorld() != p.getWorld()) {
+                            d.hideFromPlayer(p);
+                            //show if player is in the same world and is in range
+                        } else if (location.distance(p.getLocation()) <= plugin.getConfigManager().getSettings().getViewDistance() * 160) {
+                            d.showToPlayer(p);
+                        }
+                    });
+
+            //add nearby players
+            plugin.getServer().getScheduler().runTask(plugin,
+                    () -> d.findNearbyPlayers()
+                            .stream()
+                            .filter(p -> p != player)
+                            .filter(Objects::nonNull)
+                            .forEach(p -> {
+                                if (!d.canPlayerSee(p)) {
+                                    d.showToPlayer(p);
+                                }
+                            }));
+        });
+
 
         nameTags.forEach((uuid, display) -> {
             if (display.getOwner() == player) {
@@ -175,7 +206,6 @@ public class NameTagManager {
             }
             if (display.getOwner().getWorld() != location.getWorld()) {
                 if (display.canPlayerSee(player)) {
-                    System.out.println("Hiding entity " + display.getEntity().getEntityId() + " for " + player.getName());
                     display.hideFromPlayer(player);
                 }
                 return;
@@ -183,32 +213,14 @@ public class NameTagManager {
 
             if (display.getOwner().getLocation().distance(location) > plugin.getConfigManager().getSettings().getViewDistance() * 160) {
                 if (display.canPlayerSee(player)) {
-                    System.out.println("Hiding entity " + display.getEntity().getEntityId() + " for " + player.getName());
                     display.hideFromPlayerSilenty(player);
                 }
-                return;
+            } else {
+                if (!display.canPlayerSee(player)) {
+                    display.showToPlayer(player);
+                }
             }
-            display.showToPlayer(player);
-            System.out.println("Showing entity " + display.getEntity().getEntityId() + " for " + player.getName());
         });
-//        final UUID uuid = nameTags.get(player.getUniqueId());
-//        if (uuid == null) {
-//            return;
-//        }
-//        final TextDisplay display = (TextDisplay) Bukkit.getEntity(uuid);
-//        if (display == null) {
-//            return;
-//        }
-//
-//        if (player.getPassengers().contains(display) && display.getWorld() == player.getWorld() && display.getLocation().distance(player.getLocation()) < 4) {
-//            return;
-//        }
-//
-//        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-//            display.teleport(player.getLocation().clone().add(0, 1.8, 0));
-//            applyPassenger(player);
-//            ejectable.remove(player.getUniqueId());
-//        }, 1);
     }
 
 
@@ -220,13 +232,6 @@ public class NameTagManager {
 
 
     public void updateSneaking(@NotNull Player player, boolean sneaking) {
-//        final UUID uuid = nameTags.get(player.getUniqueId());
-//        if (uuid == null) return;
-//        final TextDisplay display = (TextDisplay) Bukkit.getEntity(uuid);
-//        if (display == null) return;
-//
-//        display.setSeeThrough(!sneaking);
-//        display.setTextOpacity((byte) (sneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
             packetDisplayText.setSeeThrough(!sneaking);
             packetDisplayText.setTextOpacity((byte) (sneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
@@ -246,8 +251,8 @@ public class NameTagManager {
         }));
     }
 
-    public void debug(@NotNull Audience audience) {
-        audience.sendMessage(Component.text("Nametags:"));
+    public void debug(@NotNull CommandSender audience) {
+        audience.sendMessage(("Nametags:"));
         nameTags.forEach((uuid, display) -> {
             final Player player = Bukkit.getPlayer(uuid);
 
@@ -255,7 +260,7 @@ public class NameTagManager {
                 return;
             }
 
-            audience.sendMessage(Component.text(player.getName() + " -> " + display.getUniqueId() + " " + display.getEntity().getEntityId()));
+            audience.sendMessage((player.getName() + " -> " + display.getUniqueId() + " " + display.getEntity().getEntityId() + display.getEntity().getViewers()));
         });
     }
 
@@ -317,6 +322,14 @@ public class NameTagManager {
         nameTags.forEach((uuid, display) -> {
             display.getBlocked().remove(player.getUniqueId());
             display.showToPlayer(player);
+        });
+    }
+
+    public void showPlayer(Player player) {
+        nameTags.forEach((uuid, display) -> {
+            if (!display.canPlayerSee(player)) {
+                display.showToPlayer(player);
+            }
         });
     }
 }

@@ -42,10 +42,12 @@ public class PacketManager {
                     if (player == target) continue;
                     if (player.getWorld() != target.getWorld()) continue;
                     double distance = player.getLocation().distance(target.getLocation());
-                    if (distance <= range - 5 && !packetDisplayText.canPlayerSee(target) && false) {
-                        packetDisplayText.showToPlayer(target);
-                    } else if (distance > range && packetDisplayText.canPlayerSee(target)) {
+                    // If the player is out of range and the player can see the display, hide it without sending a packet
+                    if (distance > range && packetDisplayText.canPlayerSee(target)) {
                         packetDisplayText.hideFromPlayerSilenty(target);
+                    // If the player is in range and the player can't see the display, show it by sending a packet
+                    } else if (distance <= range && !packetDisplayText.canPlayerSee(target)) {
+                        packetDisplayText.showToPlayer(target);
                     }
                 }
             }

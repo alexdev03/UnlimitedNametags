@@ -21,48 +21,40 @@ public class PlayerListener implements Listener {
 
     private final UnlimitedNameTags plugin;
     private final Set<UUID> justJoined;
+    private final Set<UUID> justTeleported;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.justJoined = Sets.newConcurrentHashSet();
+        this.justTeleported = Sets.newConcurrentHashSet();
     }
 
     public boolean isJustJoined(UUID uuid) {
         return justJoined.contains(uuid);
     }
 
+    public boolean isJustTeleported(UUID uuid) {
+        return justTeleported.contains(uuid);
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         plugin.getNametagManager().addPlayer(event.getPlayer());
+        plugin.getNametagManager().showPlayer(event.getPlayer());
+        justJoined.add(event.getPlayer().getUniqueId());
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> justJoined.remove(event.getPlayer().getUniqueId()), 20);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(PlayerQuitEvent event) {
-        plugin.getNametagManager().removePlayer(event.getPlayer());
+        plugin.getNametagManager().removePlayer(event.getPlayer(), true);
     }
-
-//    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-//    public void onEject(EntityDismountEvent event) {
-//        if (!(event.getEntity() instanceof TextDisplay textDisplay)) return;
-//        if (!(event.getDismounted() instanceof Player player)) return;
-//
-//        if (!textDisplay.hasMetadata("nametag")) return;
-//
-//        if (ejectCache.contains(player.getUniqueId())) return;
-//
-//        if(plugin.getNametagManager().getEjectable().contains(player.getUniqueId())) return;
-//
-//        ejectCache.add(player.getUniqueId());
-//        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-//            if (player.isOnline()) {
-//                plugin.getNametagManager().teleportAndApply(player);
-//            }
-//        }, 3);
-//    }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleportComplete(PlayerTeleportEvent event) {
+        justTeleported.add(event.getPlayer().getUniqueId());
         plugin.getNametagManager().teleportAndApply(event.getPlayer(), event.getTo());
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> justTeleported.remove(event.getPlayer().getUniqueId()), 20);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -91,6 +83,8 @@ public class PlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
+
+        if(true) return;
 
         if (!event.hasChangedPosition()) return;
 

@@ -30,7 +30,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         PacketEvents.setAPI(SpigotPacketEventsBuilder.build(plugin));
         //Are all listeners read only?
         PacketEvents.getAPI().getSettings().reEncodeByDefault(false)
-                .checkForUpdates(true)
+                .checkForUpdates(false)
                 .bStats(true);
         PacketEvents.getAPI().load();
     }
@@ -85,7 +85,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private void handleSpawnPlayer(PacketSendEvent event) {
-        WrapperPlayServerSpawnEntity spawnEntity = new WrapperPlayServerSpawnEntity(event.clone());
+        final WrapperPlayServerSpawnEntity spawnEntity = new WrapperPlayServerSpawnEntity(event.clone());
         if (spawnEntity.getEntityType() != EntityTypes.PLAYER) {
             return;
         }
@@ -103,14 +103,20 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
-                packetDisplayText.hideFromPlayerSilenty(player);
-                if (!packetDisplayText.canPlayerSee(player)) {
-                    packetDisplayText.showToPlayer(player);
-                }
-            });
-        });
+        if(plugin.getPlayerListener().isJustTeleported(player.getUniqueId())) {
+            return;
+        }
+        //USELESS NOW
+//        if(true) return;
+
+//        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+//            plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
+//                packetDisplayText.hideFromPlayerSilenty(player);
+//                if (!packetDisplayText.canPlayerSee(player)) {
+//                    packetDisplayText.showToPlayer(player);
+//                }
+//            });
+//        }, 3);
     }
 
     private void handlePassengers(PacketSendEvent event) {
@@ -119,6 +125,8 @@ public class PacketEventsListener extends PacketListenerAbstract {
         if (player.isEmpty()) {
             return;
         }
+
+        System.out.println(Arrays.toString(packet.getPassengers()) + event.getUser().getName());
 
         final Optional<PacketDisplayText> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player.get());
         if (optionalPacketDisplayText.isEmpty()) {
