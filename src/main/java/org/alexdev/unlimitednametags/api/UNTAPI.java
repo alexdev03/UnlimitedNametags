@@ -7,12 +7,12 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
-@SuppressWarnings("unused")
-
 /**
  * The UnlimitedNameTags API class.
  * Retrieve an instance of the API class via {@link #getInstance()}.
- */ public class UNTAPI {
+ */
+@SuppressWarnings("unused")
+public class UNTAPI {
 
     // Instance of the plugin
     private final UnlimitedNameTags plugin;

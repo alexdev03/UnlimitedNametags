@@ -127,8 +127,6 @@ public class NameTagManager {
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
-//                Optional.ofNullable(Bukkit.getEntity(white.remove(player.getUniqueId()))).ifPresent(Entity::remove);
-
             final boolean isVanished = plugin.getVanishManager().isVanished(player);
             display.spawn(player);
 

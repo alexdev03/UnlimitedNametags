@@ -95,7 +95,8 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private void handleTeams(@NotNull PacketSendEvent event) {
-        if (!plugin.getConfigManager().getSettings().isDisableDefaultNameTag()) {
+        if (!plugin.getConfigManager().getSettings().isDisableDefaultNameTag() &&
+                !plugin.getConfigManager().getSettings().isDisableDefaultNameTagBedrock() && plugin.getFloodgateHook().map(h -> h.isBedrock((Player) event.getPlayer())).orElse(false)) {
             return;
         }
 

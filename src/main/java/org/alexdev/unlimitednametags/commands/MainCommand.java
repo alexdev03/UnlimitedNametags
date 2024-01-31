@@ -4,7 +4,6 @@ import com.jonahseguin.drink.annotation.Command;
 import com.jonahseguin.drink.annotation.Require;
 import com.jonahseguin.drink.annotation.Sender;
 import lombok.RequiredArgsConstructor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.command.CommandSender;
 
@@ -19,7 +18,7 @@ public class MainCommand {
     public void onReload(@Sender CommandSender sender) {
         plugin.getConfigManager().reload();
         plugin.getNametagManager().reload();
-        sender.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize("&cPlugin reloaded!"));
+        sender.sendMessage("&cPlugin reloaded!");
     }
 
     @Command(name = "debug", desc = "Debugs the plugin", usage = "/unt debug")

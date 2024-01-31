@@ -40,6 +40,9 @@ public class Settings {
     @Comment("Whether to disable the default name tag or not. Only works if PacketEvents is installed.")
     private boolean disableDefaultNameTag = false;
 
+    @Comment("Whether to disable the default name tag or not for bedrock players. Only works if PacketEvents & Floodgate are installed.")
+    private boolean disableDefaultNameTagBedrock = false;
+
     public float getViewDistance() {
         return viewDistance / 160;
     }

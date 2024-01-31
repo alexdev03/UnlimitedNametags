@@ -35,6 +35,8 @@ repositories {
     maven { url = 'https://repo.opencollab.dev/maven-public/' }
     maven { url = 'https://repo.codemc.io/repository/maven-releases/' }
     maven { url = 'https://repo.viaversion.com/' }
+    maven { url = 'https://repo.opencollab.dev/main/' }
+
 }
 
 dependencies {
@@ -43,15 +45,12 @@ dependencies {
     compileOnly 'com.github.dyam0:LirandAPI:96cc59d4fb'
     compileOnly 'net.kyori:adventure-api:4.13.1'
     compileOnly 'net.kyori:adventure-text-minimessage:4.13.1'
-
     compileOnly 'org.purpurmc.purpur:purpur-api:1.19.4-R0.1-SNAPSHOT'
     compileOnly 'org.projectlombok:lombok:1.18.30'
     compileOnly 'me.clip:placeholderapi:2.11.3'
     compileOnly 'io.github.miniplaceholders:miniplaceholders-api:2.1.0'
-    implementation 'com.github.retrooper.packetevents:spigot:2.2.0'
-    compileOnly 'com.viaversion:viaversion-api:4.9.2'
-    compileOnly 'com.viaversion:viaversion:4.9.2'
     compileOnly 'net.kyori:adventure-api:4.8.1'
+    compileOnly('org.geysermc.floodgate:api:2.2.2-SNAPSHOT')
 
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
@@ -60,6 +59,7 @@ dependencies {
     implementation 'de.themoep:minedown-adventure:1.7.2-SNAPSHOT'
     implementation 'com.github.alexdev03:drink:1.5.1'
     implementation 'com.github.Tofaa2:EntityLib:v1.2.1-SNAPSHOT'
+    implementation 'com.github.retrooper.packetevents:spigot:2.2.0'
 }
 
 

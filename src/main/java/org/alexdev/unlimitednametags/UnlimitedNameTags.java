@@ -9,12 +9,16 @@ import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.events.PacketEventsListener;
 import org.alexdev.unlimitednametags.events.PlayerListener;
 import org.alexdev.unlimitednametags.events.TypeWriterListener;
+import org.alexdev.unlimitednametags.hook.FloodgateHook;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.packet.PacketManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
 import org.alexdev.unlimitednametags.vanish.VanishManager;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Optional;
 
 @Getter
 public final class UnlimitedNameTags extends JavaPlugin {
@@ -26,6 +30,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private PacketEventsListener packetEventsListener;
     private PacketManager packetManager;
     private PlayerListener playerListener;
+    private FloodgateHook floodgateHook;
 
     @Override
     public void onLoad() {
@@ -60,7 +65,13 @@ public final class UnlimitedNameTags extends JavaPlugin {
         }
 
         packetEventsListener.onEnable();
+    }
 
+    private void loadHooks() {
+        if (Bukkit.getPluginManager().isPluginEnabled("Floodgate")) {
+            floodgateHook = new FloodgateHook();
+            getLogger().info("Floodgate found, hooking into it");
+        }
     }
 
     private void loadCommands() {
@@ -68,6 +79,11 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
         drink.register(new MainCommand(this), "unt", "unlimitednametags");
         drink.registerCommands();
+    }
+
+    @NotNull
+    public Optional<FloodgateHook> getFloodgateHook() {
+        return Optional.ofNullable(floodgateHook);
     }
 
     @Override
