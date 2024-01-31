@@ -37,7 +37,8 @@ public class PacketDisplayText {
     public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner) {
         this.plugin = plugin;
         this.owner = owner;
-        this.entity = EntityLib.createEntity(UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
+        final int randomId = (int) (Math.random() * 100000);
+        this.entity = EntityLib.createEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
         this.meta = (TextDisplayMeta) entity.getMeta();
         this.blocked = Sets.newConcurrentHashSet();
         this.setConcurrent();

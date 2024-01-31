@@ -45,12 +45,8 @@ public final class UnlimitedNameTags extends JavaPlugin {
         loadListeners();
 
         packetManager = new PacketManager(this);
-
-
         UNTAPI.register(this);
-
         getLogger().info("API registered");
-
         getLogger().info("UnlimitedNameTags has been enabled!");
     }
 
