@@ -187,7 +187,7 @@ public class NameTagManager {
                     });
 
             //add nearby players
-            plugin.getServer().getScheduler().runTask(plugin,
+            plugin.getServer().getScheduler().runTaskLater(plugin,
                     () -> d.findNearbyPlayers()
                             .stream()
                             .filter(p -> p != player)
@@ -196,7 +196,7 @@ public class NameTagManager {
                                 if (!d.canPlayerSee(p)) {
                                     d.showToPlayer(p);
                                 }
-                            }));
+                            }), 3);
         });
 
 
@@ -214,10 +214,6 @@ public class NameTagManager {
             if (display.getOwner().getLocation().distance(location) > plugin.getConfigManager().getSettings().getViewDistance() * 160) {
                 if (display.canPlayerSee(player)) {
                     display.hideFromPlayerSilenty(player);
-                }
-            } else {
-                if (!display.canPlayerSee(player)) {
-                    display.showToPlayer(player);
                 }
             }
         });

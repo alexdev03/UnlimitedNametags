@@ -122,7 +122,6 @@ public class PacketDisplayText {
         }
         boolean result = entity.getViewers().contains(player.getUniqueId());
         entity.removeViewer(player.getUniqueId());
-
         plugin.getPacketManager().removePassenger(player, entity.getEntityId());
     }
 

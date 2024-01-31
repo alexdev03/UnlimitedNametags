@@ -28,7 +28,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     public void onLoad() {
         PacketEvents.setAPI(SpigotPacketEventsBuilder.build(plugin));
         //Are all listeners read only?
-        PacketEvents.getAPI().getSettings().reEncodeByDefault(false)
+        PacketEvents.getAPI().getSettings().reEncodeByDefault(true)
                 .checkForUpdates(false)
                 .bStats(true);
         PacketEvents.getAPI().load();
