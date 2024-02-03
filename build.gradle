@@ -74,6 +74,7 @@ shadowJar {
     relocate 'de.exlll.configlib', 'org.alexdev.libraries.configlib'
     relocate 'net.kyori', 'org.alexdev.libraries.kyori'
     relocate 'javax.annotation', 'org.alexdev.libraries.annotation'
+    relocate 'org.snakeyaml', 'org.alexdev.libraries.snakeyaml'
 
     dependencies {
         //noinspection GroovyAssignabilityCheck
