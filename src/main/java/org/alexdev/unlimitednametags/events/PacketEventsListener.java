@@ -98,7 +98,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
             if (!packetDisplayText.canPlayerSee(player)) {
                 packetDisplayText.showToPlayer(player);
             }
-        }, 2);
+        }, 4);
     }
 
     private void handlePassengers(PacketSendEvent event) {

@@ -185,16 +185,24 @@ public class NameTagManager {
                     });
 
             //add nearby players
-//            plugin.getServer().getScheduler().runTaskLater(plugin,
-//                    () -> d.findNearbyPlayers()
-//                            .stream()
-//                            .filter(p -> p != player)
-//                            .filter(Objects::nonNull)
-//                            .forEach(p -> {
-//                                if (!d.canPlayerSee(p)) {
-//                                    d.showToPlayer(p);
-//                                }
-//                            }), 3);
+            plugin.getServer().getScheduler().runTaskLater(plugin,
+                    () -> d.findNearbyPlayers()
+                            .stream()
+                            .filter(p -> p != player)
+                            .filter(Objects::nonNull)
+                            .forEach(p -> {
+                                if (!d.canPlayerSee(p)) {
+                                    d.showToPlayer(p);
+                                }
+                                final Optional<PacketDisplayText> optionalPacketDisplayText = getPacketDisplayText(p);
+                                if (optionalPacketDisplayText.isEmpty()) {
+                                    return;
+                                }
+                                final PacketDisplayText packetDisplayText = optionalPacketDisplayText.get();
+                                if (!packetDisplayText.canPlayerSee(player)) {
+                                    packetDisplayText.showToPlayer(player);
+                                }
+                            }), 3);
         });
 
 
@@ -254,7 +262,7 @@ public class NameTagManager {
                 return;
             }
 
-            audience.sendMessage((player.getName() + " -> " + display.getUniqueId() + " " + display.getEntity().getEntityId() + display.getEntity().getViewers()));
+            audience.sendMessage((player.getName() + " -> " + display.getUniqueId() + " " + display.getEntity().getEntityId() + " " + display.getEntity().getViewers()));
         });
     }
 

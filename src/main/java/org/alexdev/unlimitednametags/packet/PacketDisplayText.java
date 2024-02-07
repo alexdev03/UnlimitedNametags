@@ -122,7 +122,7 @@ public class PacketDisplayText {
         }
         plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
             plugin.getPacketManager().sendPassengersPacket(player, this);
-        }, 3); //min is 3
+        }, 4); //min is 3
     }
 
     @SneakyThrows
@@ -222,6 +222,7 @@ public class PacketDisplayText {
         return owner.getNearbyEntities(viewDistance, viewDistance, viewDistance).stream()
                 .filter(e -> e instanceof Player)
                 .map(e -> (Player) e)
+                .filter(Player::isOnline)
                 .collect(Collectors.toSet());
     }
 }

@@ -37,10 +37,10 @@ public class Settings {
     @Comment("The format of the nametag. Can be either LEGACY, MINEDOWN or MINIMESSAGE")
     private Formatter format = Formatter.LEGACY;
 
-    @Comment("Whether to disable the default name tag or not. Only works if PacketEvents is installed.")
+    @Comment("Whether to disable the default name tag or not.")
     private boolean disableDefaultNameTag = false;
 
-    @Comment("Whether to disable the default name tag or not for bedrock players. Only works if PacketEvents & Floodgate are installed.")
+    @Comment("Whether to disable the default name tag or not for bedrock players. Only works if Floodgate is installed.")
     private boolean disableDefaultNameTagBedrock = false;
 
     public float getViewDistance() {
