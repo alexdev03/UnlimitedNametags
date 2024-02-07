@@ -48,6 +48,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
         loadCommands();
         loadListeners();
+        loadHooks();
 
         packetManager = new PacketManager(this);
         UNTAPI.register(this);

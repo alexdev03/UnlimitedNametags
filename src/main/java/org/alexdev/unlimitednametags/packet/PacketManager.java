@@ -30,6 +30,7 @@ public class PacketManager {
     }
 
     private void rangeTask() {
+        if(true) return; // TODO: Remove this line
         plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () -> {
             final float range = plugin.getConfigManager().getSettings().getViewDistance() * 160;
             for (var player : plugin.getServer().getOnlinePlayers()) {

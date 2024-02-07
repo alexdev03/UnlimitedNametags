@@ -1,7 +1,11 @@
 package org.alexdev.unlimitednametags.packet;
 
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.PacketEventsAPI;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
+import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
+import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import com.google.common.collect.Sets;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import lombok.Getter;
@@ -14,13 +18,16 @@ import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.Location;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 @Getter
@@ -32,6 +39,7 @@ public class PacketDisplayText {
     private final TextDisplayMeta meta;
     private final Player owner;
     private final Set<UUID> blocked;
+    private Field locationField;
 
 
     public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner) {
@@ -101,19 +109,31 @@ public class PacketDisplayText {
     }
 
     public void showToPlayer(@NotNull Player player) {
-        if(player == owner) {
+        if (player == owner) {
             return;
         }
         if (blocked.contains(player.getUniqueId())) {
             return;
         }
+        setPosition();
         final boolean result = entity.addViewer(player.getUniqueId());
-        if(!result) {
+        if (!result) {
             return;
         }
         plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
             plugin.getPacketManager().sendPassengersPacket(player, this);
         }, 3); //min is 3
+    }
+
+    @SneakyThrows
+    private void setPosition() {
+        if (locationField == null) {
+            locationField = entity.getClass().getDeclaredField("location");
+            locationField.setAccessible(true);
+        }
+        final Location location = owner.getLocation().clone();
+        location.setY(location.getY() + 1.8);
+        locationField.set(entity, SpigotConversionUtil.fromBukkitLocation(location));
     }
 
     public void hideFromPlayer(@NotNull Player player) {
@@ -154,11 +174,33 @@ public class PacketDisplayText {
 
     public void refresh() {
         fixViewers();
-        entity.refresh();
+        final PacketWrapper<?> packet = meta.createPacket();
+        final PacketEventsAPI<?> api = PacketEvents.getAPI();
+        entity.getViewers().forEach(u -> {
+            try {
+                final Optional<? extends Player> optionalPlayer = Optional.ofNullable(Bukkit.getPlayer(u));
+                if (optionalPlayer.isEmpty()) {
+                    return;
+                }
+                final User user = PacketEvents.getAPI().getPlayerManager().getUser(optionalPlayer.get());
+                if (user == null || user.getChannel() == null) {
+                    return;
+                }
+                api.getProtocolManager().sendPacket(user.getChannel(), packet);
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to send packet to " + u, e);
+            }
+        });
     }
 
     private void fixViewers() {
-        entity.getViewers().stream().filter(u -> Bukkit.getPlayer(u) == null).forEach(entity::removeViewerSilently);
+        entity.getViewers().stream().filter(u -> {
+            final Player player = Bukkit.getPlayer(u);
+            return player == null || !player.isOnline();
+        }).forEach(e -> {
+            plugin.getLogger().warning("Removing viewer " + e + " from " + owner.getName());
+            entity.removeViewerSilently(e);
+        });
     }
 
     public void remove() {

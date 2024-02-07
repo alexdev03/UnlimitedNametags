@@ -142,10 +142,10 @@ public class NameTagManager {
 
     public void removePlayer(@NotNull Player player, boolean quit) {
         final PacketDisplayText packetDisplayText = nameTags.remove(player.getUniqueId());
-        if (packetDisplayText == null) {
-            return;
+        if (packetDisplayText != null) {
+            packetDisplayText.remove();
         }
-        packetDisplayText.remove();
+
         nameTags.forEach((uuid, display) -> {
             if (quit) {
                 display.handleQuit(player);
@@ -185,16 +185,16 @@ public class NameTagManager {
                     });
 
             //add nearby players
-            plugin.getServer().getScheduler().runTaskLater(plugin,
-                    () -> d.findNearbyPlayers()
-                            .stream()
-                            .filter(p -> p != player)
-                            .filter(Objects::nonNull)
-                            .forEach(p -> {
-                                if (!d.canPlayerSee(p)) {
-                                    d.showToPlayer(p);
-                                }
-                            }), 3);
+//            plugin.getServer().getScheduler().runTaskLater(plugin,
+//                    () -> d.findNearbyPlayers()
+//                            .stream()
+//                            .filter(p -> p != player)
+//                            .filter(Objects::nonNull)
+//                            .forEach(p -> {
+//                                if (!d.canPlayerSee(p)) {
+//                                    d.showToPlayer(p);
+//                                }
+//                            }), 3);
         });
 
 
