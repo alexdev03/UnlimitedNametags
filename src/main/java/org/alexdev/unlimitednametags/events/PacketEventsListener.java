@@ -6,6 +6,7 @@ import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.wrapper.play.server.*;
+import com.google.common.collect.ImmutableList;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import io.github.retrooper.packetevents.injector.SpigotChannelInjector;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -65,14 +67,18 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
         final WrapperPlayServerDestroyEntities destroyEntities = new WrapperPlayServerDestroyEntities(event);
-        Arrays.stream(destroyEntities.getEntityIds())
-                .mapToObj(id -> Bukkit.getOnlinePlayers().stream().filter(p -> p.getEntityId() == id).findFirst())
+        final int[] entityIds = destroyEntities.getEntityIds();
+        final List<Player> players = ImmutableList.copyOf(Bukkit.getOnlinePlayers());
+        Arrays.stream(Arrays.copyOf(entityIds, entityIds.length))
+                .mapToObj(id -> players.stream().filter(p -> p.getEntityId() == id).findFirst())
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(target -> plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
-                    if (packetDisplayText.canPlayerSee(player)) {
-                        packetDisplayText.hideFromPlayerSilenty(player);
-                    }
+                    plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+                        if (packetDisplayText.canPlayerSee(player)) {
+                            packetDisplayText.hideFromPlayerSilenty(player);
+                        }
+                    }, 2);
                 }));
     }
 

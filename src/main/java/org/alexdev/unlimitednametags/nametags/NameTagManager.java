@@ -144,6 +144,7 @@ public class NameTagManager {
         final PacketDisplayText packetDisplayText = nameTags.remove(player.getUniqueId());
         if (packetDisplayText != null) {
             packetDisplayText.remove();
+            System.out.println("Removing display for " + player.getName() + " " + quit);
         }
 
         nameTags.forEach((uuid, display) -> {
@@ -323,9 +324,11 @@ public class NameTagManager {
                 return;
             }
 
-            if (!display.canPlayerSee(player)) {
-                display.showToPlayer(player);
-            }
+            display.getBlocked().remove(player.getUniqueId());
+
+            plugin.getLogger().info("Updating display for " + player.getName() + " " + owner.getName() + " " + display.canPlayerSee(player) + " " + display.getEntity().getViewers());
+            display.hideFromPlayerSilenty(player);
+            display.showToPlayer(player);
         });
     }
 }

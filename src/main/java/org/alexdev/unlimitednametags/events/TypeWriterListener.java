@@ -29,7 +29,7 @@ public class TypeWriterListener implements Listener {
         plugin.getNametagManager().unblockPlayer(event.getPlayer());
         Bukkit.getScheduler().runTaskLater(plugin,
                 () -> plugin.getNametagManager().addPlayer(event.getPlayer()),
-                1);
+                2);
         Bukkit.getScheduler().runTaskLater(plugin,
                 () -> plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer()),
                 5);
