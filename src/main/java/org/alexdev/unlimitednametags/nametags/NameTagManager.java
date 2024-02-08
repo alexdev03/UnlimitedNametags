@@ -133,6 +133,7 @@ public class NameTagManager {
             //if player is vanished, hide display for all players except for who can see the player
             Bukkit.getOnlinePlayers().stream()
                     .filter(p -> p != player)
+                    .filter(p -> p.getLocation().getWorld() == player.getLocation().getWorld())
                     .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
                     .forEach(display::showToPlayer);
         } catch (Exception e) {
@@ -144,7 +145,6 @@ public class NameTagManager {
         final PacketDisplayText packetDisplayText = nameTags.remove(player.getUniqueId());
         if (packetDisplayText != null) {
             packetDisplayText.remove();
-            System.out.println("Removing display for " + player.getName() + " " + quit);
         }
 
         nameTags.forEach((uuid, display) -> {
@@ -320,13 +320,16 @@ public class NameTagManager {
         nameTags.forEach((uuid, display) -> {
             final Player owner = display.getOwner();
 
+            if(player.getLocation().getWorld() != owner.getLocation().getWorld()) {
+                return;
+            }
+
             if (plugin.getVanishManager().isVanished(owner) && !plugin.getVanishManager().canSee(player, owner)) {
                 return;
             }
 
             display.getBlocked().remove(player.getUniqueId());
 
-            plugin.getLogger().info("Updating display for " + player.getName() + " " + owner.getName() + " " + display.canPlayerSee(player) + " " + display.getEntity().getViewers());
             display.hideFromPlayerSilenty(player);
             display.showToPlayer(player);
         });

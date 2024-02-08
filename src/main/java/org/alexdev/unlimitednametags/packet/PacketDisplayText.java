@@ -115,6 +115,13 @@ public class PacketDisplayText {
         if (blocked.contains(player.getUniqueId())) {
             return;
         }
+        if(player.getLocation().getWorld()!=owner.getLocation().getWorld()) {
+            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+            for (StackTraceElement stackTraceElement : stackTrace) {
+                plugin.getLogger().warning(stackTraceElement.toString());
+            }
+            return;
+        }
         setPosition();
         final boolean result = entity.addViewer(player.getUniqueId());
         if (!result) {

@@ -59,7 +59,21 @@ public class PacketEventsListener extends PacketListenerAbstract {
             handleDestroyEntities(event);
         } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY) {
             handleSpawnEntity(event);
+        } if (event.getPacketType() == PacketType.Play.Server.SPAWN_LIVING_ENTITY) {
+            handlePlayerSpawn(event);
+        } else if(event.getPacketType() == PacketType.Play.Server.SPAWN_PLAYER) {
+            handlePlayerSpawn(event);
         }
+//        if(event.getPacketType().getName().contains("CHUNK")) {
+//            return;
+//        }
+//        if(event.getPacketType() == PacketType.Play.Server.PLUGIN_MESSAGE || event.getPacketType() == PacketType.Play.Server.TIME_UPDATE || event.getPacketType() == PacketType.Play.Server.NBT_QUERY_RESPONSE) {
+//            return;
+//        }
+//        if(event.getPacketType() == PacketType.Play.Server.ENTITY_RELATIVE_MOVE || event.getPacketType() == PacketType.Play.Server.KEEP_ALIVE) {
+//            return;
+//        }
+
     }
 
     private void handleDestroyEntities(PacketSendEvent event) {
@@ -76,15 +90,30 @@ public class PacketEventsListener extends PacketListenerAbstract {
                 .forEach(target -> plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
                     plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
                         if (packetDisplayText.canPlayerSee(player)) {
-                            packetDisplayText.hideFromPlayerSilenty(player);
+                            packetDisplayText.hideFromPlayer(player);
                         }
                     }, 2);
                 }));
     }
 
+    private void handlePlayerSpawn(PacketSendEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        final WrapperPlayServerSpawnPlayer packet = new WrapperPlayServerSpawnPlayer(event);
+        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+            final Optional<? extends Player> optionalPlayer =Optional.ofNullable(Bukkit.getPlayer(packet.getUUID()));
+            if (optionalPlayer.isEmpty()) {
+                return;
+            }
+            final Player target = optionalPlayer.get();
+            handlePlayerSpawn(player, target);
+        }, 4);
+    }
+
     private void handleSpawnEntity(PacketSendEvent event) {
         if (!(event.getPlayer() instanceof Player player)) {
-//            plugin.getLogger().warning("Failed to get player from event");
+            plugin.getLogger().warning("Failed to get player from event: " + event.getPlayer());
             return;
         }
         final WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
@@ -95,16 +124,19 @@ public class PacketEventsListener extends PacketListenerAbstract {
                 return;
             }
             final Player target = optionalPlayer.get();
-            final Optional<PacketDisplayText> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(target);
-            if (optionalPacketDisplayText.isEmpty()) {
-                plugin.getLogger().warning("Failed to get packet display text for " + target.getName());
-                return;
-            }
-            final PacketDisplayText packetDisplayText = optionalPacketDisplayText.get();
-            if (!packetDisplayText.canPlayerSee(player)) {
-                packetDisplayText.showToPlayer(player);
-            }
+            handlePlayerSpawn(player, target);
         }, 4);
+    }
+
+    private void handlePlayerSpawn(@NotNull Player player, @NotNull Player target) {
+        final Optional<PacketDisplayText> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player);
+        if (optionalPacketDisplayText.isEmpty()) {
+            return;
+        }
+        final PacketDisplayText packetDisplayText = optionalPacketDisplayText.get();
+        if (!packetDisplayText.canPlayerSee(target)) {
+            packetDisplayText.showToPlayer(target);
+        }
     }
 
     private void handlePassengers(PacketSendEvent event) {
