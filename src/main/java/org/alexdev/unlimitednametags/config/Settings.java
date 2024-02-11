@@ -46,6 +46,8 @@ public class Settings {
     @Comment("Whether to disable the default name tag or not for bedrock players. Only works if Floodgate is installed.")
     private boolean disableDefaultNameTagBedrock = false;
 
+    private boolean removeEmptyLines = true;
+
     public float getViewDistance() {
         return viewDistance / 160;
     }

@@ -13,6 +13,7 @@ import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -67,6 +68,11 @@ public class NameTagManager {
             return;
         }
 
+        if (player.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
+            blockPlayer(player);
+            return;
+        }
+
         creating.add(player.getUniqueId());
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
@@ -115,7 +121,6 @@ public class NameTagManager {
             final Location location = player.getLocation().clone();
             //add 1.80 to make a perfect tp animation
             location.setY(location.getY() + 1.80);
-            System.out.println(nameTag);
 
             final PacketDisplayText display = new PacketDisplayText(plugin, player);
             nameTags.put(player.getUniqueId(), display);
@@ -327,8 +332,12 @@ public class NameTagManager {
     }
 
 
-    public Optional<PacketDisplayText> getPacketDisplayText(Player player) {
+    public Optional<PacketDisplayText> getPacketDisplayText(@NotNull Player player) {
         return Optional.ofNullable(nameTags.get(player.getUniqueId()));
+    }
+
+    public Optional<PacketDisplayText> getPacketDisplayText(int id) {
+        return nameTags.values().stream().filter(display -> display.getEntity().getEntityId() == id).findFirst();
     }
 
     public void updateDisplay(@NotNull Player player, @NotNull Player target) {

@@ -3,12 +3,16 @@ package org.alexdev.unlimitednametags.events;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.server.*;
 import com.google.common.collect.ImmutableList;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import io.github.retrooper.packetevents.injector.SpigotChannelInjector;
+import io.github.retrooper.packetevents.util.viaversion.ViaVersionUtil;
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
@@ -55,6 +59,8 @@ public class PacketEventsListener extends PacketListenerAbstract {
             handleTeams(event);
         } else if (event.getPacketType() == PacketType.Play.Server.SET_PASSENGERS) {
             handlePassengers(event);
+        } else if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
+            handleMetaData(event);
         }
         if (true) return;
         if (event.getPacketType() == PacketType.Play.Server.DESTROY_ENTITIES) {
@@ -167,6 +173,42 @@ public class PacketEventsListener extends PacketListenerAbstract {
         if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
             packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
             event.markForReEncode(true);
+        }
+    }
+
+    private void handleMetaData(@NotNull PacketSendEvent event) {
+        if(!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        int protocol = ViaVersionUtil.getProtocolVersion(player);
+        final Optional<ClientVersion> clientVersionOptional = Arrays.stream(ClientVersion.values()).filter(p -> p.getProtocolVersion() == protocol).findFirst();
+        if (clientVersionOptional.isEmpty()) {
+            return;
+        }
+
+        final ClientVersion clientVersion = clientVersionOptional.get();
+        //handle metadata for : bedrock players && client with version 1.20.1 or lower
+        if (clientVersion.isNewerThanOrEquals(ClientVersion.V_1_20_2) &&
+                !plugin.getFloodgateHook().map(h -> h.isBedrock(player)).orElse(player.getName().startsWith("*"))) {
+            return;
+        }
+
+        final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
+        final @NotNull Optional<PacketDisplayText> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
+
+        if (textDisplay.isEmpty()) {
+            return;
+        }
+
+        for (final EntityData eData : packet.getEntityMetadata()) {
+            if (eData.getIndex() == 11) {
+
+                final Vector3f old = (Vector3f) eData.getValue();
+                final Vector3f newV = new Vector3f(old.getX(), old.getY() + 0.45f, old.getZ());
+                eData.setValue(newV);
+                event.markForReEncode(true);
+                return;
+            }
         }
     }
 

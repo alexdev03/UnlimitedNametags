@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
+import com.google.common.collect.Sets;
 import me.tofaa.entitylib.EntityLib;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.entity.Player;
@@ -55,7 +56,7 @@ public class PacketManager {
     public void sendPassengersPacket(@NotNull Player player, @NotNull PacketDisplayText packetDisplayText) {
         final int entityId = packetDisplayText.getEntity().getEntityId();
         final int ownerId = packetDisplayText.getOwner().getEntityId();
-        final Set<Integer> passengers = new HashSet<>(this.passengers.get(packetDisplayText.getOwner().getUniqueId()));
+        final Set<Integer> passengers = Sets.newConcurrentHashSet(this.passengers.get(packetDisplayText.getOwner().getUniqueId()));
         passengers.add(entityId);
         final int[] passengersArray = passengers.stream().mapToInt(i -> i).toArray();
         final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(ownerId, passengersArray);

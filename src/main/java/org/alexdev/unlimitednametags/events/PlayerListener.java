@@ -8,8 +8,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.potion.PotionEffectType;
 
 public class PlayerListener implements Listener {
 
@@ -42,7 +44,7 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onTrack(PlayerTrackEntityEvent event) {
-        if(!(event.getEntity() instanceof Player target)) {
+        if (!(event.getEntity() instanceof Player target)) {
             return;
         }
 
@@ -51,11 +53,34 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onUnTrack(PlayerUntrackEntityEvent event) {
-        if(!(event.getEntity() instanceof Player target)) {
+        if (!(event.getEntity() instanceof Player target)) {
             return;
         }
 
         plugin.getNametagManager().removeDisplay(event.getPlayer(), target);
+    }
+
+    @EventHandler
+    public void onPotion(EntityPotionEffectEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+
+        if (event.getAction() == EntityPotionEffectEvent.Action.ADDED) {
+            if (event.getNewEffect() == null || event.getNewEffect().getType() != PotionEffectType.INVISIBILITY) {
+                return;
+            }
+            plugin.getNametagManager().removePlayerDisplay(player);
+            plugin.getNametagManager().blockPlayer(player);
+        } else if (event.getAction() == EntityPotionEffectEvent.Action.REMOVED || event.getAction() == EntityPotionEffectEvent.Action.CLEARED) {
+            if (event.getOldEffect() == null || event.getOldEffect().getType() != PotionEffectType.INVISIBILITY) {
+                return;
+            }
+            plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+                plugin.getNametagManager().unblockPlayer(player);
+                plugin.getNametagManager().addPlayer(player);
+            }, 2);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

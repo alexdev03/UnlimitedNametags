@@ -47,6 +47,7 @@ public class PlaceholderManager {
     private Component createComponent(Player player, List<String> strings) {
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
                 .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
+                .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
                 .map(t -> t.replace("#val#", String.valueOf(index)))
                 .map(this::format)
                 .toArray(Component[]::new));
