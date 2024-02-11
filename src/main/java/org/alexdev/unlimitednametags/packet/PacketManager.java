@@ -2,6 +2,7 @@ package org.alexdev.unlimitednametags.packet;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
@@ -10,8 +11,10 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collection;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 public class PacketManager {
 
@@ -22,7 +25,7 @@ public class PacketManager {
         this.plugin = plugin;
         this.initialize();
         this.rangeTask();
-        this.passengers = Multimaps.newSetMultimap(new ConcurrentHashMap<>(), ConcurrentHashMap::newKeySet);
+        this.passengers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
     }
 
     private void initialize() {
