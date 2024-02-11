@@ -159,7 +159,11 @@ public class PacketDisplayText {
             return;
         }
         boolean result = entity.getViewers().contains(player.getUniqueId());
-        entity.removeViewer(player.getUniqueId());
+        try {
+            entity.removeViewer(player.getUniqueId());
+        } catch (Exception ignored) {
+            //packet events bug
+        }
         plugin.getPacketManager().removePassenger(player, entity.getEntityId());
     }
 

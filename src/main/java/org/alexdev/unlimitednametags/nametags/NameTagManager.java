@@ -345,6 +345,7 @@ public class NameTagManager {
             return;
         }
         getPacketDisplayText(target).ifPresent(packetDisplayText -> {
+            packetDisplayText.hideFromPlayerSilenty(player);
             if (!packetDisplayText.canPlayerSee(player)) {
                 packetDisplayText.showToPlayer(player);
             }

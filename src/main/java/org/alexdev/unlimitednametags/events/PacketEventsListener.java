@@ -8,8 +8,9 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
-import com.github.retrooper.packetevents.wrapper.play.server.*;
-import com.google.common.collect.ImmutableList;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import io.github.retrooper.packetevents.injector.SpigotChannelInjector;
 import io.github.retrooper.packetevents.util.viaversion.ViaVersionUtil;
@@ -21,7 +22,6 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -61,89 +61,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
             handlePassengers(event);
         } else if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
             handleMetaData(event);
-        }
-        if (true) return;
-        if (event.getPacketType() == PacketType.Play.Server.DESTROY_ENTITIES) {
-            handleDestroyEntities(event);
-        } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY) {
-            handleSpawnEntity(event);
-        } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_LIVING_ENTITY) {
-            handlePlayerSpawn(event);
-        } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_PLAYER) {
-            handlePlayerSpawn(event);
-        }
-//        if(event.getPacketType().getName().contains("CHUNK")) {
-//            return;
-//        }
-//        if(event.getPacketType() == PacketType.Play.Server.PLUGIN_MESSAGE || event.getPacketType() == PacketType.Play.Server.TIME_UPDATE || event.getPacketType() == PacketType.Play.Server.NBT_QUERY_RESPONSE) {
-//            return;
-//        }
-//        if(event.getPacketType() == PacketType.Play.Server.ENTITY_RELATIVE_MOVE || event.getPacketType() == PacketType.Play.Server.KEEP_ALIVE) {
-//            return;
-//        }
-
-    }
-
-    private void handleDestroyEntities(PacketSendEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) {
-            return;
-        }
-        final WrapperPlayServerDestroyEntities destroyEntities = new WrapperPlayServerDestroyEntities(event);
-        final int[] entityIds = destroyEntities.getEntityIds();
-        final List<Player> players = ImmutableList.copyOf(Bukkit.getOnlinePlayers());
-        Arrays.stream(Arrays.copyOf(entityIds, entityIds.length))
-                .mapToObj(id -> players.stream().filter(p -> p.getEntityId() == id).findFirst())
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .forEach(target -> plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
-                    plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
-                        if (packetDisplayText.canPlayerSee(player)) {
-                            packetDisplayText.hideFromPlayer(player);
-                        }
-                    }, 2);
-                }));
-    }
-
-    private void handlePlayerSpawn(PacketSendEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) {
-            return;
-        }
-        final WrapperPlayServerSpawnPlayer packet = new WrapperPlayServerSpawnPlayer(event);
-        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
-            final Optional<? extends Player> optionalPlayer = Optional.ofNullable(Bukkit.getPlayer(packet.getUUID()));
-            if (optionalPlayer.isEmpty()) {
-                return;
-            }
-            final Player target = optionalPlayer.get();
-            handlePlayerSpawn(player, target);
-        }, 4);
-    }
-
-    private void handleSpawnEntity(PacketSendEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) {
-            plugin.getLogger().warning("Failed to get player from event: " + event.getPlayer());
-            return;
-        }
-        final WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
-        final int entityId = packet.getEntityId();
-        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
-            final Optional<? extends Player> optionalPlayer = Bukkit.getOnlinePlayers().stream().filter(p -> p.getEntityId() == entityId).findFirst();
-            if (optionalPlayer.isEmpty()) {
-                return;
-            }
-            final Player target = optionalPlayer.get();
-            handlePlayerSpawn(player, target);
-        }, 4);
-    }
-
-    private void handlePlayerSpawn(@NotNull Player player, @NotNull Player target) {
-        final Optional<PacketDisplayText> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player);
-        if (optionalPacketDisplayText.isEmpty()) {
-            return;
-        }
-        final PacketDisplayText packetDisplayText = optionalPacketDisplayText.get();
-        if (!packetDisplayText.canPlayerSee(target)) {
-            packetDisplayText.showToPlayer(target);
         }
     }
 

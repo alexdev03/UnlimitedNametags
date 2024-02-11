@@ -46,7 +46,7 @@ public class PacketManager {
                     }
                 }
             }
-        }, 10, 10);
+        }, 10, 20);
     }
 
     public void setPassengers(@NotNull Player player, Collection<Integer> passengers) {

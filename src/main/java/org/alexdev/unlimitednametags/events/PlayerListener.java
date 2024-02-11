@@ -24,7 +24,7 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         plugin.getNametagManager().addPlayer(event.getPlayer());
-        plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer());
+//        plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -34,7 +34,7 @@ public class PlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleportComplete(PlayerTeleportEvent event) {
-        plugin.getNametagManager().teleportAndApply(event.getPlayer(), event.getTo());
+//        plugin.getNametagManager().teleportAndApply(event.getPlayer(), event.getTo());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -48,12 +48,22 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
+        if(!target.isOnline()) {
+            return;
+        }
+
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
+        }, 1);
     }
 
     @EventHandler
     public void onUnTrack(PlayerUntrackEntityEvent event) {
         if (!(event.getEntity() instanceof Player target)) {
+            return;
+        }
+
+        if(!target.isOnline()) {
             return;
         }
 
