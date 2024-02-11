@@ -23,8 +23,10 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Field;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -37,8 +39,6 @@ public class PacketDisplayText {
     private final TextDisplayMeta meta;
     private final Player owner;
     private final Set<UUID> blocked;
-    private Field locationField;
-
 
     public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner) {
         this.plugin = plugin;
@@ -47,23 +47,11 @@ public class PacketDisplayText {
         this.entity = EntityLib.createEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
         this.meta = (TextDisplayMeta) entity.getMeta();
         this.blocked = Sets.newConcurrentHashSet();
-        this.setConcurrent();
-    }
-
-    @SneakyThrows
-    private void setConcurrent() {
-        Field field = entity.getClass().getDeclaredField("viewers");
-        field.setAccessible(true);
-        field.set(entity, Sets.newConcurrentHashSet());
     }
 
     public void text(@NotNull Component text) {
         fixViewers();
-        try {
-            meta.setText(text);
-        } catch (Exception ignored) {
-
-        }
+        meta.setText(text);
     }
 
     public void setBillboard(@NotNull DisplayMeta.BillboardConstraints billboard) {
@@ -133,13 +121,9 @@ public class PacketDisplayText {
 
     @SneakyThrows
     private void setPosition() {
-        if (locationField == null) {
-            locationField = entity.getClass().getDeclaredField("location");
-            locationField.setAccessible(true);
-        }
         final Location location = owner.getLocation().clone();
         location.setY(location.getY() + 1.8);
-        locationField.set(entity, SpigotConversionUtil.fromBukkitLocation(location));
+        entity.setLocation(SpigotConversionUtil.fromBukkitLocation(location));
     }
 
     public void hideFromPlayer(@NotNull Player player) {
@@ -227,6 +211,7 @@ public class PacketDisplayText {
         meta.setTextOpacity(b);
     }
 
+    @NotNull
     public Set<Player> findNearbyPlayers() {
         final float viewDistance = 100;
         final List<Player> players = List.copyOf(owner.getWorld().getPlayers());

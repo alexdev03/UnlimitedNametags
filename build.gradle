@@ -41,8 +41,6 @@ repositories {
 
 dependencies {
     compileOnly 'com.github.gabber235:typewriter:ee4fc95cce'
-    compileOnly 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-RC'
-    compileOnly 'com.github.dyam0:LirandAPI:96cc59d4fb'
     compileOnly 'net.kyori:adventure-api:4.13.1'
     compileOnly 'net.kyori:adventure-text-minimessage:4.13.1'
     compileOnly 'org.purpurmc.purpur:purpur-api:1.19.4-R0.1-SNAPSHOT'
@@ -58,7 +56,7 @@ dependencies {
     implementation 'org.jetbrains:annotations:24.0.0'
     implementation 'de.themoep:minedown-adventure:1.7.2-SNAPSHOT'
     implementation 'com.github.alexdev03:drink:1.5.1'
-    implementation 'com.github.Tofaa2:EntityLib:v1.2.1-SNAPSHOT'
+    implementation 'com.github.Tofaa2.EntityLib:EntityLib:1.2.3-SNAPSHOT'
     implementation 'com.github.retrooper.packetevents:spigot:2.2.0'
 }
 
