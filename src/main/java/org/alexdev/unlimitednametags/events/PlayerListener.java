@@ -12,6 +12,7 @@ import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
+import org.jetbrains.annotations.NotNull;
 
 public class PlayerListener implements Listener {
 
@@ -22,9 +23,8 @@ public class PlayerListener implements Listener {
     }
 
     @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
+    public void onJoin(@NotNull PlayerJoinEvent event) {
         plugin.getNametagManager().addPlayer(event.getPlayer());
-//        plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -33,17 +33,12 @@ public class PlayerListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onTeleportComplete(PlayerTeleportEvent event) {
-//        plugin.getNametagManager().teleportAndApply(event.getPlayer(), event.getTo());
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onSneak(PlayerToggleSneakEvent event) {
+    public void onSneak(@NotNull PlayerToggleSneakEvent event) {
         plugin.getNametagManager().updateSneaking(event.getPlayer(), event.isSneaking());
     }
 
     @EventHandler
-    public void onTrack(PlayerTrackEntityEvent event) {
+    public void onTrack(@NotNull PlayerTrackEntityEvent event) {
         if (!(event.getEntity() instanceof Player target)) {
             return;
         }
@@ -58,7 +53,7 @@ public class PlayerListener implements Listener {
     }
 
     @EventHandler
-    public void onUnTrack(PlayerUntrackEntityEvent event) {
+    public void onUnTrack(@NotNull PlayerUntrackEntityEvent event) {
         if (!(event.getEntity() instanceof Player target)) {
             return;
         }
@@ -71,7 +66,7 @@ public class PlayerListener implements Listener {
     }
 
     @EventHandler
-    public void onPotion(EntityPotionEffectEvent event) {
+    public void onPotion(@NotNull EntityPotionEffectEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
@@ -94,7 +89,7 @@ public class PlayerListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onGameModeChange(PlayerGameModeChangeEvent e) {
+    public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
             plugin.getNametagManager().addPlayer(e.getPlayer());
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
@@ -103,12 +98,12 @@ public class PlayerListener implements Listener {
     }
 
     @EventHandler
-    public void onPlayerDeath(PlayerDeathEvent event) {
+    public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
         plugin.getNametagManager().removePlayerDisplay(event.getEntity());
     }
 
     @EventHandler
-    public void onPlayerRespawn(PlayerRespawnEvent event) {
+    public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             plugin.getNametagManager().addPlayer(event.getPlayer());
         }, 1);

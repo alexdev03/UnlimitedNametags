@@ -113,26 +113,14 @@ public class PacketDisplayText {
         if (blocked.contains(player.getUniqueId())) {
             return;
         }
-        if(player.getLocation().getWorld()!=owner.getLocation().getWorld()) {
-            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-            for (StackTraceElement stackTraceElement : stackTrace) {
-                plugin.getLogger().warning(stackTraceElement.toString());
-            }
-            return;
-        }
+
         setPosition();
         final boolean result = entity.addViewer(player.getUniqueId());
         if (!result) {
             plugin.getLogger().warning("Failed to add viewer " + player.getName() + " to " + owner.getName());
             return;
         }
-//        if(player.getName().equals("AlexDev_")) {
-//            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-//            stackTrace = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
-//            for (StackTraceElement stackTraceElement : stackTrace) {
-//                plugin.getLogger().warning(stackTraceElement.toString());
-//            }
-//        }
+
         plugin.getPacketManager().sendPassengersPacket(player, this);
         plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
             plugin.getPacketManager().sendPassengersPacket(player, this);
@@ -242,7 +230,6 @@ public class PacketDisplayText {
     public Set<Player> findNearbyPlayers() {
         final float viewDistance = 100;
         final List<Player> players = List.copyOf(owner.getWorld().getPlayers());
-//        return owner.getNearbyEntities(viewDistance, viewDistance, viewDistance).stream()
         return players.stream()
                 .filter(p -> p.getLocation().distance(owner.getLocation()) <= viewDistance)
                 .filter(Player::isOnline)

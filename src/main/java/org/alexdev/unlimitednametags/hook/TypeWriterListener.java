@@ -1,20 +1,21 @@
-package org.alexdev.unlimitednametags.events;
+package org.alexdev.unlimitednametags.hook;
 
-import lombok.RequiredArgsConstructor;
 import me.gabber235.typewriter.events.AsyncCinematicEndEvent;
 import me.gabber235.typewriter.events.AsyncCinematicStartEvent;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.jetbrains.annotations.NotNull;
 
-@RequiredArgsConstructor
-public class TypeWriterListener implements Listener {
+public class TypeWriterListener extends Hook implements Listener {
 
-    private final UnlimitedNameTags plugin;
+    public TypeWriterListener(UnlimitedNameTags plugin) {
+        super(plugin);
+    }
 
     @EventHandler
-    public void onStart(AsyncCinematicStartEvent event) {
+    public void onStart(@NotNull AsyncCinematicStartEvent event) {
         plugin.getNametagManager().blockPlayer(event.getPlayer());
         Bukkit.getScheduler().runTaskLater(plugin,
                 () -> {
@@ -25,7 +26,7 @@ public class TypeWriterListener implements Listener {
     }
 
     @EventHandler
-    public void onEnd(AsyncCinematicEndEvent event) {
+    public void onEnd(@NotNull AsyncCinematicEndEvent event) {
         plugin.getNametagManager().unblockPlayer(event.getPlayer());
         Bukkit.getScheduler().runTaskLater(plugin,
                 () -> plugin.getNametagManager().addPlayer(event.getPlayer()),
@@ -36,4 +37,13 @@ public class TypeWriterListener implements Listener {
     }
 
 
+    @Override
+    public void onEnable() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+    @Override
+    public void onDisable() {
+
+    }
 }

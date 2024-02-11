@@ -180,79 +180,18 @@ public class NameTagManager {
         }
     }
 
-    public void hideAllDisplays(Player player) {
+    public void hideAllDisplays(@NotNull Player player) {
         nameTags.forEach((uuid, display) -> {
             display.hideFromPlayer(player);
             display.getBlocked().add(player.getUniqueId());
         });
     }
 
-    public void teleportAndApply(@NotNull Player player, @NotNull Location location) {
-        //used to hide the nametag when teleporting to another world to near players
-        getPacketDisplayText(player).ifPresent(d -> {
-            new HashSet<>(d.getEntity().getViewers()).stream()
-                    .map(Bukkit::getPlayer)
-                    .filter(p -> p != player)
-                    .filter(Objects::nonNull)
-                    .forEach(p -> {
-                        //hide if player is in another world
-                        if (location.getWorld() != p.getWorld()) {
-                            d.hideFromPlayer(p);
-                            //show if player is in the same world and is in range
-                        }
-//                        else if (location.distance(p.getLocation()) <= plugin.getConfigManager().getSettings().getViewDistance() * 160) {
-//                            d.showToPlayer(p);
-//                        }
-                    });
-
-            //add nearby players
-            plugin.getServer().getScheduler().runTaskLater(plugin,
-                    () -> d.findNearbyPlayers()
-                            .stream()
-                            .filter(p -> p != player)
-                            .filter(Objects::nonNull)
-                            .forEach(p -> {
-                                if (!d.canPlayerSee(p)) {
-                                    d.showToPlayer(p);
-                                }
-                                final Optional<PacketDisplayText> optionalPacketDisplayText = getPacketDisplayText(p);
-                                if (optionalPacketDisplayText.isEmpty()) {
-                                    return;
-                                }
-                                final PacketDisplayText packetDisplayText = optionalPacketDisplayText.get();
-                                if (!packetDisplayText.canPlayerSee(player)) {
-                                    packetDisplayText.showToPlayer(player);
-                                }
-                            }), 5);
-        });
-
-
-        nameTags.forEach((uuid, display) -> {
-            if (display.getOwner() == player) {
-                return;
-            }
-            if (display.getOwner().getWorld() != location.getWorld()) {
-                if (display.canPlayerSee(player)) {
-                    display.hideFromPlayer(player);
-                }
-                return;
-            }
-
-            if (display.getOwner().getLocation().distance(location) > plugin.getConfigManager().getSettings().getViewDistance() * 160) {
-                if (display.canPlayerSee(player)) {
-                    display.hideFromPlayerSilenty(player);
-                }
-            }
-        });
-    }
-
-
     public void removeAll() {
         nameTags.forEach((uuid, display) -> display.remove());
 
         nameTags.clear();
     }
-
 
     public void updateSneaking(@NotNull Player player, boolean sneaking) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
