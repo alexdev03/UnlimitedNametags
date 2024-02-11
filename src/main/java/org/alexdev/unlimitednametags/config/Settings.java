@@ -3,6 +3,7 @@ package org.alexdev.unlimitednametags.config;
 import de.exlll.configlib.Comment;
 import de.exlll.configlib.Configuration;
 import lombok.Getter;
+import org.bukkit.Color;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -14,8 +15,10 @@ import java.util.Map;
 public class Settings {
 
     private Map<String, NameTag> nameTags = Map.of(
-            "staffer", new NameTag("nametag.staffer", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%")),
-            "default", new NameTag("nametag.default", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%", "%vault_eco_balance_formatted%"))
+            "staffer", new NameTag("nametag.staffer", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"),
+                    new Background(true, 255, 0, 0, 255, true, false)),
+            "default", new NameTag("nametag.default", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%", "%vault_eco_balance_formatted%"),
+                    new Background(false, 0, 0, 0, 255, false, false))
     );
 
     public NameTag getNametag(Player player) {
@@ -47,6 +50,15 @@ public class Settings {
         return viewDistance / 160;
     }
 
-    public record NameTag(String permission, List<String> lines) {
+    public record NameTag(String permission, List<String> lines, Background background) {
+    }
+
+    public record Background(boolean enabled, int red, int green, int blue, int opacity, boolean shadowed,
+                             boolean seeThrough) {
+
+        public Color getColor() {
+            return !enabled ? Color.BLACK.setAlpha(0) : Color.fromRGB(red, green, blue).setAlpha(opacity);
+        }
+
     }
 }

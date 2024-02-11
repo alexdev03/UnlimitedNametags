@@ -30,29 +30,22 @@ public class PacketManager {
     }
 
     private void rangeTask() {
-        if(true) return; // TODO: Remove this line
         plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () -> {
-            final float range = plugin.getConfigManager().getSettings().getViewDistance() * 160;
-            for (var player : plugin.getServer().getOnlinePlayers()) {
-                final Optional<PacketDisplayText> packetDisplayTextOptional = plugin.getNametagManager().getPacketDisplayText(player);
-                if (packetDisplayTextOptional.isEmpty()) {
-                    continue;
-                }
-                final PacketDisplayText packetDisplayText = packetDisplayTextOptional.get();
-                for (var target : plugin.getServer().getOnlinePlayers()) {
-                    if (player == target) continue;
-                    if (player.getWorld() != target.getWorld()) continue;
-                    double distance = player.getLocation().distance(target.getLocation());
-                    // If the player is out of range and the player can see the display, hide it by sending a packet
-                    if (distance > range && packetDisplayText.canPlayerSee(target)) {
-                        packetDisplayText.hideFromPlayer(target);
-                    // If the player is in range and the player can't see the display, show it by sending a packet
-                    } else if (distance <= range && !packetDisplayText.canPlayerSee(target)) {
-                        packetDisplayText.showToPlayer(target);
+            for (Player player : plugin.getServer().getOnlinePlayers()) {
+                for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
+                    if (player.equals(otherPlayer)) {
+                        continue;
+                    }
+                    final Optional<PacketDisplayText> packetDisplayText = plugin.getNametagManager().getPacketDisplayText(otherPlayer);
+                    if (packetDisplayText.isEmpty()) {
+                        continue;
+                    }
+                    if(packetDisplayText.get().canPlayerSee(player)) {
+                        packetDisplayText.get().sendPassengersPacket(player);
                     }
                 }
             }
-        }, 10, 1);
+        }, 10, 10);
     }
 
     public void setPassengers(@NotNull Player player, Collection<Integer> passengers) {

@@ -24,9 +24,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -89,7 +87,7 @@ public class PacketDisplayText {
     }
 
     public void setBackgroundColor(@NotNull Color color) {
-        meta.setBackgroundColor(color.asRGB());
+        meta.setBackgroundColor(color.asARGB());
     }
 
     public void setInvisibleBackground() {
@@ -125,11 +123,24 @@ public class PacketDisplayText {
         setPosition();
         final boolean result = entity.addViewer(player.getUniqueId());
         if (!result) {
+            plugin.getLogger().warning("Failed to add viewer " + player.getName() + " to " + owner.getName());
             return;
         }
+//        if(player.getName().equals("AlexDev_")) {
+//            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+//            stackTrace = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
+//            for (StackTraceElement stackTraceElement : stackTrace) {
+//                plugin.getLogger().warning(stackTraceElement.toString());
+//            }
+//        }
+        plugin.getPacketManager().sendPassengersPacket(player, this);
         plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
             plugin.getPacketManager().sendPassengersPacket(player, this);
         }, 4); //min is 3
+    }
+
+    public void sendPassengersPacket(@NotNull Player player) {
+        plugin.getPacketManager().sendPassengersPacket(player, this);
     }
 
     @SneakyThrows
@@ -225,10 +236,11 @@ public class PacketDisplayText {
     }
 
     public Set<Player> findNearbyPlayers() {
-        final float viewDistance = plugin.getConfigManager().getSettings().getViewDistance() * 160;
-        return owner.getNearbyEntities(viewDistance, viewDistance, viewDistance).stream()
-                .filter(e -> e instanceof Player)
-                .map(e -> (Player) e)
+        final float viewDistance = 100;
+        final List<Player> players = List.copyOf(owner.getWorld().getPlayers());
+//        return owner.getNearbyEntities(viewDistance, viewDistance, viewDistance).stream()
+        return players.stream()
+                .filter(p -> p.getLocation().distance(owner.getLocation()) <= viewDistance)
                 .filter(Player::isOnline)
                 .collect(Collectors.toSet());
     }

@@ -18,7 +18,7 @@ public class MainCommand {
     public void onReload(@Sender CommandSender sender) {
         plugin.getConfigManager().reload();
         plugin.getNametagManager().reload();
-        sender.sendMessage("&cPlugin reloaded!");
+        sender.sendMessage("§cPlugin reloaded!");
     }
 
     @Command(name = "debug", desc = "Debugs the plugin", usage = "/unt debug")

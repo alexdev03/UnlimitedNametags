@@ -55,13 +55,15 @@ public class PacketEventsListener extends PacketListenerAbstract {
             handleTeams(event);
         } else if (event.getPacketType() == PacketType.Play.Server.SET_PASSENGERS) {
             handlePassengers(event);
-        } else if (event.getPacketType() == PacketType.Play.Server.DESTROY_ENTITIES) {
+        }
+        if (true) return;
+        if (event.getPacketType() == PacketType.Play.Server.DESTROY_ENTITIES) {
             handleDestroyEntities(event);
         } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY) {
             handleSpawnEntity(event);
-        } if (event.getPacketType() == PacketType.Play.Server.SPAWN_LIVING_ENTITY) {
+        } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_LIVING_ENTITY) {
             handlePlayerSpawn(event);
-        } else if(event.getPacketType() == PacketType.Play.Server.SPAWN_PLAYER) {
+        } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_PLAYER) {
             handlePlayerSpawn(event);
         }
 //        if(event.getPacketType().getName().contains("CHUNK")) {
@@ -102,7 +104,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
         final WrapperPlayServerSpawnPlayer packet = new WrapperPlayServerSpawnPlayer(event);
         plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
-            final Optional<? extends Player> optionalPlayer =Optional.ofNullable(Bukkit.getPlayer(packet.getUUID()));
+            final Optional<? extends Player> optionalPlayer = Optional.ofNullable(Bukkit.getPlayer(packet.getUUID()));
             if (optionalPlayer.isEmpty()) {
                 return;
             }
@@ -156,7 +158,8 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     private void handleTeams(@NotNull PacketSendEvent event) {
         if (!plugin.getConfigManager().getSettings().isDisableDefaultNameTag() &&
-                !plugin.getConfigManager().getSettings().isDisableDefaultNameTagBedrock() && plugin.getFloodgateHook().map(h -> h.isBedrock((Player) event.getPlayer())).orElse(false)) {
+                !plugin.getConfigManager().getSettings().isDisableDefaultNameTagBedrock() && plugin.getFloodgateHook().map(h -> h.isBedrock((Player) event.getPlayer()))
+                .orElse(((Player) event.getPlayer()).getName().startsWith("*"))) {
             return;
         }
 

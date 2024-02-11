@@ -9,7 +9,6 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
 import org.bukkit.Bukkit;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Display;
@@ -72,7 +71,7 @@ public class NameTagManager {
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
-                .thenAccept(lines -> createDisplay(player, lines))
+                .thenAccept(lines -> createDisplay(player, lines, nametag))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), throwable);
                     creating.remove(player.getUniqueId());
@@ -88,7 +87,7 @@ public class NameTagManager {
         }
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
-                .thenAccept(lines -> editDisplay(player, lines, update))
+                .thenAccept(lines -> editDisplay(player, lines, nametag, update))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to edit nametag for " + player.getName(), throwable);
                     return null;
@@ -99,30 +98,36 @@ public class NameTagManager {
         refresh(player, true);
     }
 
-    private void editDisplay(Player player, Component component, boolean update) {
+    private void editDisplay(@NotNull Player player, @NotNull Component component, @NotNull Settings.NameTag nameTag, boolean update) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
             packetDisplayText.text(component);
+            packetDisplayText.setBackgroundColor(nameTag.background().getColor());
+            packetDisplayText.setShadowed(nameTag.background().shadowed());
+            packetDisplayText.setSeeThrough(nameTag.background().seeThrough());
             if (update) {
                 packetDisplayText.refresh();
             }
         });
     }
 
-    private void createDisplay(Player player, Component component) {
+    private void createDisplay(@NotNull Player player, @NotNull Component component, @NotNull Settings.NameTag nameTag) {
         try {
             final Location location = player.getLocation().clone();
             //add 1.80 to make a perfect tp animation
             location.setY(location.getY() + 1.80);
+            System.out.println(nameTag);
 
             final PacketDisplayText display = new PacketDisplayText(plugin, player);
             nameTags.put(player.getUniqueId(), display);
             creating.remove(player.getUniqueId());
+            display.getMeta().setUseDefaultBackground(false);
             display.text(component);
             display.setBillboard(Display.Billboard.CENTER);
-            display.setShadowed(false);
-            display.setSeeThrough(true);
-            //invisible background
-            display.setBackgroundColor(Color.BLACK.setAlpha(0));
+            display.setShadowed(nameTag.background().shadowed());
+            display.setSeeThrough(nameTag.background().seeThrough());
+            //background color, if disabled, set to transparent
+            display.setBackgroundColor(nameTag.background().getColor());
+
             display.setTransformation(new Vector3f(0, plugin.getConfigManager().getSettings().getYOffset(), 0));
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
@@ -135,11 +140,13 @@ public class NameTagManager {
                     .filter(p -> p != player)
                     .filter(p -> p.getLocation().getWorld() == player.getLocation().getWorld())
                     .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
+                    .filter(p -> p.getLocation().distance(player.getLocation()) <= 100)
                     .forEach(display::showToPlayer);
         } catch (Exception e) {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), e);
         }
     }
+
 
     public void removePlayer(@NotNull Player player, boolean quit) {
         final PacketDisplayText packetDisplayText = nameTags.remove(player.getUniqueId());
@@ -161,6 +168,13 @@ public class NameTagManager {
         removePlayer(player, false);
     }
 
+    public void removePlayerDisplay(@NotNull Player player) {
+        final PacketDisplayText packetDisplayText = nameTags.remove(player.getUniqueId());
+        if (packetDisplayText != null) {
+            packetDisplayText.remove();
+        }
+    }
+
     public void hideAllDisplays(Player player) {
         nameTags.forEach((uuid, display) -> {
             display.hideFromPlayer(player);
@@ -180,9 +194,10 @@ public class NameTagManager {
                         if (location.getWorld() != p.getWorld()) {
                             d.hideFromPlayer(p);
                             //show if player is in the same world and is in range
-                        } else if (location.distance(p.getLocation()) <= plugin.getConfigManager().getSettings().getViewDistance() * 160) {
-                            d.showToPlayer(p);
                         }
+//                        else if (location.distance(p.getLocation()) <= plugin.getConfigManager().getSettings().getViewDistance() * 160) {
+//                            d.showToPlayer(p);
+//                        }
                     });
 
             //add nearby players
@@ -203,7 +218,7 @@ public class NameTagManager {
                                 if (!packetDisplayText.canPlayerSee(player)) {
                                     packetDisplayText.showToPlayer(player);
                                 }
-                            }), 3);
+                            }), 5);
         });
 
 
@@ -248,9 +263,9 @@ public class NameTagManager {
 
 
         plugin.getServer().getScheduler().runTask(plugin, () -> Bukkit.getOnlinePlayers().forEach(p -> {
-            refreshPlayer(p);
             setYOffset(p, yOffset);
             setViewDistance(p, viewDistance);
+            refreshPlayer(p);
         }));
     }
 
@@ -314,6 +329,28 @@ public class NameTagManager {
 
     public Optional<PacketDisplayText> getPacketDisplayText(Player player) {
         return Optional.ofNullable(nameTags.get(player.getUniqueId()));
+    }
+
+    public void updateDisplay(@NotNull Player player, @NotNull Player target) {
+        if (player == target) {
+            return;
+        }
+        getPacketDisplayText(target).ifPresent(packetDisplayText -> {
+            if (!packetDisplayText.canPlayerSee(player)) {
+                packetDisplayText.showToPlayer(player);
+            }
+        });
+    }
+
+    public void removeDisplay(@NotNull Player player, @NotNull Player target) {
+        if (player == target) {
+            return;
+        }
+        getPacketDisplayText(target).ifPresent(packetDisplayText -> {
+            if (packetDisplayText.canPlayerSee(player)) {
+                packetDisplayText.hideFromPlayer(player);
+            }
+        });
     }
 
     public void updateDisplaysForPlayer(Player player) {

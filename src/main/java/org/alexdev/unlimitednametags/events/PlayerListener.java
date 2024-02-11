@@ -1,7 +1,10 @@
 package org.alexdev.unlimitednametags.events;
 
+import io.papermc.paper.event.player.PlayerTrackEntityEvent;
+import io.papermc.paper.event.player.PlayerUntrackEntityEvent;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.GameMode;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -37,6 +40,24 @@ public class PlayerListener implements Listener {
         plugin.getNametagManager().updateSneaking(event.getPlayer(), event.isSneaking());
     }
 
+    @EventHandler
+    public void onTrack(PlayerTrackEntityEvent event) {
+        if(!(event.getEntity() instanceof Player target)) {
+            return;
+        }
+
+        plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
+    }
+
+    @EventHandler
+    public void onUnTrack(PlayerUntrackEntityEvent event) {
+        if(!(event.getEntity() instanceof Player target)) {
+            return;
+        }
+
+        plugin.getNametagManager().removeDisplay(event.getPlayer(), target);
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(PlayerGameModeChangeEvent e) {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
@@ -48,12 +69,14 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
-        plugin.getNametagManager().removePlayer(event.getEntity());
+        plugin.getNametagManager().removePlayerDisplay(event.getEntity());
     }
 
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent event) {
-        plugin.getNametagManager().addPlayer(event.getPlayer());
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            plugin.getNametagManager().addPlayer(event.getPlayer());
+        }, 1);
     }
 
 }
