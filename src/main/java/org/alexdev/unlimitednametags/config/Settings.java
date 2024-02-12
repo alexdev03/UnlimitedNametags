@@ -37,7 +37,11 @@ public class Settings {
     private float yOffset = 0.7f;
     private float viewDistance = 60;
 
-    @Comment("The format of the nametag. Can be either LEGACY, MINEDOWN or MINIMESSAGE")
+    @Comment("""
+            Which text formatter to use (MINEDOWN, MINIMESSAGE, LEGACY or UNIVERSAL)\s
+            Take note that UNIVERSAL is the most resource intensive but it supports all formatting options. \
+
+            (&x&0&8&4&c&f&bc LEGACY OF LEGACY - &#084cfbc LEGACY - &#084cfbc& MINEDOWN - <color:#084cfbc> MINIMESSAGE)""")
     private Formatter format = Formatter.LEGACY;
 
     @Comment("Whether to disable the default name tag or not.")

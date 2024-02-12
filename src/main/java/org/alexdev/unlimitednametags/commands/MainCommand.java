@@ -5,6 +5,7 @@ import com.jonahseguin.drink.annotation.Require;
 import com.jonahseguin.drink.annotation.Sender;
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.config.Formatter;
 import org.bukkit.command.CommandSender;
 
 @RequiredArgsConstructor
@@ -18,7 +19,7 @@ public class MainCommand {
     public void onReload(@Sender CommandSender sender) {
         plugin.getConfigManager().reload();
         plugin.getNametagManager().reload();
-        sender.sendMessage("§cPlugin reloaded!");
+        sender.sendMessage(Formatter.LEGACY.format("&aUnlimitedNameTags has been reloaded!"));
     }
 
     @Command(name = "debug", desc = "Debugs the plugin", usage = "/unt debug")

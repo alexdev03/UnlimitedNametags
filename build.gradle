@@ -18,9 +18,6 @@ repositories {
         url = "https://repo.papermc.io/repository/maven-public/"
     }
     maven {
-        url "https://repo.purpurmc.org/snapshots"
-    }
-    maven {
         name = "sonatype"
         url = "https://oss.sonatype.org/content/groups/public/"
     }
@@ -44,7 +41,7 @@ dependencies {
     compileOnly "com.github.gabber235:typewriter:${typeWriterVersion}"
     compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
     compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
-    compileOnly "org.purpurmc.purpur:purpur-api:${paperApiVersion}"
+    compileOnly "io.papermc.paper:paper-api:${paperApiVersion}"
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     compileOnly "me.clip:placeholderapi:${placeholderapiVersion}"
     compileOnly "io.github.miniplaceholders:miniplaceholders-api:${miniplaceholdersApiVersion}"

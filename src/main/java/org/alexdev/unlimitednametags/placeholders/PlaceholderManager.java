@@ -5,6 +5,7 @@ import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -40,11 +41,11 @@ public class PlaceholderManager {
     }
 
 
-    public CompletableFuture<Component> applyPlaceholders(Player player, List<String> lines) {
+    public CompletableFuture<Component> applyPlaceholders(@NotNull Player player, @NotNull List<String> lines) {
         return CompletableFuture.supplyAsync(() -> createComponent(player, lines), executorService);
     }
 
-    private Component createComponent(Player player, List<String> strings) {
+    private Component createComponent(@NotNull Player player, @NotNull List<String> strings) {
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
                 .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
                 .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())

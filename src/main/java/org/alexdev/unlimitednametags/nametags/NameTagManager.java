@@ -26,6 +26,7 @@ public class NameTagManager {
     private final Map<UUID, UUID> white;
     private final List<UUID> creating;
     private final List<UUID> blocked;
+    private int task;
 
     public NameTagManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -42,9 +43,12 @@ public class NameTagManager {
     }
 
     private void startTask() {
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin,
+        if (task != 0) {
+            Bukkit.getScheduler().cancelTask(task);
+        }
+        task = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin,
                 () -> Bukkit.getOnlinePlayers().forEach(this::refreshPlayer),
-                10, plugin.getConfigManager().getSettings().getTaskInterval());
+                10, plugin.getConfigManager().getSettings().getTaskInterval()).getTaskId();
     }
 
     public void blockPlayer(@NotNull Player player) {
@@ -212,6 +216,7 @@ public class NameTagManager {
             setViewDistance(p, viewDistance);
             refreshPlayer(p);
         }));
+        startTask();
     }
 
     public void debug(@NotNull CommandSender audience) {

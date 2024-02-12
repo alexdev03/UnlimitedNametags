@@ -20,18 +20,22 @@
 package org.alexdev.unlimitednametags.config;
 
 import de.themoep.minedown.adventure.MineDown;
+import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Different formatting markup options for the TAB list
  */
 @SuppressWarnings("unused")
 public enum Formatter {
+
     MINEDOWN(
             (text) -> new MineDown(text).toComponent(),
             "MineDown"
@@ -43,6 +47,25 @@ public enum Formatter {
     LEGACY(
             (text) -> LegacyComponentSerializer.legacyAmpersand().deserialize(text),
             "Legacy Text"
+    ),
+    UNIVERSAL(
+            (text) -> {
+                if (text == null) {
+                    return null;
+                }
+                text = getHEX().serialize(getSTUPID().deserialize(text));
+                final Matcher matcher = getHEX_PATTERN().matcher(text);
+                while (matcher.find()) {
+                    final String hex = matcher.group();
+                    text = text.replace(hex, hex + "&");
+                }
+                text = text.replaceAll("&&&", "&&");
+                text = text.replaceAll("& ", "");
+                final Component component = MINEDOWN.formatter.apply(text);
+                final String string = MiniMessage.miniMessage().serialize(component).replace("\\<", "<");
+                return MINIMESSAGE.formatter.apply(string);
+            },
+            "Universal"
     );
 
     /**
@@ -54,6 +77,23 @@ public enum Formatter {
      * Function to apply formatting to a string
      */
     private final Function<String, Component> formatter;
+
+    @Getter
+    private final static Pattern HEX_PATTERN = Pattern.compile("&#[a-fA-F0-9]{6}");
+    @Getter
+    private final static LegacyComponentSerializer STUPID = LegacyComponentSerializer.builder()
+            .character('&')
+            .hexCharacter('#')
+            .useUnusualXRepeatedCharacterHexFormat()
+            .hexColors()
+            .build();
+    @Getter
+    private final static LegacyComponentSerializer HEX = LegacyComponentSerializer.builder()
+            .character('&')
+            .hexCharacter('#')
+            .hexColors()
+            .build();
+
 
     Formatter(@NotNull Function<String, Component> formatter, @NotNull String name) {
         this.formatter = formatter;
