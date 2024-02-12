@@ -47,9 +47,9 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
             plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
-        }, 1);
+        }, 2);
     }
 
     @EventHandler

@@ -147,6 +147,7 @@ public class NameTagManager {
                     .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
                     .filter(p -> p.getLocation().distance(player.getLocation()) <= 100)
                     .forEach(display::showToPlayer);
+            
         } catch (Exception e) {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), e);
         }
