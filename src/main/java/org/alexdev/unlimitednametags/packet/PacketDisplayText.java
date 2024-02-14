@@ -136,6 +136,7 @@ public class PacketDisplayText {
         } catch (Exception ignored) {
             //packet events bug
         }
+
         plugin.getPacketManager().removePassenger(player, entity.getEntityId());
     }
 

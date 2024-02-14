@@ -6,13 +6,11 @@ import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
-import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
-import io.github.retrooper.packetevents.injector.SpigotChannelInjector;
 import io.github.retrooper.packetevents.util.viaversion.ViaVersionUtil;
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -41,17 +39,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
     public void onEnable() {
         PacketEvents.getAPI().getEventManager().registerListener(this);
         PacketEvents.getAPI().init();
-        inject();
-    }
-
-    private void inject() {
-        Bukkit.getOnlinePlayers().forEach(player -> {
-            final SpigotChannelInjector injector = (SpigotChannelInjector) PacketEvents.getAPI().getInjector();
-
-            final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
-
-            injector.updatePlayer(user, player);
-        });
     }
 
     public void onPacketSend(PacketSendEvent event) {

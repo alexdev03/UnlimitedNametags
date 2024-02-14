@@ -105,6 +105,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
         packetEventsListener.onDisable();
         nametagManager.removeAll();
         placeholderManager.close();
+        packetManager.close();
         Bukkit.getScheduler().cancelTasks(this);
     }
 

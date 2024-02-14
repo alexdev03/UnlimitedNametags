@@ -15,22 +15,30 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class PacketManager {
 
     private final UnlimitedNameTags plugin;
     private final Multimap<UUID, Integer> passengers;
+    private final ExecutorService executorService;
 
     public PacketManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.initialize();
         this.rangeTask();
         this.passengers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
+        this.executorService = Executors.newCachedThreadPool();
     }
 
     private void initialize() {
         EntityLib.init(PacketEvents.getAPI());
         EntityLib.enableEntityInteractions();
+    }
+
+    public void close() {
+        this.executorService.shutdown();
     }
 
     private void rangeTask() {
@@ -44,7 +52,7 @@ public class PacketManager {
                     if (packetDisplayText.isEmpty()) {
                         continue;
                     }
-                    if(packetDisplayText.get().canPlayerSee(player)) {
+                    if (packetDisplayText.get().canPlayerSee(player)) {
                         packetDisplayText.get().sendPassengersPacket(player);
                     }
                 }
@@ -53,7 +61,7 @@ public class PacketManager {
     }
 
     public void setPassengers(@NotNull Player player, Collection<Integer> passengers) {
-        this.passengers.replaceValues(player.getUniqueId(), passengers);
+        executorService.submit(() -> this.passengers.replaceValues(player.getUniqueId(), passengers));
     }
 
     public void sendPassengersPacket(@NotNull Player player, @NotNull PacketDisplayText packetDisplayText) {
