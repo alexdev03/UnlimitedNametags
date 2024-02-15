@@ -39,7 +39,7 @@ public class NameTagManager {
     }
 
     private void loadAll() {
-        Bukkit.getOnlinePlayers().forEach(this::addPlayer);
+        Bukkit.getOnlinePlayers().forEach(p -> addPlayer(p, true));
     }
 
     private void startTask() {
@@ -59,7 +59,7 @@ public class NameTagManager {
         blocked.remove(player.getUniqueId());
     }
 
-    public void addPlayer(@NotNull Player player) {
+    public void addPlayer(@NotNull Player player, boolean startup) {
         if (nameTags.containsKey(player.getUniqueId())) {
             return;
         }
@@ -81,7 +81,7 @@ public class NameTagManager {
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
-                .thenAccept(lines -> createDisplay(player, lines, nametag))
+                .thenAccept(lines -> createDisplay(player, lines, nametag, startup))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), throwable);
                     creating.remove(player.getUniqueId());
@@ -120,7 +120,8 @@ public class NameTagManager {
         });
     }
 
-    private void createDisplay(@NotNull Player player, @NotNull Component component, @NotNull Settings.NameTag nameTag) {
+    private void createDisplay(@NotNull Player player, @NotNull Component component,
+                               @NotNull Settings.NameTag nameTag, boolean startup) {
         try {
             final Location location = player.getLocation().clone();
             //add 1.80 to make a perfect tp animation
@@ -141,8 +142,12 @@ public class NameTagManager {
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
-            final boolean isVanished = plugin.getVanishManager().isVanished(player);
             display.spawn(player);
+
+            if(!startup) {
+                return;
+            }
+            final boolean isVanished = plugin.getVanishManager().isVanished(player);
 
             //if player is vanished, hide display for all players except for who can see the player
             Bukkit.getOnlinePlayers().stream()
@@ -302,9 +307,7 @@ public class NameTagManager {
             return;
         }
         getPacketDisplayText(target).ifPresent(packetDisplayText -> {
-            if (packetDisplayText.canPlayerSee(player)) {
-                packetDisplayText.hideFromPlayer(player);
-            }
+            packetDisplayText.hideFromPlayer(player);
         });
     }
 

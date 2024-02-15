@@ -2,15 +2,19 @@ package org.alexdev.unlimitednametags.events;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
+import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
+import io.github.retrooper.packetevents.injector.SpigotChannelInjector;
 import io.github.retrooper.packetevents.util.viaversion.ViaVersionUtil;
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -39,6 +43,17 @@ public class PacketEventsListener extends PacketListenerAbstract {
     public void onEnable() {
         PacketEvents.getAPI().getEventManager().registerListener(this);
         PacketEvents.getAPI().init();
+        inject();
+    }
+
+    private void inject() {
+        Bukkit.getOnlinePlayers().forEach(player -> {
+            final SpigotChannelInjector injector = (SpigotChannelInjector) PacketEvents.getAPI().getInjector();
+
+            final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+
+            injector.updatePlayer(user, player);
+        });
     }
 
     public void onPacketSend(PacketSendEvent event) {
@@ -48,6 +63,29 @@ public class PacketEventsListener extends PacketListenerAbstract {
             handlePassengers(event);
         } else if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
             handleMetaData(event);
+        }
+    }
+
+    @Override
+    public void onPacketReceive(PacketReceiveEvent event) {
+        if (event.getPacketType() == PacketType.Play.Client.ENTITY_ACTION) {
+            handleUseEntity(event);
+        }
+    }
+
+    private void handleUseEntity(PacketReceiveEvent event) {
+        if (!(event.getPlayer() instanceof Player target)) {
+            return;
+        }
+
+        final WrapperPlayClientEntityAction packet = new WrapperPlayClientEntityAction(event);
+        final Optional<? extends Player> player = Bukkit.getOnlinePlayers().stream().filter(p -> p.getEntityId() == packet.getEntityId()).findFirst();
+        if (player.isEmpty()) {
+            return;
+        }
+        switch (packet.getAction()) {
+            case START_SNEAKING -> plugin.getNametagManager().updateSneaking(player.get(), true);
+            case STOP_SNEAKING -> plugin.getNametagManager().updateSneaking(player.get(), false);
         }
     }
 
@@ -81,7 +119,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private void handleMetaData(@NotNull PacketSendEvent event) {
-        if(!(event.getPlayer() instanceof Player player)) {
+        if (!(event.getPlayer() instanceof Player player)) {
             return;
         }
         int protocol = ViaVersionUtil.getProtocolVersion(player);

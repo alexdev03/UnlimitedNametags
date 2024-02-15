@@ -130,7 +130,6 @@ public class PacketDisplayText {
         if (blocked.contains(player.getUniqueId())) {
             return;
         }
-        boolean result = entity.getViewers().contains(player.getUniqueId());
         try {
             entity.removeViewer(player.getUniqueId());
         } catch (Exception ignored) {

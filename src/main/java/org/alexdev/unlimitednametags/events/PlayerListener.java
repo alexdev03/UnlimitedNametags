@@ -24,17 +24,12 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onJoin(@NotNull PlayerJoinEvent event) {
-        plugin.getNametagManager().addPlayer(event.getPlayer());
+        plugin.getNametagManager().addPlayer(event.getPlayer(), false);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(PlayerQuitEvent event) {
         plugin.getNametagManager().removePlayer(event.getPlayer(), true);
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onSneak(@NotNull PlayerToggleSneakEvent event) {
-        plugin.getNametagManager().updateSneaking(event.getPlayer(), event.isSneaking());
     }
 
     @EventHandler
@@ -47,6 +42,12 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        final boolean isVanished = plugin.getVanishManager().isVanished(target);
+
+        if (isVanished && !plugin.getVanishManager().canSee(event.getPlayer(), target)) {
+            return;
+        }
+
         plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
             plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
         }, 2);
@@ -55,10 +56,6 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onUnTrack(@NotNull PlayerUntrackEntityEvent event) {
         if (!(event.getEntity() instanceof Player target)) {
-            return;
-        }
-
-        if(!target.isOnline()) {
             return;
         }
 
@@ -83,7 +80,7 @@ public class PlayerListener implements Listener {
             }
             plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
                 plugin.getNametagManager().unblockPlayer(player);
-                plugin.getNametagManager().addPlayer(player);
+                plugin.getNametagManager().addPlayer(player, false);
             }, 2);
         }
     }
@@ -91,7 +88,7 @@ public class PlayerListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().addPlayer(e.getPlayer());
+            plugin.getNametagManager().addPlayer(e.getPlayer(), false);
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
             plugin.getNametagManager().removePlayer(e.getPlayer());
         }
@@ -105,7 +102,7 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            plugin.getNametagManager().addPlayer(event.getPlayer());
+            plugin.getNametagManager().addPlayer(event.getPlayer(), false);
         }, 1);
     }
 

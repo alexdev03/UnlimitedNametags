@@ -29,7 +29,7 @@ public class TypeWriterListener extends Hook implements Listener {
     public void onEnd(@NotNull AsyncCinematicEndEvent event) {
         plugin.getNametagManager().unblockPlayer(event.getPlayer());
         Bukkit.getScheduler().runTaskLater(plugin,
-                () -> plugin.getNametagManager().addPlayer(event.getPlayer()),
+                () -> plugin.getNametagManager().addPlayer(event.getPlayer(), true),
                 2);
         Bukkit.getScheduler().runTaskLater(plugin,
                 () -> plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer()),
