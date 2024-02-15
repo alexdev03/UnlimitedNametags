@@ -1,10 +1,10 @@
 package org.alexdev.unlimitednametags.nametags;
 
 import com.github.retrooper.packetevents.util.Vector3f;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import com.google.common.collect.*;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
@@ -17,6 +17,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Getter
 public class NameTagManager {
@@ -26,6 +27,7 @@ public class NameTagManager {
     private final Map<UUID, UUID> white;
     private final List<UUID> creating;
     private final List<UUID> blocked;
+    private final Multimap<UUID, Runnable> pending;
     private int task;
 
     public NameTagManager(UnlimitedNameTags plugin) {
@@ -34,6 +36,7 @@ public class NameTagManager {
         this.creating = Lists.newCopyOnWriteArrayList();
         this.white = Maps.newConcurrentMap();
         this.blocked = Lists.newCopyOnWriteArrayList();
+        this.pending = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
         this.loadAll();
         this.startTask();
     }
@@ -49,6 +52,10 @@ public class NameTagManager {
         task = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin,
                 () -> Bukkit.getOnlinePlayers().forEach(this::refreshPlayer),
                 10, plugin.getConfigManager().getSettings().getTaskInterval()).getTaskId();
+    }
+
+    public void addPending(@NotNull Player player, @NotNull Runnable runnable) {
+        pending.put(player.getUniqueId(), runnable);
     }
 
     public void blockPlayer(@NotNull Player player) {
@@ -144,6 +151,11 @@ public class NameTagManager {
 
             display.spawn(player);
 
+            pending.removeAll(player.getUniqueId()).forEach(r -> {
+                plugin.getLogger().info("Running pending for " + player.getName());
+                r.run();
+            });
+
             if(!startup) {
                 return;
             }
@@ -225,7 +237,7 @@ public class NameTagManager {
     }
 
     public void debug(@NotNull CommandSender audience) {
-        audience.sendMessage(("Nametags:"));
+        final AtomicReference<Component> component = new AtomicReference<>(Component.text("Nametags:").colorIfAbsent(TextColor.color(0xFF0000)));
         nameTags.forEach((uuid, display) -> {
             final Player player = Bukkit.getPlayer(uuid);
 
@@ -233,8 +245,21 @@ public class NameTagManager {
                 return;
             }
 
-            audience.sendMessage((player.getName() + " -> " + display.getUniqueId() + " " + display.getEntity().getEntityId() + " " + display.getEntity().getViewers()));
+            final List<String> viewers = display.getEntity().getViewers().stream()
+                    .map(Bukkit::getPlayer)
+                    .filter(Objects::nonNull)
+                    .map(Player::getName)
+                    .toList();
+
+            Component text = Component.text(player.getName() + " -> " + " " + display.getEntity().getEntityId());
+            text = text.color(TextColor.color(0x00FF00));
+            text = text.hoverEvent(Component.text("Viewers: " + viewers));
+
+            component.set(component.get().append(Component.text("\n")).append(text));
+
         });
+
+        audience.sendMessage(component.get());
     }
 
     private void setYOffset(@NotNull Player player, float yOffset) {
@@ -265,7 +290,6 @@ public class NameTagManager {
                 packetDisplayText.hideFromPlayer(viewer);
             });
         });
-
     }
 
     public void unVanishPlayer(@NotNull Player player) {
@@ -296,9 +320,7 @@ public class NameTagManager {
         }
         getPacketDisplayText(target).ifPresent(packetDisplayText -> {
             packetDisplayText.hideFromPlayerSilenty(player);
-            if (!packetDisplayText.canPlayerSee(player)) {
-                packetDisplayText.showToPlayer(player);
-            }
+            packetDisplayText.showToPlayer(player);
         });
     }
 

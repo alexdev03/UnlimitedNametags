@@ -59,8 +59,8 @@ public enum Formatter {
                     final String hex = matcher.group();
                     text = text.replace(hex, hex + "&");
                 }
-                text = text.replaceAll("&&&", "&&");
-                text = text.replaceAll("& ", "");
+//                text = text.replaceAll("&&&", "&&");
+//                text = text.replaceAll("& ", "");
                 final Component component = MINEDOWN.formatter.apply(text);
                 final String string = MiniMessage.miniMessage().serialize(component).replace("\\<", "<");
                 return MINIMESSAGE.formatter.apply(string);

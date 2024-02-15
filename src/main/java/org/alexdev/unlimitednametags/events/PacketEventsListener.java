@@ -49,7 +49,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
     private void inject() {
         Bukkit.getOnlinePlayers().forEach(player -> {
             final SpigotChannelInjector injector = (SpigotChannelInjector) PacketEvents.getAPI().getInjector();
-
             final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
 
             injector.updatePlayer(user, player);

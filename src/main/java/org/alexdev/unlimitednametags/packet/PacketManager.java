@@ -27,7 +27,7 @@ public class PacketManager {
     public PacketManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.initialize();
-        this.rangeTask();
+//        this.rangeTask();
         this.passengers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
         this.executorService = Executors.newCachedThreadPool();
     }

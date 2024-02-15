@@ -3,6 +3,7 @@ package org.alexdev.unlimitednametags.events;
 import io.papermc.paper.event.player.PlayerTrackEntityEvent;
 import io.papermc.paper.event.player.PlayerUntrackEntityEvent;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.packet.PacketDisplayText;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -13,6 +14,8 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Optional;
 
 public class PlayerListener implements Listener {
 
@@ -38,19 +41,24 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if(!target.isOnline()) {
+        if (!target.isOnline()) {
             return;
         }
 
         final boolean isVanished = plugin.getVanishManager().isVanished(target);
-
         if (isVanished && !plugin.getVanishManager().canSee(event.getPlayer(), target)) {
             return;
         }
 
-        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
-            plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
-        }, 2);
+        final Optional<PacketDisplayText> display = plugin.getNametagManager().getPacketDisplayText(target);
+        final Runnable runnable = () -> plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
+
+        if (display.isEmpty()) {
+            plugin.getNametagManager().addPending(target, runnable);
+            return;
+        }
+
+        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, runnable, 2);
     }
 
     @EventHandler
