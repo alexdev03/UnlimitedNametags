@@ -53,20 +53,30 @@ public enum Formatter {
                 if (text == null) {
                     return null;
                 }
+                text = text.replaceAll("&r", "###RESET###");
                 text = getHEX().serialize(getSTUPID().deserialize(text));
-                final Matcher matcher = getHEX_PATTERN().matcher(text);
-                while (matcher.find()) {
-                    final String hex = matcher.group();
-                    text = text.replace(hex, hex + "&");
-                }
-//                text = text.replaceAll("&&&", "&&");
-//                text = text.replaceAll("& ", "");
+                text = replaceHexColorCodes(text);
+                text = text.replaceAll("###RESET###", "&r");
                 final Component component = MINEDOWN.formatter.apply(text);
                 final String string = MiniMessage.miniMessage().serialize(component).replace("\\<", "<");
                 return MINIMESSAGE.formatter.apply(string);
             },
             "Universal"
     );
+
+    @NotNull
+    private static String replaceHexColorCodes(@NotNull String text) {
+        final Matcher matcher = getHEX_PATTERN().matcher(text);
+        final StringBuilder valueBuffer = new StringBuilder();
+        while (matcher.find()) {
+            final String hex = matcher.group();
+            final int start = matcher.start();
+            final int end = matcher.end();
+            matcher.appendReplacement(valueBuffer, hex + "&");
+        }
+        matcher.appendTail(valueBuffer);
+        return valueBuffer.toString();
+    }
 
     /**
      * Name of the formatter
