@@ -47,6 +47,7 @@ public class PacketDisplayText {
         this.entity = EntityLib.createEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
         this.meta = (TextDisplayMeta) entity.getMeta();
         this.blocked = Sets.newConcurrentHashSet();
+        this.meta.setLineWidth(1000);
     }
 
     public void text(@NotNull Component text) {

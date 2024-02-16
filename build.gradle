@@ -89,6 +89,8 @@ shadowJar {
 
     minimize()
 }
+
+
 build.dependsOn shadowJar
 clean.delete "$rootDir/target"
 
@@ -107,6 +109,11 @@ tasks.withType(JavaCompile).configureEach {
         options.release = targetJavaVersion
     }
 }
+
+tasks.register('deleteClassFiles', Delete) {
+    delete fileTree(directory: 'build/classes/java/main').include('**/*_1_17.class')
+}
+
 
 processResources {
     def props = [version: version]

@@ -53,6 +53,7 @@ public enum Formatter {
                 if (text == null) {
                     return null;
                 }
+                long start = System.currentTimeMillis();
                 text = text.replaceAll("&r", "###RESET###");
                 text = getHEX().serialize(getSTUPID().deserialize(text));
                 text = replaceHexColorCodes(text);
