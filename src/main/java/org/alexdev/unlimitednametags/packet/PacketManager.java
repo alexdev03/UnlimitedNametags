@@ -7,12 +7,10 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 import me.tofaa.entitylib.EntityLib;
-import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -20,14 +18,11 @@ import java.util.concurrent.Executors;
 
 public class PacketManager {
 
-    private final UnlimitedNameTags plugin;
     private final Multimap<UUID, Integer> passengers;
     private final ExecutorService executorService;
 
-    public PacketManager(UnlimitedNameTags plugin) {
-        this.plugin = plugin;
+    public PacketManager() {
         this.initialize();
-//        this.rangeTask();
         this.passengers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
         this.executorService = Executors.newCachedThreadPool();
     }
@@ -39,25 +34,6 @@ public class PacketManager {
 
     public void close() {
         this.executorService.shutdown();
-    }
-
-    private void rangeTask() {
-        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () -> {
-            for (Player player : plugin.getServer().getOnlinePlayers()) {
-                for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-                    if (player.equals(otherPlayer)) {
-                        continue;
-                    }
-                    final Optional<PacketDisplayText> packetDisplayText = plugin.getNametagManager().getPacketDisplayText(otherPlayer);
-                    if (packetDisplayText.isEmpty()) {
-                        continue;
-                    }
-                    if (packetDisplayText.get().canPlayerSee(player)) {
-                        packetDisplayText.get().sendPassengersPacket(player);
-                    }
-                }
-            }
-        }, 10, 20);
     }
 
     public void setPassengers(@NotNull Player player, Collection<Integer> passengers) {

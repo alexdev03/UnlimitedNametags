@@ -31,7 +31,6 @@ public class PlaceholderManager {
             index -= 1;
             if (index == 0) {
                 index = 16777215;
-//                index = 10000;
             }
         }, 0, 1);
     }
