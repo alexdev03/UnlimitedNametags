@@ -19,13 +19,10 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Getter
-@SuppressWarnings("unused")
 public class PacketDisplayText {
 
     private final UnlimitedNameTags plugin;
@@ -49,10 +46,6 @@ public class PacketDisplayText {
         meta.setText(text);
     }
 
-    public void setBillboard(@NotNull AbstractDisplayMeta.BillboardConstraints billboard) {
-        meta.setBillboardConstraints(billboard);
-    }
-
     public void setBillboard(@NotNull Display.Billboard billboard) {
         meta.setBillboardConstraints(AbstractDisplayMeta.BillboardConstraints.valueOf(billboard.name()));
     }
@@ -65,16 +58,8 @@ public class PacketDisplayText {
         meta.setSeeThrough(seeThrough);
     }
 
-    public void setBackgroundColor(int color) {
-        meta.setBackgroundColor(color);
-    }
-
     public void setBackgroundColor(@NotNull Color color) {
         meta.setBackgroundColor(color.asARGB());
-    }
-
-    public void setInvisibleBackground() {
-        setBackgroundColor(Color.BLACK.setAlpha(0).asRGB());
     }
 
     public void setTransformation(@NotNull Vector3f vector3f) {
@@ -100,7 +85,7 @@ public class PacketDisplayText {
         setPosition();
         entity.addViewer(player.getUniqueId());
 
-        plugin.getPacketManager().sendPassengersPacket(player, this);
+        sendPassengersPacket(player);
     }
 
     public void sendPassengersPacket(@NotNull Player player) {
@@ -130,24 +115,12 @@ public class PacketDisplayText {
         entity.removeViewerSilently(player.getUniqueId());
     }
 
-    public void showFromPlayerSilenty(@NotNull Player player) {
-        if (blocked.contains(player.getUniqueId())) {
-            return;
-        }
-        entity.addViewerSilently(player.getUniqueId());
-    }
-
     public boolean canPlayerSee(@NotNull Player player) {
         return entity.getViewers().contains(player.getUniqueId());
     }
 
     public void spawn(@NotNull Player player) {
         entity.spawn(SpigotConversionUtil.fromBukkitLocation(player.getLocation()));
-    }
-
-    @NotNull
-    public UUID getUniqueId() {
-        return entity.getUuid();
     }
 
     public void refresh() {
@@ -178,13 +151,4 @@ public class PacketDisplayText {
         meta.setTextOpacity(b);
     }
 
-    @NotNull
-    public Set<Player> findNearbyPlayers() {
-        final float viewDistance = 100;
-        final List<Player> players = List.copyOf(owner.getWorld().getPlayers());
-        return players.stream()
-                .filter(p -> p.getLocation().distance(owner.getLocation()) <= viewDistance)
-                .filter(Player::isOnline)
-                .collect(Collectors.toSet());
-    }
 }
