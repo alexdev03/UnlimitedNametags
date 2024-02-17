@@ -72,7 +72,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
             hooks.put(FloodgateHook.class, new FloodgateHook(this));
             getLogger().info("Floodgate found, hooking into it");
         }
-        if (Bukkit.getPluginManager().isPluginEnabled("TypeWriter")) {
+        if (false && Bukkit.getPluginManager().isPluginEnabled("TypeWriter")) {
             hooks.put(TypeWriterListener.class, new TypeWriterListener(this));
             getLogger().info("TypeWriter found, hooking into it");
         }

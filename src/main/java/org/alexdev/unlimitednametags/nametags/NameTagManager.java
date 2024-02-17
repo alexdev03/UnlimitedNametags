@@ -30,7 +30,7 @@ public class NameTagManager {
     private final Multimap<UUID, Runnable> pending;
     private int task;
 
-    public NameTagManager(UnlimitedNameTags plugin) {
+    public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.nameTags = Maps.newConcurrentMap();
         this.creating = Lists.newCopyOnWriteArrayList();
@@ -166,7 +166,8 @@ public class NameTagManager {
                     .filter(p -> p != player)
                     .filter(p -> p.getLocation().getWorld() == player.getLocation().getWorld())
                     .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
-                    .filter(p -> p.getLocation().distance(player.getLocation()) <= 100)
+                    .filter(p -> p.getLocation().distance(player.getLocation()) <= 250)
+                    .filter(p -> !display.canPlayerSee(p))
                     .forEach(display::showToPlayer);
             
         } catch (Exception e) {
@@ -333,7 +334,7 @@ public class NameTagManager {
         });
     }
 
-    public void updateDisplaysForPlayer(Player player) {
+    public void updateDisplaysForPlayer(@NotNull Player player) {
         nameTags.forEach((uuid, display) -> {
             final Player owner = display.getOwner();
 

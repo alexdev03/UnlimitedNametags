@@ -55,7 +55,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         });
     }
 
-    public void onPacketSend(PacketSendEvent event) {
+    public void onPacketSend(@NotNull PacketSendEvent event) {
         if (event.getPacketType() == PacketType.Play.Server.TEAMS) {
             handleTeams(event);
         } else if (event.getPacketType() == PacketType.Play.Server.SET_PASSENGERS) {
@@ -66,7 +66,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     @Override
-    public void onPacketReceive(PacketReceiveEvent event) {
+    public void onPacketReceive(@NotNull PacketReceiveEvent event) {
         if (event.getPacketType() == PacketType.Play.Client.ENTITY_ACTION) {
             handleUseEntity(event);
         }

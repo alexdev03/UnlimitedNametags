@@ -36,7 +36,7 @@ public class PacketManager {
         this.executorService.shutdown();
     }
 
-    public void setPassengers(@NotNull Player player, Collection<Integer> passengers) {
+    public void setPassengers(@NotNull Player player, @NotNull Collection<Integer> passengers) {
         executorService.submit(() -> this.passengers.replaceValues(player.getUniqueId(), passengers));
     }
 
