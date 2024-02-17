@@ -73,7 +73,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private void handleUseEntity(PacketReceiveEvent event) {
-        if (!(event.getPlayer() instanceof Player target)) {
+        if (!(event.getPlayer() instanceof Player)) {
             return;
         }
 
@@ -104,9 +104,15 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private void handleTeams(@NotNull PacketSendEvent event) {
+        if(!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
         if (!plugin.getConfigManager().getSettings().isDisableDefaultNameTag() &&
-                !plugin.getConfigManager().getSettings().isDisableDefaultNameTagBedrock() && plugin.getFloodgateHook().map(h -> h.isBedrock((Player) event.getPlayer()))
-                .orElse(((Player) event.getPlayer()).getName().startsWith("*"))) {
+                !plugin.getConfigManager().getSettings().isDisableDefaultNameTagBedrock() &&
+                plugin.getFloodgateHook()
+                        .map(h -> h.isBedrock(player))
+                        .orElse(player.getName().startsWith("*"))
+        ) {
             return;
         }
 

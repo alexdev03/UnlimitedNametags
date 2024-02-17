@@ -54,7 +54,7 @@ dependencies {
     implementation "org.jetbrains:annotations:${annotationsVersion}"
     implementation "de.themoep:minedown-adventure:${minedownAdventureVersion}"
     implementation "com.github.alexdev03:drink:${drinkVersion}"
-    implementation "com.github.Tofaa2.EntityLib:EntityLib:${EntityLibVersion}"
+    implementation "com.github.Tofaa2.EntityLib:spigot:${EntityLibVersion}"
     implementation "com.github.retrooper.packetevents:spigot:${packeteventsSpigotVersion}"
 }
 

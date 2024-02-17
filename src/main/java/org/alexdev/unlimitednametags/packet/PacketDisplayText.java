@@ -1,19 +1,15 @@
 package org.alexdev.unlimitednametags.packet;
 
-import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.PacketEventsAPI;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
-import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
-import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import com.google.common.collect.Sets;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import me.tofaa.entitylib.EntityLib;
-import me.tofaa.entitylib.entity.WrapperEntity;
+import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import me.tofaa.entitylib.meta.display.TextDisplayMeta;
-import me.tofaa.entitylib.meta.types.DisplayMeta;
+import me.tofaa.entitylib.wrapper.WrapperEntity;
 import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
@@ -24,10 +20,8 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 @Getter
@@ -44,8 +38,8 @@ public class PacketDisplayText {
         this.plugin = plugin;
         this.owner = owner;
         final int randomId = (int) (Math.random() * 10000000);
-        this.entity = EntityLib.createEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
-        this.meta = (TextDisplayMeta) entity.getMeta();
+        this.entity = EntityLib.getApi().createEntity(UUID.randomUUID(), randomId, EntityTypes.TEXT_DISPLAY);
+        this.meta = (TextDisplayMeta) entity.getEntityMeta();
         this.blocked = Sets.newConcurrentHashSet();
         this.meta.setLineWidth(1000);
     }
@@ -55,12 +49,12 @@ public class PacketDisplayText {
         meta.setText(text);
     }
 
-    public void setBillboard(@NotNull DisplayMeta.BillboardConstraints billboard) {
+    public void setBillboard(@NotNull AbstractDisplayMeta.BillboardConstraints billboard) {
         meta.setBillboardConstraints(billboard);
     }
 
     public void setBillboard(@NotNull Display.Billboard billboard) {
-        meta.setBillboardConstraints(DisplayMeta.BillboardConstraints.valueOf(billboard.name()));
+        meta.setBillboardConstraints(AbstractDisplayMeta.BillboardConstraints.valueOf(billboard.name()));
     }
 
     public void setShadowed(boolean shadowed) {
@@ -104,16 +98,9 @@ public class PacketDisplayText {
         }
 
         setPosition();
-        final boolean result = entity.addViewer(player.getUniqueId());
-        if (!result) {
-            plugin.getLogger().warning("Failed to add viewer " + player.getName() + " to " + owner.getName());
-            return;
-        }
+        entity.addViewer(player.getUniqueId());
 
         plugin.getPacketManager().sendPassengersPacket(player, this);
-        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
-            plugin.getPacketManager().sendPassengersPacket(player, this);
-        }, 4); //min is 3
     }
 
     public void sendPassengersPacket(@NotNull Player player) {
@@ -131,11 +118,7 @@ public class PacketDisplayText {
         if (blocked.contains(player.getUniqueId())) {
             return;
         }
-        try {
-            entity.removeViewer(player.getUniqueId());
-        } catch (Exception ignored) {
-            //packet events bug
-        }
+        entity.removeViewer(player.getUniqueId());
 
         plugin.getPacketManager().removePassenger(player, entity.getEntityId());
     }
@@ -168,24 +151,7 @@ public class PacketDisplayText {
     }
 
     public void refresh() {
-        fixViewers();
-        final PacketWrapper<?> packet = meta.createPacket();
-        final PacketEventsAPI<?> api = PacketEvents.getAPI();
-        entity.getViewers().forEach(u -> {
-            try {
-                final Optional<? extends Player> optionalPlayer = Optional.ofNullable(Bukkit.getPlayer(u));
-                if (optionalPlayer.isEmpty()) {
-                    return;
-                }
-                final User user = PacketEvents.getAPI().getPlayerManager().getUser(optionalPlayer.get());
-                if (user == null || user.getChannel() == null) {
-                    return;
-                }
-                api.getProtocolManager().sendPacket(user.getChannel(), packet);
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to send packet to " + u, e);
-            }
-        });
+        entity.refresh();
     }
 
     private void fixViewers() {

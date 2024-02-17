@@ -6,7 +6,10 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import me.tofaa.entitylib.APIConfig;
 import me.tofaa.entitylib.EntityLib;
+import me.tofaa.entitylib.spigot.SpigotEntityLibPlatform;
+import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,18 +21,25 @@ import java.util.concurrent.Executors;
 
 public class PacketManager {
 
+    private final UnlimitedNameTags plugin;
     private final Multimap<UUID, Integer> passengers;
     private final ExecutorService executorService;
 
-    public PacketManager() {
+    public PacketManager(@NotNull UnlimitedNameTags plugin) {
+        this.plugin = plugin;
         this.initialize();
         this.passengers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
         this.executorService = Executors.newCachedThreadPool();
     }
 
     private void initialize() {
-        EntityLib.init(PacketEvents.getAPI());
-        EntityLib.enableEntityInteractions();
+        SpigotEntityLibPlatform platform = new SpigotEntityLibPlatform(plugin);
+        APIConfig settings = new APIConfig(PacketEvents.getAPI())
+                .debugMode()
+                .tickTickables()
+                .usePlatformLogger();
+
+        EntityLib.init(platform, settings);
     }
 
     public void close() {
