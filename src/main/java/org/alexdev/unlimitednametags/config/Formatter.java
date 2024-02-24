@@ -21,12 +21,14 @@ package org.alexdev.unlimitednametags.config;
 
 import de.themoep.minedown.adventure.MineDown;
 import lombok.Getter;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,19 +39,21 @@ import java.util.regex.Pattern;
 public enum Formatter {
 
     MINEDOWN(
-            (text) -> new MineDown(text).toComponent(),
+            (plugin, player, text) -> new MineDown(text).toComponent(),
             "MineDown"
     ),
     MINIMESSAGE(
-            (text) -> MiniMessage.miniMessage().deserialize(text),
+            (plugin, player, text)  -> plugin.getHook(MiniPlaceholdersHook.class)
+                    .map(hook -> hook.format(text, player))
+                    .orElse(MiniMessage.miniMessage().deserialize(text)),
             "MiniMessage"
     ),
     LEGACY(
-            (text) -> LegacyComponentSerializer.legacyAmpersand().deserialize(text),
+            (plugin, player, text)  -> LegacyComponentSerializer.legacyAmpersand().deserialize(text),
             "Legacy Text"
     ),
     UNIVERSAL(
-            (text) -> {
+            (plugin, player, text)  -> {
                 if (text == null) {
                     return null;
                 }
@@ -58,9 +62,9 @@ public enum Formatter {
                 text = getHEX().serialize(getSTUPID().deserialize(text));
                 text = replaceHexColorCodes(text);
                 text = text.replaceAll("###RESET###", "&r");
-                final Component component = MINEDOWN.formatter.apply(text);
-                final String string = MiniMessage.miniMessage().serialize(component).replace("\\<", "<");
-                return MINIMESSAGE.formatter.apply(string);
+                final Component component = MINEDOWN.formatter.apply(plugin, player, text) ;
+                final String string = MiniMessage.miniMessage().serialize(component).replace("\\<", "<").replace("\\", "");
+                return MINIMESSAGE.formatter.apply(plugin, player, string);
             },
             "Universal"
     );
@@ -87,7 +91,7 @@ public enum Formatter {
     /**
      * Function to apply formatting to a string
      */
-    private final Function<String, Component> formatter;
+    private final TriFunction<UnlimitedNameTags, Audience, String, Component> formatter;
 
     @Getter
     private final static Pattern HEX_PATTERN = Pattern.compile("&#[a-fA-F0-9]{6}");
@@ -106,7 +110,7 @@ public enum Formatter {
             .build();
 
 
-    Formatter(@NotNull Function<String, Component> formatter, @NotNull String name) {
+    Formatter(@NotNull TriFunction<UnlimitedNameTags, Audience, String, Component> formatter, @NotNull String name) {
         this.formatter = formatter;
         this.name = name;
     }
@@ -117,8 +121,8 @@ public enum Formatter {
      * @param text the string to format
      * @return the formatted string
      */
-    public Component format(@NotNull String text) {
-        return formatter.apply(text);
+    public Component format(@NotNull UnlimitedNameTags plugin, @NotNull Audience audience,  @NotNull String text) {
+        return formatter.apply(plugin, audience, text) ;
     }
 
 

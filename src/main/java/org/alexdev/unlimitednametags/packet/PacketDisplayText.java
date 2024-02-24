@@ -1,6 +1,8 @@
 package org.alexdev.unlimitednametags.packet;
 
+import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
+import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
 import com.google.common.collect.Sets;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
@@ -18,6 +20,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 import java.util.UUID;
@@ -25,16 +28,19 @@ import java.util.UUID;
 @Getter
 public class PacketDisplayText {
 
+    private static final int startId = 1000000;
     private final UnlimitedNameTags plugin;
     private final WrapperEntity entity;
     private final TextDisplayMeta meta;
     private final Player owner;
     private final Set<UUID> blocked;
+    @Nullable
+    private Component lastText;
 
     public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner) {
         this.plugin = plugin;
         this.owner = owner;
-        final int randomId = (int) (Math.random() * 10000000);
+        final int randomId = plugin.getPacketManager().getEntityIndex();
         this.entity = EntityLib.getApi().createEntity(UUID.randomUUID(), randomId, EntityTypes.TEXT_DISPLAY);
         this.meta = (TextDisplayMeta) entity.getEntityMeta();
         this.blocked = Sets.newConcurrentHashSet();
@@ -43,6 +49,10 @@ public class PacketDisplayText {
 
     public void text(@NotNull Component text) {
         fixViewers();
+        if (lastText != null && lastText.equals(text)) {
+            return;
+        }
+        lastText = text;
         meta.setText(text);
     }
 
@@ -124,17 +134,19 @@ public class PacketDisplayText {
     }
 
     public void refresh() {
+        fixViewers();
         entity.refresh();
     }
 
     private void fixViewers() {
         entity.getViewers().stream().filter(u -> {
             final Player player = Bukkit.getPlayer(u);
-            return player == null || !player.isOnline();
-        }).forEach(e -> {
-            plugin.getLogger().warning("Removing viewer " + e + " from " + owner.getName());
-            entity.removeViewerSilently(e);
-        });
+            if (player == null) {
+                return true;
+            }
+            final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+            return user == null || user.getChannel() == null;
+        }).forEach(entity::removeViewerSilently);
     }
 
     public void remove() {

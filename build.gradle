@@ -33,10 +33,10 @@ repositories {
     maven { url = 'https://repo.codemc.io/repository/maven-releases/' }
     maven { url = 'https://repo.viaversion.com/' }
     maven { url = 'https://repo.opencollab.dev/main/' }
+    mavenLocal()
 
 }
 
-// build.gradle
 dependencies {
     compileOnly "com.github.gabber235:typewriter:${typeWriterVersion}"
     compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
@@ -47,6 +47,7 @@ dependencies {
     compileOnly "io.github.miniplaceholders:miniplaceholders-api:${miniplaceholdersApiVersion}"
     compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
     compileOnly "org.geysermc.floodgate:api:${floodgateApiVersion}"
+    implementation "org.apache.commons:commons-lang3:${commonsLangVersion}"
 
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 

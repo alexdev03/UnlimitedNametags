@@ -32,7 +32,9 @@ public class PlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(PlayerQuitEvent event) {
-        plugin.getNametagManager().removePlayer(event.getPlayer(), true);
+        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+            plugin.getNametagManager().removePlayer(event.getPlayer(), true);
+        }, 1);
     }
 
     @EventHandler

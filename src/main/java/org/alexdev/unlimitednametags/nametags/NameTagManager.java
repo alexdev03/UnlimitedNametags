@@ -42,7 +42,9 @@ public class NameTagManager {
     }
 
     private void loadAll() {
-        Bukkit.getOnlinePlayers().forEach(p -> addPlayer(p, true));
+        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+            Bukkit.getOnlinePlayers().forEach(p -> addPlayer(p, true));
+        }, 5);
     }
 
     private void startTask() {
@@ -170,7 +172,7 @@ public class NameTagManager {
                     .filter(p -> !display.canPlayerSee(p))
                     .forEach(display::showToPlayer);
             
-        } catch (Exception e) {
+        } catch (Throwable e) {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), e);
         }
     }
@@ -307,10 +309,12 @@ public class NameTagManager {
     }
 
 
+    @NotNull
     public Optional<PacketDisplayText> getPacketDisplayText(@NotNull Player player) {
         return Optional.ofNullable(nameTags.get(player.getUniqueId()));
     }
 
+    @NotNull
     public Optional<PacketDisplayText> getPacketDisplayText(int id) {
         return nameTags.values().stream().filter(display -> display.getEntity().getEntityId() == id).findFirst();
     }
