@@ -18,7 +18,7 @@ public class PlaceholderManager {
 
     private static final Component EMPTY = Component.text("");
     private static final int maxIndex = 16777215;
-    private static final int maxMIndex = 100;
+    private static final int maxMIndex = 1000;
     private final UnlimitedNameTags plugin;
     private final ExecutorService executorService;
     private final PAPIManager papiManager;
@@ -78,11 +78,9 @@ public class PlaceholderManager {
 
     @NotNull
     private String formatPhases(@NotNull String value) {
-        //minimessage uses values from -1 to 1
         final double normalizedIndex = (double) index / (double) maxIndex;
         final double mmG = 2 * normalizedIndex - 1;
-        final int mm = index;
-        return value.replaceAll("#phase-md#", String.valueOf(index)).replaceAll("#phase-mm#", Integer.toString(mm))
+        return value.replaceAll("#phase-md#", String.valueOf(index)).replaceAll("#phase-mm#", Integer.toString(mIndexd))
                 .replaceAll("#phase-mm-g#", Double.toString(mmG));
     }
 

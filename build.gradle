@@ -98,6 +98,7 @@ tasks {
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.5")
+            url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
             url("https://download.luckperms.net/1532/bukkit/loader/LuckPerms-Bukkit-5.4.119.jar")
             url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
         }

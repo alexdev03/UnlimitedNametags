@@ -136,15 +136,6 @@ public class PacketDisplayText {
     public void refresh() {
         fixViewers();
         entity.refresh();
-        entity.getViewers().forEach(u -> {
-            final Player player = Bukkit.getPlayer(u);
-            if (player == null) {
-                return;
-            }
-            if (lastText != null) {
-                player.sendMessage(lastText);
-            }
-        });
     }
 
     private void fixViewers() {
