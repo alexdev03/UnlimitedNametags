@@ -123,11 +123,18 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
     }
 
+    private int getProtocolVersion(@NotNull Player player) {
+        if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
+            return ViaVersionUtil.getProtocolVersion(player);
+        }
+        return PacketEvents.getAPI().getPlayerManager().getUser(player).getClientVersion().getProtocolVersion();
+    }
+
     private void handleMetaData(@NotNull PacketSendEvent event) {
         if (!(event.getPlayer() instanceof Player player)) {
             return;
         }
-        int protocol = ViaVersionUtil.getProtocolVersion(player);
+        int protocol = getProtocolVersion(player);
         final Optional<ClientVersion> clientVersionOptional = Arrays.stream(ClientVersion.values()).filter(p -> p.getProtocolVersion() == protocol).findFirst();
         if (clientVersionOptional.isEmpty()) {
             return;

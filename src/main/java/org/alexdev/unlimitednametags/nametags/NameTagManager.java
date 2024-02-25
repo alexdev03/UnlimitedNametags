@@ -153,8 +153,11 @@ public class NameTagManager {
 
             display.spawn(player);
 
+            nameTags.put(player.getUniqueId(), display);
+            creating.remove(player.getUniqueId());
+
             pending.removeAll(player.getUniqueId()).forEach(r -> {
-                plugin.getLogger().info("Running pending for " + player.getName());
+//                plugin.getLogger().info("Running pending for " + player.getName());
                 r.run();
             });
 
