@@ -118,7 +118,20 @@ public class PacketDisplayText {
         plugin.getPacketManager().removePassenger(player, entity.getEntityId());
     }
 
-    public void hideFromPlayerSilenty(@NotNull Player player) {
+    public void clearViewers() {
+        entity.getViewers().forEach(u -> {
+            final Player player = Bukkit.getPlayer(u);
+            if (player != null) {
+                hideFromPlayer(player);
+            }
+        });
+    }
+
+    public void showToPlayers(Set<Player> players) {
+        players.forEach(this::showToPlayer);
+    }
+
+    public void hideFromPlayerSilently(@NotNull Player player) {
         if (blocked.contains(player.getUniqueId())) {
             return;
         }

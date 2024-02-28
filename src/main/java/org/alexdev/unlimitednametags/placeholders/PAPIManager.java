@@ -1,6 +1,7 @@
 package org.alexdev.unlimitednametags.placeholders;
 
 import lombok.RequiredArgsConstructor;
+import me.clip.placeholderapi.PlaceholderAPI;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -16,7 +17,7 @@ public class PAPIManager {
 
     @NotNull
     public String setPlaceholders(Player player, String text) {
-        return me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, text);
+        return PlaceholderAPI.setPlaceholders(player, text);
     }
 
 }

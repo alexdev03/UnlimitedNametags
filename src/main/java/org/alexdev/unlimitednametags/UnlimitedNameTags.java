@@ -46,11 +46,18 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        configManager = new ConfigManager(this);
-        placeholderManager = new PlaceholderManager(this);
         nametagManager = new NameTagManager(this);
+        placeholderManager = new PlaceholderManager(this);
         vanishManager = new VanishManager(this);
         packetManager = new PacketManager(this);
+        configManager = new ConfigManager(this);
+        final Optional<Throwable> error = configManager.loadConfigs();
+        if (error.isPresent()) {
+            getLogger().log(java.util.logging.Level.SEVERE, "Failed to load configuration", error.get());
+            getServer().getScheduler().runTask(this, () -> getServer().getPluginManager().disablePlugin(this));
+            return;
+        }
+
 
         loadCommands();
         loadListeners();
@@ -73,7 +80,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
             hooks.put(FloodgateHook.class, new FloodgateHook(this));
             getLogger().info("Floodgate found, hooking into it");
         }
-        if (false && Bukkit.getPluginManager().isPluginEnabled("TypeWriter")) {
+        if (Bukkit.getPluginManager().isPluginEnabled("TypeWriter")) {
             hooks.put(TypeWriterListener.class, new TypeWriterListener(this));
             getLogger().info("TypeWriter found, hooking into it");
         }

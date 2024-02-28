@@ -1,7 +1,12 @@
 package org.alexdev.unlimitednametags.events;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.Sets;
 import io.papermc.paper.event.player.PlayerTrackEntityEvent;
 import io.papermc.paper.event.player.PlayerUntrackEntityEvent;
+import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
 import org.bukkit.GameMode;
@@ -16,13 +21,17 @@ import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public class PlayerListener implements Listener {
 
     private final UnlimitedNameTags plugin;
+    @Getter
+    private final Multimap<UUID, UUID> trackedPlayers;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
+        this.trackedPlayers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
     }
 
     @EventHandler
@@ -47,6 +56,8 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        trackedPlayers.put(event.getPlayer().getUniqueId(), target.getUniqueId());
+
         final boolean isVanished = plugin.getVanishManager().isVanished(target);
         if (isVanished && !plugin.getVanishManager().canSee(event.getPlayer(), target)) {
             return;
@@ -68,6 +79,8 @@ public class PlayerListener implements Listener {
         if (!(event.getEntity() instanceof Player target)) {
             return;
         }
+
+        trackedPlayers.remove(event.getPlayer().getUniqueId(), target.getUniqueId());
 
         plugin.getNametagManager().removeDisplay(event.getPlayer(), target);
     }

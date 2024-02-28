@@ -3,6 +3,7 @@ package org.alexdev.unlimitednametags.config;
 import de.exlll.configlib.Comment;
 import de.exlll.configlib.Configuration;
 import de.exlll.configlib.Polymorphic;
+import de.exlll.configlib.PolymorphicTypes;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,7 +39,7 @@ public class Settings {
     @Comment(value = {"This is opacity that will be applied to the nametag when a player sneaks. So, the value is from -128 to 127. ",
             "Similar to the background, the text rendering is discarded when it is less than 26. Defaults to -1, which represents 255 and is completely opaque."})
     private int sneakOpacity = 70;
-    private float yOffset = 0.7f;
+    private float yOffset = 0.3f;
     private float viewDistance = 60;
 
     @Comment("""
@@ -69,19 +70,25 @@ public class Settings {
     @AllArgsConstructor
     @Accessors(fluent = true)
     @Polymorphic
-    public abstract static class Background {
+    @PolymorphicTypes({
+            @PolymorphicTypes.Type(type = IntegerBackground.class, alias = "integer"),
+            @PolymorphicTypes.Type(type = HexBackground.class, alias = "hex")
+    })
+    @Configuration
+    public static class Background {
 
         protected boolean enabled;
         protected int opacity;
         protected boolean shadowed;
         protected boolean seeThrough;
 
-        public abstract Color getColor();
+        public Color getColor() {
+            return Color.BLACK.setAlpha(0);
+        }
     }
 
     @Getter
     @NoArgsConstructor
-    @Configuration
     public static class IntegerBackground extends Background {
 
         private int red;
@@ -104,7 +111,6 @@ public class Settings {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
-    @Configuration
     public static class HexBackground extends Background {
 
         private String hex;

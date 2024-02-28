@@ -6,7 +6,6 @@ plugins {
 }
 
 group = 'com.github.alexdev03'
-version = '1.0'
 
 repositories {
     maven {
@@ -35,22 +34,26 @@ repositories {
     maven { url = 'https://repo.viaversion.com/' }
     maven { url = 'https://repo.opencollab.dev/main/' }
     mavenLocal()
-
+    maven {
+        name = "sonatype-oss-snapshots1"
+        url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+    }
 }
 
 dependencies {
     compileOnly "com.github.gabber235:typewriter:${typeWriterVersion}"
     compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
-    compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
     compileOnly "io.papermc.paper:paper-api:${paperApiVersion}"
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     compileOnly "me.clip:placeholderapi:${placeholderapiVersion}"
     compileOnly "io.github.miniplaceholders:miniplaceholders-api:${miniplaceholdersApiVersion}"
     compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
     compileOnly "org.geysermc.floodgate:api:${floodgateApiVersion}"
-    implementation "org.apache.commons:commons-lang3:${commonsLangVersion}"
 
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
+
 
     implementation "com.github.Exlll.ConfigLib:configlib-paper:${configlibPaperVersion}"
     implementation "org.jetbrains:annotations:${annotationsVersion}"
@@ -76,8 +79,16 @@ shadowJar {
     dependencies {
         exclude dependency(':slf4j-api')
         exclude dependency('com.google.code.gson:gson')
-        //exclude net.kyori
-        exclude 'net/kyori/**'
+        exclude dependency('net.kyori:adventure-api')
+        exclude dependency('net.kyori:adventure-key')
+        exclude dependency('net.kyori:adventure-nbt')
+        exclude dependency('net.kyori:option')
+        exclude dependency('net.kyori:examination-api')
+        exclude dependency('net.kyori:examination-string')
+        exclude dependency('net.kyori:text')
+        exclude dependency('net.kyori:adventure-text-serializer-gson')
+        exclude dependency('net.kyori:adventure-text-serializer-legacy')
+        exclude dependency('net.kyori:adventure-text-serializer-json')
     }
 
     //mappings
@@ -87,7 +98,7 @@ shadowJar {
     exclude 'assets/mappings/enchantment/**'
 
     destinationDirectory.set(file("$rootDir/target"))
-    archiveClassifier.set('')
+    archiveClassifier.set(null)
 
     minimize()
 }

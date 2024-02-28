@@ -38,12 +38,12 @@ public class NameTagManager {
         this.blocked = Lists.newCopyOnWriteArrayList();
         this.pending = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
         this.loadAll();
-        this.startTask();
     }
 
     private void loadAll() {
         Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
             Bukkit.getOnlinePlayers().forEach(p -> addPlayer(p, true));
+            this.startTask();
         }, 5);
     }
 
@@ -191,7 +191,7 @@ public class NameTagManager {
             if (quit) {
                 display.handleQuit(player);
             } else {
-                display.hideFromPlayerSilenty(player);
+                display.hideFromPlayerSilently(player);
             }
             display.getBlocked().remove(player.getUniqueId());
         });
@@ -213,6 +213,7 @@ public class NameTagManager {
             display.hideFromPlayer(player);
             display.getBlocked().add(player.getUniqueId());
         });
+        getPacketDisplayText(player).ifPresent(PacketDisplayText::clearViewers);
     }
 
     public void removeAll() {
@@ -327,7 +328,7 @@ public class NameTagManager {
             return;
         }
         getPacketDisplayText(target).ifPresent(packetDisplayText -> {
-            packetDisplayText.hideFromPlayerSilenty(player);
+            packetDisplayText.hideFromPlayerSilently(player);
             packetDisplayText.showToPlayer(player);
         });
     }
@@ -355,7 +356,7 @@ public class NameTagManager {
 
             display.getBlocked().remove(player.getUniqueId());
 
-            display.hideFromPlayerSilenty(player);
+            display.hideFromPlayerSilently(player);
             display.showToPlayer(player);
         });
     }

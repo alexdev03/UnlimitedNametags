@@ -7,6 +7,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -18,18 +20,22 @@ public class PlaceholderManager {
 
     private static final Component EMPTY = Component.text("");
     private static final int maxIndex = 16777215;
-    private static final int maxMIndex = 1000;
+    private static final int maxMIndex = 10;
+    private static final double minMGIndex = -1.0;
     private final UnlimitedNameTags plugin;
     private final ExecutorService executorService;
     private final PAPIManager papiManager;
     private int index = maxIndex;
-    private int mIndexd = 0;
+    private int mmIndex = maxMIndex;
+    private double mGIndex = 1.0;
+    private DecimalFormat decimalFormat;
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.executorService = Executors.newCachedThreadPool(getThreadFactory());
         this.papiManager = new PAPIManager(plugin);
         startIndexTask();
+        createDecimalFormat();
     }
 
     @NotNull
@@ -42,17 +48,30 @@ public class PlaceholderManager {
         };
     }
 
+    private void createDecimalFormat() {
+        decimalFormat = new DecimalFormat("#.#");
+        decimalFormat.setRoundingMode(RoundingMode.DOWN);
+    }
+
     private void startIndexTask() {
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
             index -= 1;
             if (index == 0) {
                 index = 16777215;
             }
-            mIndexd += 1;
-            if (mIndexd == maxMIndex) {
-                mIndexd = 0;
-            }
         }, 0, 1);
+        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            mmIndex -= 1;
+            if (mmIndex == 1) {
+                mmIndex = maxMIndex;
+            }
+        }, 0, 2);
+        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            mGIndex += 0.1;
+            if (mGIndex >= 1d) {
+                mGIndex = minMGIndex;
+            }
+        }, 0, 2);
     }
 
     public void close() {
@@ -73,15 +92,13 @@ public class PlaceholderManager {
                 .map(this::formatPhases)
                 .map(t -> format(t, player))
                 .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
-                .toArray(Component[]::new));
+                .toArray(Component[]::new)).compact();
     }
 
     @NotNull
     private String formatPhases(@NotNull String value) {
-        final double normalizedIndex = (double) index / (double) maxIndex;
-        final double mmG = 2 * normalizedIndex - 1;
-        return value.replaceAll("#phase-md#", String.valueOf(index)).replaceAll("#phase-mm#", Integer.toString(mIndexd))
-                .replaceAll("#phase-mm-g#", Double.toString(mmG));
+        return value.replaceAll("#phase-md#", String.valueOf(index)).replaceAll("#phase-mm#", Integer.toString(mmIndex))
+                .replaceAll("#phase-mm-g#", decimalFormat.format(mGIndex));
     }
 
     @NotNull
