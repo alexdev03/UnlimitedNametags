@@ -1,5 +1,6 @@
 package org.alexdev.unlimitednametags.events;
 
+import com.github.Anon8281.universalScheduler.foliaScheduler.FoliaScheduler;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
@@ -16,11 +17,15 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.*;
+import org.bukkit.event.player.PlayerGameModeChangeEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public class PlayerListener implements Listener {
@@ -28,10 +33,30 @@ public class PlayerListener implements Listener {
     private final UnlimitedNameTags plugin;
     @Getter
     private final Multimap<UUID, UUID> trackedPlayers;
+    private final Set<UUID> diedPlayers;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.trackedPlayers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
+        this.diedPlayers = Sets.newConcurrentHashSet();
+        this.loadFoliaRespawnTask();
+    }
+
+    private void loadFoliaRespawnTask() {
+        if(!(plugin.getTaskScheduler() instanceof FoliaScheduler)) {
+            return;
+        }
+
+        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
+            diedPlayers.forEach(player -> {
+                final Player p = plugin.getServer().getPlayer(player);
+                if(p == null || p.isDead()) {
+                    return;
+                }
+                plugin.getNametagManager().addPlayer(p, false);
+                diedPlayers.remove(player);
+            });
+        }, 1, 1);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -41,7 +66,8 @@ public class PlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
-        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+        diedPlayers.remove(event.getPlayer().getUniqueId());
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             plugin.getNametagManager().removePlayer(event.getPlayer(), true);
         }, 1);
     }
@@ -72,7 +98,7 @@ public class PlayerListener implements Listener {
             return;
         }
 
-//        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, runnable, 2);
+//        plugin.getTaskScheduler().runTaskLaterAsynchronously(runnable, 2);
         plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
     }
 
@@ -103,7 +129,7 @@ public class PlayerListener implements Listener {
             if (event.getOldEffect() == null || event.getOldEffect().getType() != PotionEffectType.INVISIBILITY) {
                 return;
             }
-            plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
                 plugin.getNametagManager().unblockPlayer(player);
                 plugin.getNametagManager().addPlayer(player, false);
             }, 2);
@@ -121,14 +147,13 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
+        diedPlayers.add(event.getEntity().getUniqueId());
         plugin.getNametagManager().removePlayerDisplay(event.getEntity());
     }
 
     @EventHandler
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            plugin.getNametagManager().addPlayer(event.getPlayer(), false);
-        }, 1);
+        plugin.getNametagManager().addPlayer(event.getPlayer(), false);
     }
 
 }

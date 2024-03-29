@@ -2,6 +2,8 @@ name: UnlimitedNameTags
 version: '${version}'
 main: org.alexdev.unlimitednametags.UnlimitedNameTags
 api-version: '1.19'
+author: AlexDev_
+folia-supported: true
 softdepend:
   - PlaceholderAPI
   - ProtocolLib

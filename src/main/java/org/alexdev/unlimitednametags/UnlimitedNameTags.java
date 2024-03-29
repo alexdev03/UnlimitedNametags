@@ -1,5 +1,7 @@
 package org.alexdev.unlimitednametags;
 
+import com.github.Anon8281.universalScheduler.UniversalScheduler;
+import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import com.google.common.collect.Maps;
 import com.jonahseguin.drink.CommandService;
 import com.jonahseguin.drink.Drink;
@@ -35,6 +37,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private PacketManager packetManager;
     private PlayerListener playerListener;
     private Map<Class<? extends Hook>, Hook> hooks;
+    private TaskScheduler taskScheduler;
 
     @Override
     public void onLoad() {
@@ -46,6 +49,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        taskScheduler = UniversalScheduler.getScheduler(this);
         nametagManager = new NameTagManager(this);
         placeholderManager = new PlaceholderManager(this);
         vanishManager = new VanishManager(this);
@@ -53,6 +57,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
         configManager = new ConfigManager(this);
 
         if (!loadConfig()) {
+            getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
@@ -69,7 +74,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
         final Optional<Throwable> error = configManager.loadConfigs();
         if (error.isPresent()) {
             getLogger().log(java.util.logging.Level.SEVERE, "Failed to load configuration", error.get());
-            getServer().getScheduler().runTask(this, () -> getServer().getPluginManager().disablePlugin(this));
             return false;
         }
         return true;
@@ -126,7 +130,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
         nametagManager.removeAll();
         placeholderManager.close();
         packetManager.close();
-        Bukkit.getScheduler().cancelTasks(this);
+        taskScheduler.cancelTasks();
     }
 
 }

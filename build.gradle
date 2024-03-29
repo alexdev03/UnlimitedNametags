@@ -61,6 +61,7 @@ dependencies {
     implementation "com.github.alexdev03:drink:${drinkVersion}"
     implementation "com.github.Tofaa2.EntityLib:spigot:${EntityLibVersion}"
     implementation "com.github.retrooper.packetevents:spigot:${packeteventsSpigotVersion}"
+    implementation "com.github.Anon8281:UniversalScheduler:${universalSchedulerVersion}"
 }
 
 
@@ -75,6 +76,7 @@ shadowJar {
     relocate 'de.exlll.configlib', relocator + 'configlib'
     relocate 'javax.annotation', relocator + 'annotation'
     relocate 'org.snakeyaml', relocator + 'snakeyaml'
+    relocate 'com.github.Anon8281.universalScheduler', relocator + 'universalScheduler'
 
     dependencies {
         exclude dependency(':slf4j-api')
@@ -99,6 +101,7 @@ shadowJar {
 
     destinationDirectory.set(file("$rootDir/target"))
     archiveClassifier.set(null)
+    archiveFileName.set("$project.name" + ".jar")
 
     minimize()
 }
@@ -110,8 +113,17 @@ tasks {
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.5")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
-            url("https://download.luckperms.net/1532/bukkit/loader/LuckPerms-Bukkit-5.4.119.jar")
+            url("https://download.luckperms.net/1532/bukkit/loader/LuckPerms-Bukkit-5.4.121.jar")
             url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
+        }
+    }
+    runPaper.folia.registerTask() {
+        minecraftVersion("1.20.4")
+
+        downloadPlugins {
+            github("Anon8281", "PlaceholderAPI", "1.1", "PlaceholderAPI-2.11.5-DEV-Folia.jar")
+            url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
+            url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.117.jar")
         }
     }
 }

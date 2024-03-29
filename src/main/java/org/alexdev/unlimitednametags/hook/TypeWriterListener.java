@@ -21,13 +21,13 @@ public class TypeWriterListener extends Hook implements Listener {
     @EventHandler
     public void onStart(@NotNull AsyncCinematicStartEvent event) {
         plugin.getNametagManager().blockPlayer(event.getPlayer());
-        Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.getNametagManager().hideAllDisplays(event.getPlayer()), 1);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().hideAllDisplays(event.getPlayer()), 1);
     }
 
     @EventHandler
     public void onEnd(@NotNull AsyncCinematicEndEvent event) {
         plugin.getNametagManager().unblockPlayer(event.getPlayer());
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
                     final Set<Player> viewers = plugin.getPlayerListener().getTrackedPlayers().get(event.getPlayer().getUniqueId())
                             .stream()
                             .map(Bukkit::getPlayer)
@@ -36,9 +36,8 @@ public class TypeWriterListener extends Hook implements Listener {
                     plugin.getNametagManager().getPacketDisplayText(event.getPlayer()).ifPresent(display -> display.showToPlayers(viewers));
                 },
                 1);
-        Bukkit.getScheduler().runTaskLater(plugin,
-                () -> plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer()),
-                2);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(
+                () -> plugin.getNametagManager().updateDisplaysForPlayer(event.getPlayer()), 2);
     }
 
 

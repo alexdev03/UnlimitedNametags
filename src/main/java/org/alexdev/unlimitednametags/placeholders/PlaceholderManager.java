@@ -54,19 +54,19 @@ public class PlaceholderManager {
     }
 
     private void startIndexTask() {
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+        plugin.getTaskScheduler().runTaskTimerAsynchronously( () -> {
             index -= 1;
             if (index == 0) {
                 index = 16777215;
             }
         }, 0, 1);
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+        plugin.getTaskScheduler().runTaskTimerAsynchronously( () -> {
             mmIndex -= 1;
             if (mmIndex == 1) {
                 mmIndex = maxMIndex;
             }
         }, 0, 2);
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+        plugin.getTaskScheduler().runTaskTimerAsynchronously( () -> {
             mGIndex += 0.1;
             if (mGIndex >= 1d) {
                 mGIndex = minMGIndex;

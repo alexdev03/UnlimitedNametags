@@ -1,5 +1,6 @@
 package org.alexdev.unlimitednametags.nametags;
 
+import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.github.retrooper.packetevents.util.Vector3f;
 import com.google.common.collect.*;
 import lombok.Getter;
@@ -27,7 +28,7 @@ public class NameTagManager {
     private final List<UUID> creating;
     private final List<UUID> blocked;
     private final Multimap<UUID, Runnable> pending;
-    private int task;
+    private MyScheduledTask task;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -39,23 +40,23 @@ public class NameTagManager {
     }
 
     private void loadAll() {
-        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             Bukkit.getOnlinePlayers().forEach(p -> addPlayer(p, true));
             this.startTask();
         }, 5);
     }
 
     private void startTask() {
-        if (task != 0) {
-            Bukkit.getScheduler().cancelTask(task);
+        if (task != null) {
+            task.cancel();
         }
-        task = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin,
+        task = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                 () -> Bukkit.getOnlinePlayers().forEach(this::refreshPlayer),
-                10, plugin.getConfigManager().getSettings().getTaskInterval()).getTaskId();
+                10, plugin.getConfigManager().getSettings().getTaskInterval());
     }
 
     public void addPending(@NotNull Player player, @NotNull Runnable runnable) {
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> pending.put(player.getUniqueId(), runnable));
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> pending.put(player.getUniqueId(), runnable));
     }
 
     public void blockPlayer(@NotNull Player player) {
@@ -242,7 +243,7 @@ public class NameTagManager {
         final float viewDistance = plugin.getConfigManager().getSettings().getViewDistance();
 
 
-        plugin.getServer().getScheduler().runTask(plugin, () -> Bukkit.getOnlinePlayers().forEach(p -> {
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> Bukkit.getOnlinePlayers().forEach(p -> {
             setYOffset(p, yOffset);
             setViewDistance(p, viewDistance);
             refreshPlayer(p);
