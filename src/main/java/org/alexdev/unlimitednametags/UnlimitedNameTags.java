@@ -51,13 +51,10 @@ public final class UnlimitedNameTags extends JavaPlugin {
         vanishManager = new VanishManager(this);
         packetManager = new PacketManager(this);
         configManager = new ConfigManager(this);
-        final Optional<Throwable> error = configManager.loadConfigs();
-        if (error.isPresent()) {
-            getLogger().log(java.util.logging.Level.SEVERE, "Failed to load configuration", error.get());
-            getServer().getScheduler().runTask(this, () -> getServer().getPluginManager().disablePlugin(this));
+
+        if (!loadConfig()) {
             return;
         }
-
 
         loadCommands();
         loadListeners();
@@ -66,6 +63,16 @@ public final class UnlimitedNameTags extends JavaPlugin {
         UNTAPI.register(this);
         getLogger().info("API registered");
         getLogger().info("UnlimitedNameTags has been enabled!");
+    }
+
+    private boolean loadConfig() {
+        final Optional<Throwable> error = configManager.loadConfigs();
+        if (error.isPresent()) {
+            getLogger().log(java.util.logging.Level.SEVERE, "Failed to load configuration", error.get());
+            getServer().getScheduler().runTask(this, () -> getServer().getPluginManager().disablePlugin(this));
+            return false;
+        }
+        return true;
     }
 
     private void loadListeners() {

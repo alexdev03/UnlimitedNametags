@@ -45,6 +45,7 @@ public class PacketDisplayText {
         this.meta = (TextDisplayMeta) entity.getEntityMeta();
         this.blocked = Sets.newConcurrentHashSet();
         this.meta.setLineWidth(1000);
+        this.meta.setNotifyAboutChanges(false);
     }
 
     public void text(@NotNull Component text) {
@@ -94,8 +95,11 @@ public class PacketDisplayText {
 
         setPosition();
         entity.addViewer(player.getUniqueId());
+//        sendPassengersPacket(player);
 
-        sendPassengersPacket(player);
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            sendPassengersPacket(player);
+        });
     }
 
     public void sendPassengersPacket(@NotNull Player player) {

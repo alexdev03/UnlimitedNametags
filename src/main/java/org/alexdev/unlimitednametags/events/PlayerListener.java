@@ -34,13 +34,13 @@ public class PlayerListener implements Listener {
         this.trackedPlayers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
         plugin.getNametagManager().addPlayer(event.getPlayer(), false);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    public void onQuit(PlayerQuitEvent event) {
+    public void onQuit(@NotNull PlayerQuitEvent event) {
         plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
             plugin.getNametagManager().removePlayer(event.getPlayer(), true);
         }, 1);
@@ -64,14 +64,16 @@ public class PlayerListener implements Listener {
         }
 
         final Optional<PacketDisplayText> display = plugin.getNametagManager().getPacketDisplayText(target);
-        final Runnable runnable = () -> plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
+//        final Runnable runnable = () -> plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
 
         if (display.isEmpty()) {
-            plugin.getNametagManager().addPending(target, runnable);
+            //plugin.getNametagManager().addPending(target, runnable);
+            plugin.getLogger().warning("Display is empty for " + target.getName());
             return;
         }
 
-        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, runnable, 2);
+//        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, runnable, 2);
+        plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
     }
 
     @EventHandler

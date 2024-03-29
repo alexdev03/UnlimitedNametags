@@ -24,7 +24,6 @@ public class NameTagManager {
 
     private final UnlimitedNameTags plugin;
     private final Map<UUID, PacketDisplayText> nameTags;
-    private final Map<UUID, UUID> white;
     private final List<UUID> creating;
     private final List<UUID> blocked;
     private final Multimap<UUID, Runnable> pending;
@@ -34,9 +33,8 @@ public class NameTagManager {
         this.plugin = plugin;
         this.nameTags = Maps.newConcurrentMap();
         this.creating = Lists.newCopyOnWriteArrayList();
-        this.white = Maps.newConcurrentMap();
         this.blocked = Lists.newCopyOnWriteArrayList();
-        this.pending = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
+        this.pending = Multimaps.synchronizedMultimap(Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet));
         this.loadAll();
     }
 
@@ -57,7 +55,7 @@ public class NameTagManager {
     }
 
     public void addPending(@NotNull Player player, @NotNull Runnable runnable) {
-        pending.put(player.getUniqueId(), runnable);
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> pending.put(player.getUniqueId(), runnable));
     }
 
     public void blockPlayer(@NotNull Player player) {
@@ -86,11 +84,19 @@ public class NameTagManager {
             return;
         }
 
+        final PacketDisplayText display = new PacketDisplayText(plugin, player);
+        display.text(Component.empty());
+        display.spawn(player);
+
+        handleVanish(player, display);
+
+        nameTags.put(player.getUniqueId(), display);
+
         creating.add(player.getUniqueId());
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
-                .thenAccept(lines -> createDisplay(player, lines, nametag, startup))
+                .thenAccept(lines -> loadDisplay(player, lines, nametag, startup, display))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), throwable);
                     creating.remove(player.getUniqueId());
@@ -129,14 +135,14 @@ public class NameTagManager {
         });
     }
 
-    private void createDisplay(@NotNull Player player, @NotNull Component component,
-                               @NotNull Settings.NameTag nameTag, boolean startup) {
+    private void loadDisplay(@NotNull Player player, @NotNull Component component,
+                             @NotNull Settings.NameTag nameTag, boolean startup,
+                             @NotNull PacketDisplayText display) {
         try {
             final Location location = player.getLocation().clone();
             //add 1.80 to make a perfect tp animation
             location.setY(location.getY() + 1.80);
 
-            final PacketDisplayText display = new PacketDisplayText(plugin, player);
             nameTags.put(player.getUniqueId(), display);
             creating.remove(player.getUniqueId());
             display.getMeta().setUseDefaultBackground(false);
@@ -151,33 +157,34 @@ public class NameTagManager {
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
-            display.spawn(player);
+            display.refresh();
 
-            nameTags.put(player.getUniqueId(), display);
             creating.remove(player.getUniqueId());
 
-            pending.removeAll(player.getUniqueId()).forEach(r -> {
-//                plugin.getLogger().info("Running pending for " + player.getName());
-                r.run();
-            });
+            pending.removeAll(player.getUniqueId()).forEach(Runnable::run);
 
-            if(!startup) {
-                return;
-            }
-            final boolean isVanished = plugin.getVanishManager().isVanished(player);
+//            if(!startup) {
+//                return;
+//            }
 
-            //if player is vanished, hide display for all players except for who can see the player
-            Bukkit.getOnlinePlayers().stream()
-                    .filter(p -> p != player)
-                    .filter(p -> p.getLocation().getWorld() == player.getLocation().getWorld())
-                    .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
-                    .filter(p -> p.getLocation().distance(player.getLocation()) <= 250)
-                    .filter(p -> !display.canPlayerSee(p))
-                    .forEach(display::showToPlayer);
+            handleVanish(player, display);
             
         } catch (Throwable e) {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), e);
         }
+    }
+
+    private void handleVanish(@NotNull Player player, PacketDisplayText display) {
+        final boolean isVanished = plugin.getVanishManager().isVanished(player);
+
+        //if player is vanished, hide display for all players except for who can see the player
+        Bukkit.getOnlinePlayers().stream()
+                .filter(p -> p != player)
+                .filter(p -> p.getLocation().getWorld() == player.getLocation().getWorld())
+                .filter(p -> !isVanished || plugin.getVanishManager().canSee(p, player))
+                .filter(p -> p.getLocation().distance(player.getLocation()) <= 250)
+                .filter(p -> !display.canPlayerSee(p))
+                .forEach(display::showToPlayer);
     }
 
 

@@ -29,7 +29,7 @@ public class PacketManager {
     public PacketManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.initialize();
-        this.passengers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
+        this.passengers = Multimaps.synchronizedMultimap(Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet));
         this.executorService = Executors.newCachedThreadPool();
     }
 
@@ -39,8 +39,8 @@ public class PacketManager {
         entityIndex += random;
         final SpigotEntityLibPlatform platform = new SpigotEntityLibPlatform(plugin);
         APIConfig settings = new APIConfig(PacketEvents.getAPI())
-                .debugMode()
-                .tickTickables()
+//                .debugMode()
+//                .trackPlatformEntities();
                 .usePlatformLogger();
 
         EntityLib.init(platform, settings);
@@ -57,15 +57,18 @@ public class PacketManager {
     public void sendPassengersPacket(@NotNull Player player, @NotNull PacketDisplayText packetDisplayText) {
         final int entityId = packetDisplayText.getEntity().getEntityId();
         final int ownerId = packetDisplayText.getOwner().getEntityId();
-        final Set<Integer> passengers = Sets.newConcurrentHashSet(this.passengers.get(packetDisplayText.getOwner().getUniqueId()));
-        passengers.add(entityId);
-        final int[] passengersArray = passengers.stream().mapToInt(i -> i).toArray();
-        final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(ownerId, passengersArray);
-        PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
+        executorService.submit(() -> {
+            final Set<Integer> passengers = Sets.newConcurrentHashSet(this.passengers.get(packetDisplayText.getOwner().getUniqueId()));
+            passengers.add(entityId);
+            final int[] passengersArray = passengers.stream().mapToInt(i -> i).toArray();
+            final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(ownerId, passengersArray);
+            PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
+//            System.out.println("Sent passengers packet to " + player.getName() + " with " + Arrays.toString(passengersArray));
+        });
     }
 
     public void removePassenger(@NotNull Player player, int passenger) {
-        this.passengers.remove(player.getUniqueId(), passenger);
+        executorService.submit(() -> this.passengers.remove(player.getUniqueId(), passenger));
     }
 
     public synchronized int getEntityIndex() {
