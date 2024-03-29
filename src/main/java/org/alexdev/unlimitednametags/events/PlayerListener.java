@@ -43,33 +43,29 @@ public class PlayerListener implements Listener {
     }
 
     private void loadFoliaRespawnTask() {
-        if(!(plugin.getTaskScheduler() instanceof FoliaScheduler)) {
+        if (!(plugin.getTaskScheduler() instanceof FoliaScheduler)) {
             return;
         }
 
-        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
-            diedPlayers.forEach(player -> {
-                final Player p = plugin.getServer().getPlayer(player);
-                if(p == null || p.isDead()) {
-                    return;
-                }
-                plugin.getNametagManager().addPlayer(p, false);
-                diedPlayers.remove(player);
-            });
-        }, 1, 1);
+        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> diedPlayers.forEach(player -> {
+            final Player p = plugin.getServer().getPlayer(player);
+            if (p == null || p.isDead()) {
+                return;
+            }
+            plugin.getNametagManager().addPlayer(p, false);
+            diedPlayers.remove(player);
+        }), 1, 1);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
-        plugin.getNametagManager().addPlayer(event.getPlayer(), false);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), false), 1);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            plugin.getNametagManager().removePlayer(event.getPlayer(), true);
-        }, 1);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().removePlayer(event.getPlayer(), true), 1);
     }
 
     @EventHandler
@@ -153,7 +149,8 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
-        plugin.getNametagManager().addPlayer(event.getPlayer(), false);
+        diedPlayers.remove(event.getPlayer().getUniqueId());
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), false), 1);
     }
 
 }

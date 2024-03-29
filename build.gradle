@@ -60,7 +60,7 @@ dependencies {
     implementation "de.themoep:minedown-adventure:${minedownAdventureVersion}"
     implementation "com.github.alexdev03:drink:${drinkVersion}"
     implementation "com.github.Tofaa2.EntityLib:spigot:${EntityLibVersion}"
-    implementation "com.github.retrooper.packetevents:spigot:${packeteventsSpigotVersion}"
+    compileOnly "com.github.retrooper.packetevents:spigot:${packeteventsSpigotVersion}"
     implementation "com.github.Anon8281:UniversalScheduler:${universalSchedulerVersion}"
 }
 
@@ -70,8 +70,8 @@ shadowJar {
     relocate 'org.intellij', relocator + 'intellij'
     relocate 'de.themoep', relocator + 'themoep'
     relocate 'me.tofaa.entitylib', relocator + 'entitylib'
-    relocate 'com.github.retrooper.packetevents', relocator + 'packetevents.api'
-    relocate 'io.github.retrooper.packetevents', relocator + 'packetevents.impl'
+//    relocate 'com.github.retrooper.packetevents', relocator + 'packetevents.api'
+//    relocate 'io.github.retrooper.packetevents', relocator + 'packetevents.impl'
     relocate 'com.jonahseguin.drink', relocator + 'drink'
     relocate 'de.exlll.configlib', relocator + 'configlib'
     relocate 'javax.annotation', relocator + 'annotation'

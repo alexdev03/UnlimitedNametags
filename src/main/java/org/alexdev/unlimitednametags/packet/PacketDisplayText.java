@@ -97,9 +97,9 @@ public class PacketDisplayText {
         entity.addViewer(player.getUniqueId());
 //        sendPassengersPacket(player);
 
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             sendPassengersPacket(player);
-        });
+        }, 2);
     }
 
     public void sendPassengersPacket(@NotNull Player player) {

@@ -144,7 +144,6 @@ public class NameTagManager {
             //add 1.80 to make a perfect tp animation
             location.setY(location.getY() + 1.80);
 
-            nameTags.put(player.getUniqueId(), display);
             creating.remove(player.getUniqueId());
             display.getMeta().setUseDefaultBackground(false);
             display.text(component);
@@ -159,8 +158,6 @@ public class NameTagManager {
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
             display.refresh();
-
-            creating.remove(player.getUniqueId());
 
             pending.removeAll(player.getUniqueId()).forEach(Runnable::run);
 
