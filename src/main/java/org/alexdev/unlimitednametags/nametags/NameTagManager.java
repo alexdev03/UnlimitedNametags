@@ -10,6 +10,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Display;
@@ -19,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @Getter
 public class NameTagManager {
@@ -27,7 +29,6 @@ public class NameTagManager {
     private final Map<UUID, PacketDisplayText> nameTags;
     private final List<UUID> creating;
     private final List<UUID> blocked;
-    private final Multimap<UUID, Runnable> pending;
     private MyScheduledTask task;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
@@ -35,13 +36,12 @@ public class NameTagManager {
         this.nameTags = Maps.newConcurrentMap();
         this.creating = Lists.newCopyOnWriteArrayList();
         this.blocked = Lists.newCopyOnWriteArrayList();
-        this.pending = Multimaps.synchronizedMultimap(Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet));
         this.loadAll();
     }
 
     private void loadAll() {
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            Bukkit.getOnlinePlayers().forEach(p -> addPlayer(p, true));
+            Bukkit.getOnlinePlayers().forEach(this::addPlayer);
             this.startTask();
         }, 5);
     }
@@ -55,9 +55,6 @@ public class NameTagManager {
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
     }
 
-    public void addPending(@NotNull Player player, @NotNull Runnable runnable) {
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> pending.put(player.getUniqueId(), runnable));
-    }
 
     public void blockPlayer(@NotNull Player player) {
         blocked.add(player.getUniqueId());
@@ -67,7 +64,7 @@ public class NameTagManager {
         blocked.remove(player.getUniqueId());
     }
 
-    public void addPlayer(@NotNull Player player, boolean startup) {
+    public void addPlayer(@NotNull Player player) {
         if (nameTags.containsKey(player.getUniqueId())) {
             return;
         }
@@ -97,7 +94,7 @@ public class NameTagManager {
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
-                .thenAccept(lines -> loadDisplay(player, lines, nametag, startup, display))
+                .thenAccept(lines -> loadDisplay(player, lines, nametag, display))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), throwable);
                     creating.remove(player.getUniqueId());
@@ -137,7 +134,7 @@ public class NameTagManager {
     }
 
     private void loadDisplay(@NotNull Player player, @NotNull Component component,
-                             @NotNull Settings.NameTag nameTag, boolean startup,
+                             @NotNull Settings.NameTag nameTag,
                              @NotNull PacketDisplayText display) {
         try {
             final Location location = player.getLocation().clone();
@@ -159,14 +156,8 @@ public class NameTagManager {
 
             display.refresh();
 
-            pending.removeAll(player.getUniqueId()).forEach(Runnable::run);
-
-//            if(!startup) {
-//                return;
-//            }
-
             handleVanish(player, display);
-            
+
         } catch (Throwable e) {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), e);
         }
@@ -202,14 +193,22 @@ public class NameTagManager {
         });
     }
 
-    public void removePlayer(@NotNull Player player) {
-        removePlayer(player, false);
+    public void removeAllViewers(@NotNull Player player) {
+        final PacketDisplayText packetDisplayText = nameTags.get(player.getUniqueId());
+        if (packetDisplayText != null) {
+            packetDisplayText.setVisible(false);
+            packetDisplayText.clearViewers();
+        }
     }
 
-    public void removePlayerDisplay(@NotNull Player player) {
-        final PacketDisplayText packetDisplayText = nameTags.remove(player.getUniqueId());
+    public void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<UUID> tracked) {
+        final PacketDisplayText packetDisplayText = nameTags.get(player.getUniqueId());
         if (packetDisplayText != null) {
-            packetDisplayText.remove();
+            packetDisplayText.setVisible(true);
+            packetDisplayText.showToPlayers(tracked.stream()
+                    .map(Bukkit::getPlayer)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet()));
         }
     }
 
@@ -263,15 +262,24 @@ public class NameTagManager {
                     .map(Player::getName)
                     .toList();
 
-            Component text = Component.text(player.getName() + " -> " + " " + display.getEntity().getEntityId());
-            text = text.color(TextColor.color(0x00FF00));
-            text = text.hoverEvent(Component.text("Viewers: " + viewers));
+            Component text = getComponent(display, viewers, player);
 
             component.set(component.get().append(Component.text("\n")).append(text));
 
         });
 
         audience.sendMessage(component.get());
+    }
+
+    private static @NotNull Component getComponent(PacketDisplayText display, List<String> viewers, Player player) {
+        final Component hover = Component.text("Viewers: " + viewers).appendNewline()
+                .append(Component.text("Owner: " + display.getOwner().getName())).appendNewline()
+                .append(Component.text("Visible: " + display.isVisible())).appendNewline();
+
+        Component text = Component.text(player.getName() + " -> " + " " + display.getEntity().getEntityId());
+        text = text.color(TextColor.color(0x00FF00));
+        text = text.hoverEvent(hover.color(TextColor.color(Color.RED.asRGB())));
+        return text;
     }
 
     private void setYOffset(@NotNull Player player, float yOffset) {
@@ -351,7 +359,7 @@ public class NameTagManager {
         nameTags.forEach((uuid, display) -> {
             final Player owner = display.getOwner();
 
-            if(player.getLocation().getWorld() != owner.getLocation().getWorld()) {
+            if (player.getLocation().getWorld() != owner.getLocation().getWorld()) {
                 return;
             }
 

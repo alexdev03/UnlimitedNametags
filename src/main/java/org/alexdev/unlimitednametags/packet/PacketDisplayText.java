@@ -7,6 +7,7 @@ import com.github.retrooper.packetevents.util.Vector3f;
 import com.google.common.collect.Sets;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.SneakyThrows;
 import me.tofaa.entitylib.EntityLib;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
@@ -36,6 +37,8 @@ public class PacketDisplayText {
     private final Set<UUID> blocked;
     @Nullable
     private Component lastText;
+    @Setter
+    private boolean visible;
 
     public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner) {
         this.plugin = plugin;
@@ -89,13 +92,15 @@ public class PacketDisplayText {
         if (player == owner) {
             return;
         }
+        if (!visible) {
+            return;
+        }
         if (blocked.contains(player.getUniqueId())) {
             return;
         }
 
         setPosition();
         entity.addViewer(player.getUniqueId());
-//        sendPassengersPacket(player);
 
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             sendPassengersPacket(player);
@@ -147,6 +152,7 @@ public class PacketDisplayText {
     }
 
     public void spawn(@NotNull Player player) {
+        this.visible = true;
         entity.spawn(SpigotConversionUtil.fromBukkitLocation(player.getLocation()));
     }
 

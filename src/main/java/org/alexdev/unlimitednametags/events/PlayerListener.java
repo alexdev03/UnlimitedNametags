@@ -40,6 +40,15 @@ public class PlayerListener implements Listener {
         this.trackedPlayers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
         this.diedPlayers = Sets.newConcurrentHashSet();
         this.loadFoliaRespawnTask();
+        this.loadTracker();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void loadTracker() {
+        final Object trackedPlayersObject = System.getProperties().get("UnlimitedNameTags.trackedPlayers");
+        if (trackedPlayersObject instanceof Multimap<?, ?> multimap) {
+            this.trackedPlayers.putAll((Multimap<UUID, UUID>) multimap);
+        }
     }
 
     private void loadFoliaRespawnTask() {
@@ -52,14 +61,18 @@ public class PlayerListener implements Listener {
             if (p == null || p.isDead()) {
                 return;
             }
-            plugin.getNametagManager().addPlayer(p, false);
+            plugin.getNametagManager().addPlayer(p);
             diedPlayers.remove(player);
         }), 1, 1);
     }
 
+    public void onDisable() {
+        System.getProperties().put("UnlimitedNameTags.trackedPlayers", trackedPlayers);
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), false), 1);
+        plugin.getNametagManager().addPlayer(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -119,38 +132,40 @@ public class PlayerListener implements Listener {
             if (event.getNewEffect() == null || event.getNewEffect().getType() != PotionEffectType.INVISIBILITY) {
                 return;
             }
-            plugin.getNametagManager().removePlayerDisplay(player);
-            plugin.getNametagManager().blockPlayer(player);
+            plugin.getNametagManager().removeAllViewers(player);
         } else if (event.getAction() == EntityPotionEffectEvent.Action.REMOVED || event.getAction() == EntityPotionEffectEvent.Action.CLEARED) {
             if (event.getOldEffect() == null || event.getOldEffect().getType() != PotionEffectType.INVISIBILITY) {
                 return;
             }
-            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-                plugin.getNametagManager().unblockPlayer(player);
-                plugin.getNametagManager().addPlayer(player, false);
-            }, 2);
+            plugin.getNametagManager().showToTrackedPlayers(player, trackedPlayers.get(player.getUniqueId()));
+//            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+//                plugin.getNametagManager().addPlayer(player, false);
+//            }, 2);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().addPlayer(e.getPlayer(), false);
+            //plugin.getNametagManager().addPlayer(e.getPlayer(), false);
+            plugin.getNametagManager().removeAllViewers(e.getPlayer());
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().removePlayer(e.getPlayer());
+//            plugin.getNametagManager().removePlayer(e.getPlayer());
+            plugin.getNametagManager().removeAllViewers(e.getPlayer());
         }
     }
 
     @EventHandler
     public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
         diedPlayers.add(event.getEntity().getUniqueId());
-        plugin.getNametagManager().removePlayerDisplay(event.getEntity());
+        plugin.getNametagManager().removeAllViewers(event.getEntity());
     }
 
     @EventHandler
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), false), 1);
+//        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), false), 1);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer(), trackedPlayers.get(event.getPlayer().getUniqueId())), 1);
     }
 
 }

@@ -70,8 +70,6 @@ shadowJar {
     relocate 'org.intellij', relocator + 'intellij'
     relocate 'de.themoep', relocator + 'themoep'
     relocate 'me.tofaa.entitylib', relocator + 'entitylib'
-//    relocate 'com.github.retrooper.packetevents', relocator + 'packetevents.api'
-//    relocate 'io.github.retrooper.packetevents', relocator + 'packetevents.impl'
     relocate 'com.jonahseguin.drink', relocator + 'drink'
     relocate 'de.exlll.configlib', relocator + 'configlib'
     relocate 'javax.annotation', relocator + 'annotation'

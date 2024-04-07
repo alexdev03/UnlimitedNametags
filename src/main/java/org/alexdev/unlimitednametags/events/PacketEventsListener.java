@@ -5,7 +5,6 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
-import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.User;
@@ -13,7 +12,6 @@ import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import io.github.retrooper.packetevents.injector.SpigotChannelInjector;
@@ -65,19 +63,8 @@ public class PacketEventsListener extends PacketListenerAbstract {
         } else if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
             handleMetaData(event);
         }
-//        else if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY) {
-//            handleSpawn(event);
-//        }
     }
 
-    private void handleSpawn(PacketSendEvent event) {
-        WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
-        if (packet.getEntityType() != EntityTypes.TEXT_DISPLAY) {
-            return;
-        }
-        Player player = Bukkit.getPlayer(event.getUser().getUUID());
-//        System.out.println("Spawned entity: " + packet.getEntityId() + " with type: " + packet.getEntityType()  + " for player: " + player.getName());
-    }
 
     @Override
     public void onPacketReceive(@NotNull PacketReceiveEvent event) {

@@ -126,6 +126,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
         hooks.values().forEach(Hook::onDisable);
 
+        playerListener.onDisable();
         packetEventsListener.onDisable();
         nametagManager.removeAll();
         placeholderManager.close();

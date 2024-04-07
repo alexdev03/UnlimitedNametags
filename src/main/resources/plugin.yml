@@ -4,6 +4,8 @@ main: org.alexdev.unlimitednametags.UnlimitedNameTags
 api-version: '1.19'
 author: AlexDev_
 folia-supported: true
+depend:
+  - packetevents
 softdepend:
   - PlaceholderAPI
   - ProtocolLib
