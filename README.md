@@ -1,0 +1,1 @@
+Beta versions: https://modrinth.com/plugin/unlimitednametags
