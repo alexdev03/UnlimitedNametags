@@ -39,8 +39,6 @@ public class PacketManager {
         entityIndex += random;
         final SpigotEntityLibPlatform platform = new SpigotEntityLibPlatform(plugin);
         APIConfig settings = new APIConfig(PacketEvents.getAPI())
-//                .debugMode()
-//                .trackPlatformEntities();
                 .usePlatformLogger();
 
         EntityLib.init(platform, settings);
@@ -63,7 +61,6 @@ public class PacketManager {
             final int[] passengersArray = passengers.stream().mapToInt(i -> i).toArray();
             final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(ownerId, passengersArray);
             PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
-//            System.out.println("Sent passengers packet to " + player.getName() + " with " + Arrays.toString(passengersArray));
         });
     }
 
