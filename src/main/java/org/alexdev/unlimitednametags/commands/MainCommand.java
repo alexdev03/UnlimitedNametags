@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Formatter;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 @RequiredArgsConstructor
 @SuppressWarnings("unused")
@@ -26,5 +27,17 @@ public class MainCommand {
     @Require(value = "unt.debug", message = "&cYou do not have permission to debug the plugin")
     public void onDebug(@Sender CommandSender sender) {
         plugin.getNametagManager().debug(sender);
+    }
+
+    @Command(name = "hide", desc = "Hides the nametag", usage = "/unt hide")
+    @Require(value = "unt.hide", message = "&cYou do not have permission to hide the nametag")
+    public void onHide(@Sender CommandSender sender, Player target) {
+        plugin.getNametagManager().removeAllViewers(target);
+    }
+
+    @Command(name = "show", desc = "Shows the nametag", usage = "/unt show")
+    @Require(value = "unt.show", message = "&cYou do not have permission to show the nametag")
+    public void onShow(@Sender CommandSender sender, Player target) {
+        plugin.getNametagManager().showToTrackedPlayers(target, plugin.getPlayerListener().getTrackedPlayers().get(target.getUniqueId()));
     }
 }

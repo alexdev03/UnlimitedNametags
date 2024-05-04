@@ -4,6 +4,9 @@ main: org.alexdev.unlimitednametags.UnlimitedNameTags
 api-version: '1.19'
 author: AlexDev_
 folia-supported: true
+libraries:
+  - de.exlll:configlib-yaml:${configlibVersion}
+  - de.exlll:configlib-paper:${configlibVersion}
 depend:
   - packetevents
 softdepend:

@@ -99,15 +99,12 @@ public class PlayerListener implements Listener {
         }
 
         final Optional<PacketDisplayText> display = plugin.getNametagManager().getPacketDisplayText(target);
-//        final Runnable runnable = () -> plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
 
         if (display.isEmpty()) {
-            //plugin.getNametagManager().addPending(target, runnable);
             plugin.getLogger().warning("Display is empty for " + target.getName());
             return;
         }
 
-//        plugin.getTaskScheduler().runTaskLaterAsynchronously(runnable, 2);
         plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
     }
 
@@ -138,19 +135,15 @@ public class PlayerListener implements Listener {
                 return;
             }
             plugin.getNametagManager().showToTrackedPlayers(player, trackedPlayers.get(player.getUniqueId()));
-//            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-//                plugin.getNametagManager().addPlayer(player, false);
-//            }, 2);
+
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
-            //plugin.getNametagManager().addPlayer(e.getPlayer(), false);
-            plugin.getNametagManager().removeAllViewers(e.getPlayer());
+            plugin.getNametagManager().showToTrackedPlayers(e.getPlayer(), trackedPlayers.get(e.getPlayer().getUniqueId()));
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
-//            plugin.getNametagManager().removePlayer(e.getPlayer());
             plugin.getNametagManager().removeAllViewers(e.getPlayer());
         }
     }
@@ -164,7 +157,6 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
-//        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), false), 1);
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer(), trackedPlayers.get(event.getPlayer().getUniqueId())), 1);
     }
 

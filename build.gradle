@@ -1,8 +1,8 @@
 plugins {
     id 'java'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id "io.github.goooler.shadow" version "8.1.7"
     id 'maven-publish'
-    id 'xyz.jpenilla.run-paper' version '2.2.2'
+    id 'xyz.jpenilla.run-paper' version '2.3.0'
 }
 
 group = 'com.github.alexdev03'
@@ -49,18 +49,17 @@ dependencies {
     compileOnly "io.github.miniplaceholders:miniplaceholders-api:${miniplaceholdersApiVersion}"
     compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
     compileOnly "org.geysermc.floodgate:api:${floodgateApiVersion}"
+    compileOnly "de.exlll:configlib-yaml:${configlibVersion}"
+    compileOnly "de.exlll:configlib-paper:${configlibVersion}"
+    compileOnly "com.github.retrooper.packetevents:spigot:${packeteventsSpigotVersion}"
+    compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
 
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
-    compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
-
-
-    implementation "com.github.Exlll.ConfigLib:configlib-paper:${configlibPaperVersion}"
     implementation "org.jetbrains:annotations:${annotationsVersion}"
     implementation "de.themoep:minedown-adventure:${minedownAdventureVersion}"
     implementation "com.github.alexdev03:drink:${drinkVersion}"
     implementation "com.github.Tofaa2.EntityLib:spigot:${EntityLibVersion}"
-    compileOnly "com.github.retrooper.packetevents:spigot:${packeteventsSpigotVersion}"
     implementation "com.github.Anon8281:UniversalScheduler:${universalSchedulerVersion}"
 }
 
@@ -71,9 +70,7 @@ shadowJar {
     relocate 'de.themoep', relocator + 'themoep'
     relocate 'me.tofaa.entitylib', relocator + 'entitylib'
     relocate 'com.jonahseguin.drink', relocator + 'drink'
-    relocate 'de.exlll.configlib', relocator + 'configlib'
     relocate 'javax.annotation', relocator + 'annotation'
-    relocate 'org.snakeyaml', relocator + 'snakeyaml'
     relocate 'com.github.Anon8281.universalScheduler', relocator + 'universalScheduler'
 
     dependencies {
@@ -106,22 +103,24 @@ shadowJar {
 
 tasks {
     runServer {
-        minecraftVersion("1.20.4")
+        minecraftVersion("1.20.5")
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.5")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
-            url("https://download.luckperms.net/1532/bukkit/loader/LuckPerms-Bukkit-5.4.121.jar")
-            url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
+            url("https://download.luckperms.net/1539/bukkit/loader/LuckPerms-Bukkit-5.4.126.jar")
+            url("https://ci.ender.zone/job/EssentialsX/lastSuccessfulBuild/artifact/jars/EssentialsX-2.21.0-dev+81-cde7184.jar")
+            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.2.1.jar")
         }
     }
     runPaper.folia.registerTask() {
-        minecraftVersion("1.20.4")
+        minecraftVersion("1.20.5")
 
         downloadPlugins {
             github("Anon8281", "PlaceholderAPI", "1.1", "PlaceholderAPI-2.11.5-DEV-Folia.jar")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
             url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.117.jar")
+            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.2.1.jar")
         }
     }
 }
@@ -132,12 +131,8 @@ clean.delete "$rootDir/target"
 
 def targetJavaVersion = 17
 java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-    if (JavaVersion.current() < javaVersion) {
-        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-    }
+    sourceCompatibility = targetJavaVersion
+    targetCompatibility = 21
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -152,8 +147,7 @@ tasks.register('deleteClassFiles', Delete) {
 
 
 processResources {
-    def props = [version: version]
-    inputs.properties props
+    def props = project.properties
     filteringCharset 'UTF-8'
     filesMatching('plugin.yml') {
         expand props

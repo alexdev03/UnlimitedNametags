@@ -50,11 +50,11 @@ public final class UnlimitedNameTags extends JavaPlugin {
     @Override
     public void onEnable() {
         taskScheduler = UniversalScheduler.getScheduler(this);
+        configManager = new ConfigManager(this);
         nametagManager = new NameTagManager(this);
         placeholderManager = new PlaceholderManager(this);
         vanishManager = new VanishManager(this);
         packetManager = new PacketManager(this);
-        configManager = new ConfigManager(this);
 
         if (!loadConfig()) {
             getServer().getPluginManager().disablePlugin(this);
