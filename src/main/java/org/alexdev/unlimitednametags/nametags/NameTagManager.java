@@ -53,6 +53,13 @@ public class NameTagManager {
         task = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                 () -> Bukkit.getOnlinePlayers().forEach(this::refreshPlayer),
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
+
+        // Refresh passengers
+        plugin.getTaskScheduler().runTaskTimerAsynchronously(() ->
+                        Bukkit.getOnlinePlayers().forEach(player ->
+                                getPacketDisplayText(player)
+                                        .ifPresent(PacketDisplayText::sendPassengerPacketToViewers))
+                , 20, 20 * 5L);
     }
 
 

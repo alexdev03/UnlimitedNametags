@@ -111,6 +111,18 @@ public class PacketDisplayText {
         plugin.getPacketManager().sendPassengersPacket(player, this);
     }
 
+    public void sendPassengerPacketToViewers() {
+        if(!visible) {
+            return;
+        }
+        entity.getViewers().forEach(u -> {
+            final Player player = Bukkit.getPlayer(u);
+            if (player != null) {
+                sendPassengersPacket(player);
+            }
+        });
+    }
+
     @SneakyThrows
     private void setPosition() {
         final Location location = owner.getLocation().clone();
