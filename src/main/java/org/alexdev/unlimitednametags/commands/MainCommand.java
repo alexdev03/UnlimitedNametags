@@ -6,8 +6,11 @@ import com.jonahseguin.drink.annotation.Sender;
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Formatter;
+import org.alexdev.unlimitednametags.hook.OraxenHook;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @SuppressWarnings("unused")
@@ -39,5 +42,17 @@ public class MainCommand {
     @Require(value = "unt.show", message = "&cYou do not have permission to show the nametag")
     public void onShow(@Sender CommandSender sender, Player target) {
         plugin.getNametagManager().showToTrackedPlayers(target, plugin.getPlayerListener().getTrackedPlayers().get(target.getUniqueId()));
+    }
+
+    @Command(name = "test", desc = "Tests the plugin", usage = "/unt test")
+    public void onTest(@Sender Player sender) {
+        Optional<OraxenHook> oraxenHook = plugin.getHook(OraxenHook.class);
+        if (oraxenHook.isEmpty()) {
+            sender.sendMessage("OraxenHook is not enabled");
+            return;
+        }
+
+        double high = oraxenHook.get().getHigh(sender);
+        sender.sendMessage("High: " + high);
     }
 }

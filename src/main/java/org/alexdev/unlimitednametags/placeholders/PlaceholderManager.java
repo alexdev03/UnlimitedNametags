@@ -3,12 +3,13 @@ package org.alexdev.unlimitednametags.placeholders;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
-import org.bukkit.Bukkit;
+import org.alexdev.unlimitednametags.hook.OraxenHook;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -84,15 +85,26 @@ public class PlaceholderManager {
         return CompletableFuture.supplyAsync(() -> createComponent(player, lines), executorService);
     }
 
+    private static int MORE_LINES = 15;
+
     @NotNull
     private Component createComponent(@NotNull Player player, @NotNull List<String> strings) {
+        final double moreLines = plugin.getHook(OraxenHook.class).map(hook -> hook.getHigh(player)).orElse(0d);
+        if (moreLines > 0) {
+            strings = new ArrayList<>(strings);
+            int lines = (int) (moreLines / MORE_LINES);
+            for (int i = 0; i < lines; i++) {
+                strings.add(" ");
+            }
+        }
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
                 .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
                 .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
                 .map(this::formatPhases)
                 .map(t -> format(t, player))
                 .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
-                .toArray(Component[]::new)).compact();
+                .toArray(Component[]::new))
+                .compact();
     }
 
     @NotNull

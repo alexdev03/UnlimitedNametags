@@ -11,10 +11,7 @@ import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.events.PacketEventsListener;
 import org.alexdev.unlimitednametags.events.PlayerListener;
-import org.alexdev.unlimitednametags.hook.FloodgateHook;
-import org.alexdev.unlimitednametags.hook.Hook;
-import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
-import org.alexdev.unlimitednametags.hook.TypeWriterListener;
+import org.alexdev.unlimitednametags.hook.*;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.packet.PacketManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
@@ -99,6 +96,11 @@ public final class UnlimitedNameTags extends JavaPlugin {
         if (Bukkit.getPluginManager().isPluginEnabled("MiniPlaceholders")) {
             hooks.put(MiniPlaceholdersHook.class, new MiniPlaceholdersHook(this));
             getLogger().info("MiniPlaceholders found, hooking into it");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("Oraxen")) {
+            hooks.put(OraxenHook.class, new OraxenHook(this));
+            getLogger().info("Oraxen found, hooking into it");
         }
 
         hooks.values().forEach(Hook::onEnable);

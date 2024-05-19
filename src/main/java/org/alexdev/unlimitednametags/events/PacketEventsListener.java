@@ -13,7 +13,6 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEn
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
-import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import io.github.retrooper.packetevents.injector.SpigotChannelInjector;
 import io.github.retrooper.packetevents.util.viaversion.ViaVersionUtil;
 import lombok.RequiredArgsConstructor;
@@ -32,17 +31,17 @@ public class PacketEventsListener extends PacketListenerAbstract {
     private final UnlimitedNameTags plugin;
 
     public void onLoad() {
-        PacketEvents.setAPI(SpigotPacketEventsBuilder.build(plugin));
-        //Are all listeners read only?
-        PacketEvents.getAPI().getSettings().reEncodeByDefault(true)
-                .checkForUpdates(false)
-                .bStats(true);
-        PacketEvents.getAPI().load();
+//        PacketEvents.setAPI(SpigotPacketEventsBuilder.build(plugin));
+//        //Are all listeners read only?
+//        PacketEvents.getAPI().getSettings().reEncodeByDefault(true)
+//                .checkForUpdates(false)
+//                .bStats(true);
+//        PacketEvents.getAPI().load();
     }
 
     public void onEnable() {
         PacketEvents.getAPI().getEventManager().registerListener(this);
-        PacketEvents.getAPI().init();
+//        PacketEvents.getAPI().init();
         inject();
     }
 
@@ -51,7 +50,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
             final SpigotChannelInjector injector = (SpigotChannelInjector) PacketEvents.getAPI().getInjector();
             final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
 
-            injector.updatePlayer(user, player);
+//            injector.updatePlayer(user, player);
         });
     }
 
@@ -169,6 +168,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     public void onDisable() {
         PacketEvents.getAPI().getEventManager().unregisterListener(this);
-        PacketEvents.getAPI().terminate();
+//        PacketEvents.getAPI().terminate();
     }
 }

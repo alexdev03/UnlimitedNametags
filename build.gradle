@@ -38,6 +38,7 @@ repositories {
         name = "sonatype-oss-snapshots1"
         url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
     }
+    maven { url = "https://repo.oraxen.com/releases" }
 }
 
 dependencies {
@@ -53,6 +54,7 @@ dependencies {
     compileOnly "de.exlll:configlib-paper:${configlibVersion}"
     compileOnly "com.github.retrooper.packetevents:spigot:${packeteventsSpigotVersion}"
     compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
+    compileOnly 'io.th0rgal:oraxen:1.174.0'
 
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
