@@ -157,7 +157,7 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer(), trackedPlayers.get(event.getPlayer().getUniqueId())), 1);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer(), trackedPlayers.get(event.getPlayer().getUniqueId())), 15);
     }
 
 }

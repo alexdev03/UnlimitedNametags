@@ -39,9 +39,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
     @Override
     public void onLoad() {
         hooks = Maps.newConcurrentMap();
-        getLogger().info("PacketEvents found, hooking into it");
-        packetEventsListener = new PacketEventsListener(this);
-        packetEventsListener.onLoad();
     }
 
     @Override
@@ -80,6 +77,8 @@ public final class UnlimitedNameTags extends JavaPlugin {
         playerListener = new PlayerListener(this);
         Bukkit.getPluginManager().registerEvents(playerListener, this);
 
+        getLogger().info("PacketEvents found, hooking into it");
+        packetEventsListener = new PacketEventsListener(this);
         packetEventsListener.onEnable();
     }
 

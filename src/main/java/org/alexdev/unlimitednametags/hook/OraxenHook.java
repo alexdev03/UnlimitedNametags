@@ -86,7 +86,7 @@ public class OraxenHook extends Hook implements Listener {
         }
 
         final JsonObject head = display.getAsJsonObject("head");
-        final double scale = head.getAsJsonArray("scale").get(1).getAsDouble();
+        final double scale = head.has("scale") ? head.getAsJsonArray("scale").get(1).getAsDouble() : 1;
         highest *= scale;
         final double translation = head.getAsJsonArray("translation").get(1).getAsDouble();
 
