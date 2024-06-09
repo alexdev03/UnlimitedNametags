@@ -10,6 +10,7 @@ import io.papermc.paper.event.player.PlayerUntrackEntityEvent;
 import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,6 +25,7 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -34,12 +36,15 @@ public class PlayerListener implements Listener {
     @Getter
     private final Multimap<UUID, UUID> trackedPlayers;
     private final Set<UUID> diedPlayers;
+    private final Map<Integer, UUID> playerEntityId;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.trackedPlayers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
         this.diedPlayers = Sets.newConcurrentHashSet();
+        this.playerEntityId = Maps.newConcurrentMap();
         this.loadFoliaRespawnTask();
+        this.loadEntityIds();
         this.loadTracker();
     }
 
@@ -49,6 +54,10 @@ public class PlayerListener implements Listener {
         if (trackedPlayersObject instanceof Multimap<?, ?> multimap) {
             this.trackedPlayers.putAll((Multimap<UUID, UUID>) multimap);
         }
+    }
+
+    private void loadEntityIds() {
+        Bukkit.getOnlinePlayers().forEach(player -> playerEntityId.put(player.getEntityId(), player.getUniqueId()));
     }
 
     private void loadFoliaRespawnTask() {
@@ -66,19 +75,29 @@ public class PlayerListener implements Listener {
         }), 1, 1);
     }
 
+    public Optional<Player> getPlayerFromEntityId(int entityId) {
+        final UUID player = playerEntityId.get(entityId);
+        if (player == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(plugin.getServer().getPlayer(player));
+    }
+
     public void onDisable() {
         System.getProperties().put("UnlimitedNameTags.trackedPlayers", trackedPlayers);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
-        plugin.getNametagManager().addPlayer(event.getPlayer());
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 1);
+        playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().removePlayer(event.getPlayer(), true), 1);
+        playerEntityId.remove(event.getPlayer().getEntityId());
     }
 
     @EventHandler
@@ -91,21 +110,23 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        trackedPlayers.put(event.getPlayer().getUniqueId(), target.getUniqueId());
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            trackedPlayers.put(event.getPlayer().getUniqueId(), target.getUniqueId());
 
-        final boolean isVanished = plugin.getVanishManager().isVanished(target);
-        if (isVanished && !plugin.getVanishManager().canSee(event.getPlayer(), target)) {
-            return;
-        }
+            final boolean isVanished = plugin.getVanishManager().isVanished(target);
+            if (isVanished && !plugin.getVanishManager().canSee(event.getPlayer(), target)) {
+                return;
+            }
 
-        final Optional<PacketDisplayText> display = plugin.getNametagManager().getPacketDisplayText(target);
+            final Optional<PacketDisplayText> display = plugin.getNametagManager().getPacketDisplayText(target);
 
-        if (display.isEmpty()) {
-            plugin.getLogger().warning("Display is empty for " + target.getName());
-            return;
-        }
+            if (display.isEmpty()) {
+                plugin.getLogger().warning("Display is empty for " + target.getName());
+                return;
+            }
 
-        plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
+            plugin.getNametagManager().updateDisplay(event.getPlayer(), target);
+        }, 3);
     }
 
     @EventHandler
@@ -114,9 +135,11 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        trackedPlayers.remove(event.getPlayer().getUniqueId(), target.getUniqueId());
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
+            trackedPlayers.remove(event.getPlayer().getUniqueId(), target.getUniqueId());
 
-        plugin.getNametagManager().removeDisplay(event.getPlayer(), target);
+            plugin.getNametagManager().removeDisplay(event.getPlayer(), target);
+        });
     }
 
     @EventHandler
@@ -157,7 +180,9 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer(), trackedPlayers.get(event.getPlayer().getUniqueId())), 15);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            plugin.getNametagManager().getPacketDisplayText(event.getPlayer()).ifPresent(d -> d.setVisible(true));
+        }, 1);
     }
 
 }

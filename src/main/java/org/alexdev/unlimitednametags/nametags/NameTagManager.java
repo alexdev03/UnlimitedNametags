@@ -27,15 +27,17 @@ public class NameTagManager {
 
     private final UnlimitedNameTags plugin;
     private final Map<UUID, PacketDisplayText> nameTags;
-    private final List<UUID> creating;
-    private final List<UUID> blocked;
+    private final Map<Integer, PacketDisplayText> entityIdToDisplay;
+    private final Set<UUID> creating;
+    private final Set<UUID> blocked;
     private MyScheduledTask task;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.nameTags = Maps.newConcurrentMap();
-        this.creating = Lists.newCopyOnWriteArrayList();
-        this.blocked = Lists.newCopyOnWriteArrayList();
+        this.entityIdToDisplay = Maps.newConcurrentMap();
+        this.creating = Sets.newConcurrentHashSet();
+        this.blocked = Sets.newConcurrentHashSet();
         this.loadAll();
     }
 
@@ -96,6 +98,7 @@ public class NameTagManager {
         handleVanish(player, display);
 
         nameTags.put(player.getUniqueId(), display);
+        entityIdToDisplay.put(display.getEntity().getEntityId(), display);
 
         creating.add(player.getUniqueId());
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
@@ -190,6 +193,8 @@ public class NameTagManager {
             packetDisplayText.remove();
         }
 
+        entityIdToDisplay.remove(player.getEntityId());
+
         nameTags.forEach((uuid, display) -> {
             if (quit) {
                 display.handleQuit(player);
@@ -230,6 +235,7 @@ public class NameTagManager {
     public void removeAll() {
         nameTags.forEach((uuid, display) -> display.remove());
 
+        entityIdToDisplay.clear();
         nameTags.clear();
     }
 
@@ -340,7 +346,7 @@ public class NameTagManager {
 
     @NotNull
     public Optional<PacketDisplayText> getPacketDisplayText(int id) {
-        return nameTags.values().stream().filter(display -> display.getEntity().getEntityId() == id).findFirst();
+        return Optional.ofNullable(entityIdToDisplay.get(id));
     }
 
     public void updateDisplay(@NotNull Player player, @NotNull Player target) {

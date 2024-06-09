@@ -38,7 +38,7 @@ public class PacketManager {
         final int random = (int) (Math.random() * 1000000);
         entityIndex += random;
         final SpigotEntityLibPlatform platform = new SpigotEntityLibPlatform(plugin);
-        APIConfig settings = new APIConfig(PacketEvents.getAPI())
+        final APIConfig settings = new APIConfig(PacketEvents.getAPI())
                 .usePlatformLogger();
 
         EntityLib.init(platform, settings);

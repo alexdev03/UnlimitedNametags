@@ -56,7 +56,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
 
         final WrapperPlayClientEntityAction packet = new WrapperPlayClientEntityAction(event);
-        final Optional<? extends Player> player = Bukkit.getOnlinePlayers().stream().filter(p -> p.getEntityId() == packet.getEntityId()).findFirst();
+        final Optional<? extends Player> player = plugin.getPlayerListener().getPlayerFromEntityId(packet.getEntityId());
         if (player.isEmpty()) {
             return;
         }
@@ -68,7 +68,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     private void handlePassengers(PacketSendEvent event) {
         final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(event);
-        final Optional<? extends Player> player = Bukkit.getOnlinePlayers().stream().filter(p -> p.getEntityId() == packet.getEntityId()).findFirst();
+        final Optional<? extends Player> player = plugin.getPlayerListener().getPlayerFromEntityId(packet.getEntityId());
         if (player.isEmpty()) {
             return;
         }
