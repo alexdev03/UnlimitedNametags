@@ -3,7 +3,7 @@
 
 ## Overview
 
-The Unlimited Name Tags plugin is a server plugin designed to provide extensive customization and management of player name tags. It allows server administrators to customize how player names appear in-game, integrate with other plugins, and manage name tag settings with ease. This plugin requires Paper 1.19.4 or higher and PacketEvents to function.
+UnlimitedNameTags plugin is a server plugin designed to provide extensive customization and management of player name tags. It allows server administrators to customize how player names appear in-game, integrate with other plugins, and manage name tag settings with ease. This plugin requires Paper 1.19.4 or higher and PacketEvents to function.
 
 ## Features
 
