@@ -29,8 +29,8 @@ public class PacketManager {
     public PacketManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.initialize();
-        this.passengers = Multimaps.synchronizedMultimap(Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet));
-        this.executorService = Executors.newCachedThreadPool();
+        this.passengers = (Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet)); //Multimaps.synchronizedMultimap
+        this.executorService = Executors.newFixedThreadPool(4);
     }
 
     private void initialize() {
@@ -49,14 +49,16 @@ public class PacketManager {
     }
 
     public void setPassengers(@NotNull Player player, @NotNull Collection<Integer> passengers) {
-        executorService.submit(() -> this.passengers.replaceValues(player.getUniqueId(), passengers));
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
+            executorService.submit(() -> this.passengers.replaceValues(player.getUniqueId(), passengers));
+        });
     }
 
     public void sendPassengersPacket(@NotNull Player player, @NotNull PacketDisplayText packetDisplayText) {
         final int entityId = packetDisplayText.getEntity().getEntityId();
         final int ownerId = packetDisplayText.getOwner().getEntityId();
         executorService.submit(() -> {
-            final Set<Integer> passengers = Sets.newConcurrentHashSet(this.passengers.get(packetDisplayText.getOwner().getUniqueId()));
+            final Set<Integer> passengers = Sets.newHashSet(this.passengers.get(packetDisplayText.getOwner().getUniqueId()));
             passengers.add(entityId);
             final int[] passengersArray = passengers.stream().mapToInt(i -> i).toArray();
             final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(ownerId, passengersArray);

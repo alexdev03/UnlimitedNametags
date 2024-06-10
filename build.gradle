@@ -105,24 +105,23 @@ shadowJar {
 
 tasks {
     runServer {
-        minecraftVersion("1.20.5")
+        minecraftVersion("1.20.6")
 
         downloadPlugins {
-            hangar("PlaceholderAPI", "2.11.5")
+            hangar("PlaceholderAPI", "2.11.6")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
             url("https://download.luckperms.net/1539/bukkit/loader/LuckPerms-Bukkit-5.4.126.jar")
-            url("https://ci.ender.zone/job/EssentialsX/lastSuccessfulBuild/artifact/jars/EssentialsX-2.21.0-dev+81-cde7184.jar")
-            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.2.1.jar")
+            url("https://github.com/retrooper/packetevents/releases/download/v2.3.0/packetevents-spigot-2.3.0.jar")
         }
     }
     runPaper.folia.registerTask() {
-        minecraftVersion("1.20.5")
+        minecraftVersion("1.20.6")
 
         downloadPlugins {
-            github("Anon8281", "PlaceholderAPI", "1.1", "PlaceholderAPI-2.11.5-DEV-Folia.jar")
+            github("Anon8281", "PlaceholderAPI", "2.11.7", "PlaceholderAPI-2.11.7-DEV-Folia.jar")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
             url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.117.jar")
-            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.2.1.jar")
+            url("https://github.com/retrooper/packetevents/releases/download/v2.3.0/packetevents-spigot-2.3.0.jar")
         }
     }
 }

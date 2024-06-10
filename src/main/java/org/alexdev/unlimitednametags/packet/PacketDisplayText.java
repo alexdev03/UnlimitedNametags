@@ -37,6 +37,7 @@ public class PacketDisplayText {
     private final Set<UUID> blocked;
     @Nullable
     private Component lastText;
+    private long lastUpdate;
     @Setter
     private boolean visible;
 
@@ -49,15 +50,18 @@ public class PacketDisplayText {
         this.blocked = Sets.newConcurrentHashSet();
         this.meta.setLineWidth(1000);
         this.meta.setNotifyAboutChanges(false);
+        this.lastUpdate = System.currentTimeMillis();
     }
 
-    public void text(@NotNull Component text) {
+    public boolean text(@NotNull Component text) {
         fixViewers();
         if (lastText != null && lastText.equals(text)) {
-            return;
+            return false;
         }
         lastText = text;
         meta.setText(text);
+        lastUpdate = System.currentTimeMillis();
+        return true;
     }
 
     public void setBillboard(@NotNull Display.Billboard billboard) {

@@ -10,12 +10,12 @@ public final class DefaultVanishIntegration implements VanishIntegration {
 
     @Override
     public boolean canSee(@NotNull Player name, @NotNull Player other) {
-        return true;
+        return name.canSee(other);
     }
 
     @Override
     public boolean isVanished(@NotNull Player name) {
-        return false;
+        return name.hasMetadata("vanished");
     }
 
 }

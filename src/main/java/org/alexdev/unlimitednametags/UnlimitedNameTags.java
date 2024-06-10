@@ -83,10 +83,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
     }
 
     private void loadHooks() {
-        if (Bukkit.getPluginManager().isPluginEnabled("Floodgate")) {
-            hooks.put(FloodgateHook.class, new FloodgateHook(this));
-            getLogger().info("Floodgate found, hooking into it");
-        }
         if (Bukkit.getPluginManager().isPluginEnabled("TypeWriter")) {
             hooks.put(TypeWriterListener.class, new TypeWriterListener(this));
             getLogger().info("TypeWriter found, hooking into it");
@@ -114,11 +110,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
     public <H extends Hook> Optional<H> getHook(@NotNull Class<H> hookType) {
         return Optional.ofNullable(hooks.get(hookType)).map(hookType::cast);
-    }
-
-    @NotNull
-    public Optional<FloodgateHook> getFloodgateHook() {
-        return getHook(FloodgateHook.class);
     }
 
     @Override

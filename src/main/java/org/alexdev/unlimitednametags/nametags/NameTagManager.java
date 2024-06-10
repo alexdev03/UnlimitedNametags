@@ -53,7 +53,7 @@ public class NameTagManager {
             task.cancel();
         }
         task = plugin.getTaskScheduler().runTaskTimerAsynchronously(
-                () -> Bukkit.getOnlinePlayers().forEach(this::refreshPlayer),
+                () -> Bukkit.getOnlinePlayers().forEach(this::refresh),
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
 
         // Refresh passengers
@@ -112,7 +112,7 @@ public class NameTagManager {
                 });
     }
 
-    public void refresh(@NotNull Player player, boolean update) {
+    public void refresh(@NotNull Player player) {
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
         if (!nameTags.containsKey(player.getUniqueId())) {
@@ -120,20 +120,16 @@ public class NameTagManager {
         }
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
-                .thenAccept(lines -> editDisplay(player, lines, nametag, update))
+                .thenAccept(lines -> editDisplay(player, lines, nametag))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to edit nametag for " + player.getName(), throwable);
                     return null;
                 });
     }
 
-    public void refreshPlayer(@NotNull Player player) {
-        refresh(player, true);
-    }
-
-    private void editDisplay(@NotNull Player player, @NotNull Component component, @NotNull Settings.NameTag nameTag, boolean update) {
+    private void editDisplay(@NotNull Player player, @NotNull Component component, @NotNull Settings.NameTag nameTag) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            packetDisplayText.text(component);
+            boolean update = packetDisplayText.text(component);
             packetDisplayText.setBackgroundColor(nameTag.background().getColor());
             packetDisplayText.setShadowed(nameTag.background().shadowed());
             packetDisplayText.setSeeThrough(nameTag.background().seeThrough());
@@ -255,7 +251,7 @@ public class NameTagManager {
         plugin.getTaskScheduler().runTaskAsynchronously(() -> Bukkit.getOnlinePlayers().forEach(p -> {
             setYOffset(p, yOffset);
             setViewDistance(p, viewDistance);
-            refreshPlayer(p);
+            refresh(p);
         }));
         startTask();
     }
@@ -274,8 +270,9 @@ public class NameTagManager {
                     .filter(Objects::nonNull)
                     .map(Player::getName)
                     .toList();
+            final long lastUpdate = display.getLastUpdate();
 
-            Component text = getComponent(display, viewers, player);
+            Component text = getComponent(display, viewers, player, lastUpdate);
 
             component.set(component.get().append(Component.text("\n")).append(text));
 
@@ -284,10 +281,14 @@ public class NameTagManager {
         audience.sendMessage(component.get());
     }
 
-    private static @NotNull Component getComponent(PacketDisplayText display, List<String> viewers, Player player) {
+    @NotNull
+    private static Component getComponent(@NotNull PacketDisplayText display, @NotNull List<String> viewers,
+                                          @NotNull Player player, long lastUpdate) {
+        final int seconds = (int) ((System.currentTimeMillis() - lastUpdate) / 1000);
         final Component hover = Component.text("Viewers: " + viewers).appendNewline()
                 .append(Component.text("Owner: " + display.getOwner().getName())).appendNewline()
-                .append(Component.text("Visible: " + display.isVisible())).appendNewline();
+                .append(Component.text("Visible: " + display.isVisible())).appendNewline()
+                .append(Component.text("Last update: " + seconds + "s ago")).appendNewline();
 
         Component text = Component.text(player.getName() + " -> " + " " + display.getEntity().getEntityId());
         text = text.color(TextColor.color(0x00FF00));

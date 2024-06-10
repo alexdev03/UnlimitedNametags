@@ -1,10 +1,12 @@
 package org.alexdev.unlimitednametags.events;
 
 import com.github.Anon8281.universalScheduler.foliaScheduler.FoliaScheduler;
+import com.github.retrooper.packetevents.PacketEvents;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import io.github.retrooper.packetevents.util.viaversion.ViaVersionUtil;
 import io.papermc.paper.event.player.PlayerTrackEntityEvent;
 import io.papermc.paper.event.player.PlayerUntrackEntityEvent;
 import lombok.Getter;
@@ -37,12 +39,14 @@ public class PlayerListener implements Listener {
     private final Multimap<UUID, UUID> trackedPlayers;
     private final Set<UUID> diedPlayers;
     private final Map<Integer, UUID> playerEntityId;
+    private final Map<UUID, Integer> protocolVersion;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.trackedPlayers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
         this.diedPlayers = Sets.newConcurrentHashSet();
         this.playerEntityId = Maps.newConcurrentMap();
+        this.protocolVersion = Maps.newConcurrentMap();
         this.loadFoliaRespawnTask();
         this.loadEntityIds();
         this.loadTracker();
@@ -91,6 +95,18 @@ public class PlayerListener implements Listener {
     public void onJoin(@NotNull PlayerJoinEvent event) {
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 1);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
+        protocolVersion.put(event.getPlayer().getUniqueId(), getProtocolVersion(event.getPlayer()));
+    }
+
+    public int getProtocolVersion(@NotNull UUID player) {
+        return protocolVersion.get(player);
+    }
+
+    private int getProtocolVersion(@NotNull Player player) {
+        if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
+            return ViaVersionUtil.getProtocolVersion(player);
+        }
+        return PacketEvents.getAPI().getPlayerManager().getUser(player).getClientVersion().getProtocolVersion();
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -98,6 +114,7 @@ public class PlayerListener implements Listener {
         diedPlayers.remove(event.getPlayer().getUniqueId());
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().removePlayer(event.getPlayer(), true), 1);
         playerEntityId.remove(event.getPlayer().getEntityId());
+        protocolVersion.remove(event.getPlayer().getUniqueId());
     }
 
     @EventHandler

@@ -6,17 +6,14 @@ import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
-import io.github.retrooper.packetevents.util.viaversion.ViaVersionUtil;
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -82,15 +79,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private void handleTeams(@NotNull PacketSendEvent event) {
-        if(!(event.getPlayer() instanceof Player player)) {
-            return;
-        }
-        if (!plugin.getConfigManager().getSettings().isDisableDefaultNameTag() &&
-                !plugin.getConfigManager().getSettings().isDisableDefaultNameTagBedrock() &&
-                plugin.getFloodgateHook()
-                        .map(h -> h.isBedrock(player))
-                        .orElse(player.getName().startsWith("*"))
-        ) {
+        if (!plugin.getConfigManager().getSettings().isDisableDefaultNameTag()) {
             return;
         }
 
@@ -101,27 +90,13 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
     }
 
-    private int getProtocolVersion(@NotNull Player player) {
-        if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
-            return ViaVersionUtil.getProtocolVersion(player);
-        }
-        return PacketEvents.getAPI().getPlayerManager().getUser(player).getClientVersion().getProtocolVersion();
-    }
-
     private void handleMetaData(@NotNull PacketSendEvent event) {
         if (!(event.getPlayer() instanceof Player player)) {
             return;
         }
-        int protocol = getProtocolVersion(player);
-        final Optional<ClientVersion> clientVersionOptional = Arrays.stream(ClientVersion.values()).filter(p -> p.getProtocolVersion() == protocol).findFirst();
-        if (clientVersionOptional.isEmpty()) {
-            return;
-        }
-
-        final ClientVersion clientVersion = clientVersionOptional.get();
+        int protocol = plugin.getPlayerListener().getProtocolVersion(player.getUniqueId());
         //handle metadata for : bedrock players && client with version 1.20.1 or lower
-        if (clientVersion.isNewerThanOrEquals(ClientVersion.V_1_20_2) &&
-                !plugin.getFloodgateHook().map(h -> h.isBedrock(player)).orElse(player.getName().startsWith("*"))) {
+        if (protocol >= 764) {
             return;
         }
 
