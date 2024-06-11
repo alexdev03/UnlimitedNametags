@@ -45,15 +45,17 @@ public final class UnlimitedNameTags extends JavaPlugin {
     public void onEnable() {
         taskScheduler = UniversalScheduler.getScheduler(this);
         configManager = new ConfigManager(this);
+        if (!loadConfig()) {
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         nametagManager = new NameTagManager(this);
         placeholderManager = new PlaceholderManager(this);
         vanishManager = new VanishManager(this);
         packetManager = new PacketManager(this);
 
-        if (!loadConfig()) {
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
+
 
         loadCommands();
         loadListeners();

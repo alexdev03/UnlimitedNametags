@@ -98,7 +98,7 @@ public class OraxenHook extends Hook implements Listener {
 
     @NotNull
     private JsonObject parseFile(@NotNull File file) {
-        try (FileReader reader = new FileReader(file)) {
+        try (final FileReader reader = new FileReader(file)) {
             return jsonParser.parse(reader).getAsJsonObject();
         } catch (IOException e) {
             throw new RuntimeException("Failed to parse file: " + file, e);

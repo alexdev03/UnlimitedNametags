@@ -37,6 +37,7 @@ public class ConfigManager {
                     Settings.class,
                     properties
             );
+            checkData();
             return Optional.empty();
         } catch (Exception e) {
             return Optional.of(e);
@@ -51,5 +52,17 @@ public class ConfigManager {
                 .footer("Authors: AlexDev_")
                 .build();
         settings = YamlConfigurations.load(new File(plugin.getDataFolder(), "settings.yml").toPath(), Settings.class, properties);
+        checkData();
+    }
+
+    private void checkData() {
+        if (settings == null) {
+            throw new IllegalStateException("Settings not loaded");
+        }
+
+        if (settings.getDefaultNameTag().isEmpty()) {
+            throw new IllegalStateException("Default name tag is empty");
+        }
+
     }
 }

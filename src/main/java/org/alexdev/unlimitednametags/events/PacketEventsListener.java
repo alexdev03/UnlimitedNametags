@@ -63,7 +63,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
     }
 
-    private void handlePassengers(PacketSendEvent event) {
+    private void handlePassengers(@NotNull PacketSendEvent event) {
         final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(event);
         final Optional<? extends Player> player = plugin.getPlayerListener().getPlayerFromEntityId(packet.getEntityId());
         if (player.isEmpty()) {

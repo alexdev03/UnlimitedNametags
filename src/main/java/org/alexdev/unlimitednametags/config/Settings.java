@@ -11,20 +11,19 @@ import lombok.experimental.Accessors;
 import org.bukkit.Color;
 import org.bukkit.entity.Player;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Configuration
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
 @Getter
 public class Settings {
 
-    private Map<String, NameTag> nameTags = Map.of(
-            "staffer", new NameTag("nametag.staffer", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"),
-                    new IntegerBackground(true, 255, 0, 0, 255, true, false)),
-            "default", new NameTag("nametag.default", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%", "%vault_eco_balance_formatted%"),
-                    new HexBackground(false, "#ffffff", 255, false, false))
-    );
+    private Map<String, NameTag> nameTags = new LinkedHashMap<>() {{
+        put("staffer", new NameTag("nametag.staffer", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"),
+                new IntegerBackground(true, 255, 0, 0, 255, true, false)));
+        put("default", new NameTag("nametag.default", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%", "%vault_eco_balance_formatted%"),
+                new HexBackground(false, "#ffffff", 255, false, false)));
+    }};
 
     public NameTag getNametag(Player player) {
         return nameTags.entrySet().stream()
@@ -32,6 +31,10 @@ public class Settings {
                 .findFirst()
                 .map(Map.Entry::getValue)
                 .orElse(nameTags.get("default"));
+    }
+
+    protected Optional<NameTag> getDefaultNameTag() {
+        return Optional.ofNullable(nameTags.get("default"));
     }
 
     private int taskInterval = 20;

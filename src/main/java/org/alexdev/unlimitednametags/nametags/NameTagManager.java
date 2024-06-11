@@ -129,7 +129,7 @@ public class NameTagManager {
 
     private void editDisplay(@NotNull Player player, @NotNull Component component, @NotNull Settings.NameTag nameTag) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            boolean update = packetDisplayText.text(component);
+            final boolean update = packetDisplayText.text(component);
             packetDisplayText.setBackgroundColor(nameTag.background().getColor());
             packetDisplayText.setShadowed(nameTag.background().shadowed());
             packetDisplayText.setSeeThrough(nameTag.background().seeThrough());
