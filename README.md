@@ -55,6 +55,9 @@ We welcome contributions from the community! To contribute:
 4. Push your changes to your forked repository.
 5. Open a pull request to the main repository.
 
+## Where do you get the plugin
+You can buy the plugin on [BuiltByBit](https://builtbybit.com/resources/unlimitednametags.46172/)
+
 ## License
 
 This project is licensed under a custom License. See the `LICENSE` file for more details.
