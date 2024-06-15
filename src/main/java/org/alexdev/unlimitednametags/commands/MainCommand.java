@@ -41,7 +41,7 @@ public class MainCommand {
     @Command(name = "show", desc = "Shows the nametag", usage = "/unt show")
     @Require(value = "unt.show", message = "&cYou do not have permission to show the nametag")
     public void onShow(@Sender CommandSender sender, Player target) {
-        plugin.getNametagManager().showToTrackedPlayers(target, plugin.getPlayerListener().getTrackedPlayers().get(target.getUniqueId()));
+        plugin.getNametagManager().showToTrackedPlayers(target, plugin.getTrackerManager().getTrackedPlayers(target.getUniqueId()));
     }
 
     @Command(name = "test", desc = "Tests the plugin", usage = "/unt test")

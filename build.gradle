@@ -63,6 +63,9 @@ dependencies {
     implementation "com.github.alexdev03:drink:${drinkVersion}"
     implementation "com.github.Tofaa2.EntityLib:spigot:${EntityLibVersion}"
     implementation "com.github.Anon8281:UniversalScheduler:${universalSchedulerVersion}"
+    implementation "com.alessiodp.libby:libby-bukkit:${libbyVersion}"
+    implementation "net.kyori:adventure-text-serializer-legacy:4.17.0"
+    implementation "net.kyori:adventure-text-minimessage:4.17.0"
 }
 
 
@@ -74,6 +77,10 @@ shadowJar {
     relocate 'com.jonahseguin.drink', relocator + 'drink'
     relocate 'javax.annotation', relocator + 'annotation'
     relocate 'com.github.Anon8281.universalScheduler', relocator + 'universalScheduler'
+    relocate 'com.alessiodp.libby', relocator + 'libby'
+
+    relocate 'net.kyori.adventure.text.serializer.legacy', relocator + 'adventure.text.serializer.legacy'
+    relocate 'net.kyori.adventure.text.minimessage', relocator + 'adventure.text.minimessage'
 
     dependencies {
         exclude dependency(':slf4j-api')
@@ -86,9 +93,14 @@ shadowJar {
         exclude dependency('net.kyori:examination-string')
         exclude dependency('net.kyori:text')
         exclude dependency('net.kyori:adventure-text-serializer-gson')
-        exclude dependency('net.kyori:adventure-text-serializer-legacy')
+//        exclude dependency('net.kyori:adventure-text-serializer-legacy')
         exclude dependency('net.kyori:adventure-text-serializer-json')
     }
+
+//    relocate(
+//            "net.kyori.adventure.text.serializer.legacy",
+//            "io.github.retrooper.packetevents.adventure.serializer.legacy"
+//    )
 
     //mappings
     exclude 'assets/mappings/block/**'

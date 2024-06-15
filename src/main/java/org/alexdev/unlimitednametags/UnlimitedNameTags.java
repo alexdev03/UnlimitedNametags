@@ -9,9 +9,11 @@ import lombok.Getter;
 import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
-import org.alexdev.unlimitednametags.events.PacketEventsListener;
-import org.alexdev.unlimitednametags.events.PlayerListener;
-import org.alexdev.unlimitednametags.hook.*;
+import org.alexdev.unlimitednametags.events.*;
+import org.alexdev.unlimitednametags.hook.Hook;
+import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
+import org.alexdev.unlimitednametags.hook.OraxenHook;
+import org.alexdev.unlimitednametags.hook.TypeWriterListener;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.packet.PacketManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
@@ -26,6 +28,7 @@ import java.util.Optional;
 @Getter
 public final class UnlimitedNameTags extends JavaPlugin {
 
+    private boolean isPaper;
     private ConfigManager configManager;
     private NameTagManager nametagManager;
     private PlaceholderManager placeholderManager;
@@ -33,6 +36,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private PacketEventsListener packetEventsListener;
     private PacketManager packetManager;
     private PlayerListener playerListener;
+    private TrackerManager trackerManager;
     private Map<Class<? extends Hook>, Hook> hooks;
     private TaskScheduler taskScheduler;
 
@@ -43,6 +47,8 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        isPaper = isPaperSupported();
+
         taskScheduler = UniversalScheduler.getScheduler(this);
         configManager = new ConfigManager(this);
         if (!loadConfig()) {
@@ -50,11 +56,11 @@ public final class UnlimitedNameTags extends JavaPlugin {
             return;
         }
 
+        trackerManager = new TrackerManager(this);
         nametagManager = new NameTagManager(this);
         placeholderManager = new PlaceholderManager(this);
         vanishManager = new VanishManager(this);
         packetManager = new PacketManager(this);
-
 
 
         loadCommands();
@@ -79,9 +85,58 @@ public final class UnlimitedNameTags extends JavaPlugin {
         playerListener = new PlayerListener(this);
         Bukkit.getPluginManager().registerEvents(playerListener, this);
 
+        if (isPaper) {
+            getLogger().info("Paper found, using Paper's tracker");
+            Bukkit.getPluginManager().registerEvents(new PaperTrackerListener(this), this);
+        } else {
+            if (!isCorrectSpigotVersion()) {
+                getLogger().severe("Unsupported Spigot version, please use 1.20.2 or higher");
+                getServer().getPluginManager().disablePlugin(this);
+                return;
+            }
+            getLogger().info("Paper not found, using Spigot's tracker");
+            new SpigotTrackerListener(this);
+        }
+
         getLogger().info("PacketEvents found, hooking into it");
         packetEventsListener = new PacketEventsListener(this);
         packetEventsListener.onEnable();
+    }
+
+//    private void loadLibs() {
+//        final BukkitLibraryManager libraryManager = new BukkitLibraryManager(this);
+//        final List<Library> libraries = List.of(
+//                Library.builder()
+//                        .groupId("com.github.Anon8281")
+//                        .artifactId("universalScheduler")
+//                        .version("1.0.0")
+//                        .build(),
+//        );
+//
+//    }
+
+    private boolean isCorrectSpigotVersion() {
+        final String version = Bukkit.getServer().getBukkitVersion().split("-")[0];
+        final String[] split = version.split("\\.");
+        if (split.length < 2) {
+            return false;
+        }
+
+        final int major = Integer.parseInt(split[1]);
+        final int minor = Integer.parseInt(split[2]);
+
+        if (major < 20) {
+            return false;
+        } else return major != 20 || minor >= 2;
+    }
+
+    private boolean isPaperSupported() {
+        try {
+            Class.forName("io.papermc.paper.event.player.PlayerTrackEntityEvent");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     private void loadHooks() {
@@ -120,7 +175,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
         hooks.values().forEach(Hook::onDisable);
 
-        playerListener.onDisable();
+        trackerManager.onDisable();
         packetEventsListener.onDisable();
         nametagManager.removeAll();
         placeholderManager.close();

@@ -3,12 +3,12 @@ package org.alexdev.unlimitednametags.config;
 import de.themoep.minedown.adventure.MineDown;
 import lombok.AccessLevel;
 import lombok.Getter;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
+import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.regex.Matcher;
@@ -70,7 +70,7 @@ public enum Formatter {
     /**
      * Function to apply formatting to a string
      */
-    private final TriFunction<UnlimitedNameTags, Audience, String, Component> formatter;
+    private final TriFunction<UnlimitedNameTags, CommandSender, String, Component> formatter;
 
     @Getter(value = AccessLevel.PRIVATE)
     private final static Pattern HEX_PATTERN = Pattern.compile("&#[a-fA-F0-9]{6}");
@@ -92,7 +92,7 @@ public enum Formatter {
             .hexColors()
             .build();
 
-    Formatter(@NotNull TriFunction<UnlimitedNameTags, Audience, String, Component> formatter, @NotNull String name) {
+    Formatter(@NotNull TriFunction<UnlimitedNameTags, CommandSender, String, Component> formatter, @NotNull String name) {
         this.formatter = formatter;
         this.name = name;
     }
@@ -103,7 +103,7 @@ public enum Formatter {
      * @param text the string to format
      * @return the formatted string
      */
-    public Component format(@NotNull UnlimitedNameTags plugin, @NotNull Audience audience, @NotNull String text) {
+    public Component format(@NotNull UnlimitedNameTags plugin, @NotNull CommandSender audience, @NotNull String text) {
         return formatter.apply(plugin, audience, text);
     }
 
