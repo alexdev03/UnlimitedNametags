@@ -103,6 +103,10 @@ public class PacketDisplayText {
             return;
         }
 
+        if(!player.canSee(owner)) {
+            return;
+        }
+
         setPosition();
         entity.addViewer(player.getUniqueId());
 
