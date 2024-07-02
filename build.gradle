@@ -26,7 +26,7 @@ repositories {
         url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/'
     }
     maven { url = 'https://repo.minebench.de/' }
-    maven { url = 'https:/oss.sonatype.org/content/repositories/snapshots' }
+    maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' }
     maven { url = 'https://libraries.minecraft.net/' }
     maven { url = 'https://repo.codemc.io/repository/maven-public/' }
     maven { url = 'https://repo.opencollab.dev/maven-public/' }
