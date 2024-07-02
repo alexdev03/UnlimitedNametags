@@ -14,6 +14,7 @@ import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import me.tofaa.entitylib.meta.display.TextDisplayMeta;
 import me.tofaa.entitylib.wrapper.WrapperEntity;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -23,6 +24,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -204,6 +206,20 @@ public class PacketDisplayText {
 
     public void setTextOpacity(byte b) {
         meta.setTextOpacity(b);
+    }
+
+    @NotNull
+    public Map<String, String> properties() {
+        return Map.of(
+                "text", MiniMessage.miniMessage().serialize(meta.getText()),
+                "billboard", meta.getBillboardConstraints().name(),
+                "shadowed", String.valueOf(meta.isShadow()),
+                "seeThrough", String.valueOf(meta.isSeeThrough()),
+                "backgroundColor", String.valueOf(meta.getBackgroundColor()),
+                "transformation", meta.getTranslation().toString(),
+                "yOffset", String.valueOf(meta.getTranslation().getY()),
+                "viewRange", String.valueOf(meta.getViewRange())
+        );
     }
 
 }

@@ -23,7 +23,7 @@ public class MainCommand {
     public void onReload(@Sender CommandSender sender) {
         plugin.getConfigManager().reload();
         plugin.getNametagManager().reload();
-        sender.sendMessage(Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags has been reloaded!"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags has been reloaded!"));
     }
 
     @Command(name = "debug", desc = "Debugs the plugin", usage = "/unt debug")

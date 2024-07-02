@@ -41,7 +41,7 @@ public class SpigotTrackerListener {
                         .filter(Objects::nonNull)
                         .forEach(p -> plugin.getTrackerManager().handleAdd(player, p));
             }
-        }, 0, 10);
+        }, 0, 5);
     }
 
 }

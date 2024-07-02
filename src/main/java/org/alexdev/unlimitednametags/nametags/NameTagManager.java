@@ -2,7 +2,8 @@ package org.alexdev.unlimitednametags.nametags;
 
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.github.retrooper.packetevents.util.Vector3f;
-import com.google.common.collect.*;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -272,23 +273,27 @@ public class NameTagManager {
                     .toList();
             final long lastUpdate = display.getLastUpdate();
 
-            Component text = getComponent(display, viewers, player, lastUpdate);
-
+            final Component text = getComponent(display, viewers, player, lastUpdate);
             component.set(component.get().append(Component.text("\n")).append(text));
 
         });
 
-        audience.sendMessage(component.get());
+        plugin.getKyoriManager().sendMessage(audience, component.get());
     }
 
     @NotNull
-    private static Component getComponent(@NotNull PacketDisplayText display, @NotNull List<String> viewers,
+    private Component getComponent(@NotNull PacketDisplayText display, @NotNull List<String> viewers,
                                           @NotNull Player player, long lastUpdate) {
         final int seconds = (int) ((System.currentTimeMillis() - lastUpdate) / 1000);
-        final Component hover = Component.text("Viewers: " + viewers).appendNewline()
+        final Map<String, String> properties = display.properties();
+        Component hover = Component.text("Viewers: " + viewers).appendNewline()
                 .append(Component.text("Owner: " + display.getOwner().getName())).appendNewline()
                 .append(Component.text("Visible: " + display.isVisible())).appendNewline()
                 .append(Component.text("Last update: " + seconds + "s ago")).appendNewline();
+
+        for (Map.Entry<String, String> entry : properties.entrySet()) {
+            hover = hover.append(Component.text(entry.getKey() + ": " + entry.getValue())).appendNewline();
+        }
 
         Component text = Component.text(player.getName() + " -> " + " " + display.getEntity().getEntityId());
         text = text.color(TextColor.color(0x00FF00));

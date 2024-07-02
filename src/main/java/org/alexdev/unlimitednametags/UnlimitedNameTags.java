@@ -15,6 +15,7 @@ import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
 import org.alexdev.unlimitednametags.hook.OraxenHook;
 import org.alexdev.unlimitednametags.hook.TypeWriterListener;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
+import org.alexdev.unlimitednametags.packet.KyoriManager;
 import org.alexdev.unlimitednametags.packet.PacketManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
 import org.alexdev.unlimitednametags.vanish.VanishManager;
@@ -39,6 +40,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private TrackerManager trackerManager;
     private Map<Class<? extends Hook>, Hook> hooks;
     private TaskScheduler taskScheduler;
+    private KyoriManager kyoriManager;
 
     @Override
     public void onLoad() {
@@ -48,6 +50,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     @Override
     public void onEnable() {
         isPaper = isPaperSupported();
+        kyoriManager = new KyoriManager(this);
 
         taskScheduler = UniversalScheduler.getScheduler(this);
         configManager = new ConfigManager(this);
@@ -102,18 +105,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
         packetEventsListener = new PacketEventsListener(this);
         packetEventsListener.onEnable();
     }
-
-//    private void loadLibs() {
-//        final BukkitLibraryManager libraryManager = new BukkitLibraryManager(this);
-//        final List<Library> libraries = List.of(
-//                Library.builder()
-//                        .groupId("com.github.Anon8281")
-//                        .artifactId("universalScheduler")
-//                        .version("1.0.0")
-//                        .build(),
-//        );
-//
-//    }
 
     private boolean isCorrectSpigotVersion() {
         final String version = Bukkit.getServer().getBukkitVersion().split("-")[0];
