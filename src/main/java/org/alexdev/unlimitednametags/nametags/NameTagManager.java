@@ -54,7 +54,7 @@ public class NameTagManager {
             task.cancel();
         }
         task = plugin.getTaskScheduler().runTaskTimerAsynchronously(
-                () -> Bukkit.getOnlinePlayers().forEach(this::refresh),
+                () -> Bukkit.getOnlinePlayers().forEach(p -> refresh(p, false)),
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
 
         // Refresh passengers
@@ -113,7 +113,7 @@ public class NameTagManager {
                 });
     }
 
-    public void refresh(@NotNull Player player) {
+    public void refresh(@NotNull Player player, boolean force) {
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
         if (!nameTags.containsKey(player.getUniqueId())) {
@@ -121,16 +121,17 @@ public class NameTagManager {
         }
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
-                .thenAccept(lines -> editDisplay(player, lines, nametag))
+                .thenAccept(lines -> editDisplay(player, lines, nametag, force))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to edit nametag for " + player.getName(), throwable);
                     return null;
                 });
     }
 
-    private void editDisplay(@NotNull Player player, @NotNull Component component, @NotNull Settings.NameTag nameTag) {
+    private void editDisplay(@NotNull Player player, @NotNull Component component,
+                             @NotNull Settings.NameTag nameTag, boolean force) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            final boolean update = packetDisplayText.text(component);
+            final boolean update = packetDisplayText.text(component) || force;
             packetDisplayText.setBackgroundColor(nameTag.background().getColor());
             packetDisplayText.setShadowed(nameTag.background().shadowed());
             packetDisplayText.setSeeThrough(nameTag.background().seeThrough());
@@ -252,7 +253,7 @@ public class NameTagManager {
         plugin.getTaskScheduler().runTaskAsynchronously(() -> Bukkit.getOnlinePlayers().forEach(p -> {
             setYOffset(p, yOffset);
             setViewDistance(p, viewDistance);
-            refresh(p);
+            refresh(p, true);
         }));
         startTask();
     }

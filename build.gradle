@@ -8,10 +8,7 @@ plugins {
 group = 'com.github.alexdev03'
 
 repositories {
-    maven {
-        name = 'jitpack'
-        url = 'https://jitpack.io'
-    }
+
     mavenCentral()
     maven {
         name = "papermc-repo"
@@ -39,12 +36,18 @@ repositories {
         url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
     }
     maven { url = "https://repo.oraxen.com/releases" }
+    maven {
+        name = 'jitpack'
+        url = 'https://jitpack.io'
+    }
 }
 
 dependencies {
-    compileOnly "com.github.gabber235:typewriter:${typeWriterVersion}"
-    compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
     compileOnly "io.papermc.paper:paper-api:${paperApiVersion}"
+    compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
+    compileOnly ("com.github.gabber235:typewriter:${typeWriterVersion}" ) {
+        exclude group: 'io.papermc.paper' // Exclude Paper API
+    }
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     compileOnly "me.clip:placeholderapi:${placeholderapiVersion}"
     compileOnly "io.github.miniplaceholders:miniplaceholders-api:${miniplaceholdersApiVersion}"
@@ -117,8 +120,9 @@ tasks {
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
-            url("https://download.luckperms.net/1539/bukkit/loader/LuckPerms-Bukkit-5.4.126.jar")
+            url("https://download.luckperms.net/1552/bukkit/loader/LuckPerms-Bukkit-5.4.137.jar")
             url("https://github.com/retrooper/packetevents/releases/download/v2.3.0/packetevents-spigot-2.3.0.jar")
+            github("ViaVersion", "ViaVersion", "5.0.1", "ViaVersion-5.0.1.jar")
         }
     }
     runPaper.folia.registerTask() {
