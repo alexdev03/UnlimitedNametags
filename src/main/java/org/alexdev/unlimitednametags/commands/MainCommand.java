@@ -6,17 +6,23 @@ import com.jonahseguin.drink.annotation.Sender;
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Formatter;
-import org.alexdev.unlimitednametags.hook.OraxenHook;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
-import java.util.Optional;
 
 @RequiredArgsConstructor
 @SuppressWarnings("unused")
 public class MainCommand {
 
     private final UnlimitedNameTags plugin;
+
+    @Command(name = "unt", desc = "Main command for UnlimitedNameTags", usage = "/unt")
+    public void onMain(@Sender CommandSender sender) {
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags v" + plugin.getDescription().getVersion()));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt reload &7- Reloads the plugin"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt debug &7- Debugs the plugin"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt hide <player> &7- Hides the nametag"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt show <player> &7- Shows the nametag"));
+    }
 
     @Command(name = "reload", desc = "Reloads the plugin", usage = "/unt reload")
     @Require(value = "unt.reload", message = "&cYou do not have permission to reload the plugin")
@@ -42,17 +48,5 @@ public class MainCommand {
     @Require(value = "unt.show", message = "&cYou do not have permission to show the nametag")
     public void onShow(@Sender CommandSender sender, Player target) {
         plugin.getNametagManager().showToTrackedPlayers(target, plugin.getTrackerManager().getTrackedPlayers(target.getUniqueId()));
-    }
-
-    @Command(name = "test", desc = "Tests the plugin", usage = "/unt test")
-    public void onTest(@Sender Player sender) {
-        Optional<OraxenHook> oraxenHook = plugin.getHook(OraxenHook.class);
-        if (oraxenHook.isEmpty()) {
-            sender.sendMessage("OraxenHook is not enabled");
-            return;
-        }
-
-        double high = oraxenHook.get().getHigh(sender);
-        sender.sendMessage("High: " + high);
     }
 }

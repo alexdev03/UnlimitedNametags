@@ -56,7 +56,7 @@ We welcome contributions from the community! To contribute:
 5. Open a pull request to the main repository.
 
 ## Where do you get the plugin
-You can buy the plugin on [BuiltByBit](https://builtbybit.com/resources/unlimitednametags.46172/)
+You can buy the plugin on [BuiltByBit](https://builtbybit.com/resources/unlimitednametags.46172/) or on [SpigotMC](https://www.spigotmc.org/resources/unlimitednametags.117526/)
 
 ## License
 
@@ -64,6 +64,6 @@ This project is licensed under a custom License. See the `LICENSE` file for more
 
 ## Support
 
-For support, please open an issue on the GitHub repository.
+For support, you need to own a license of the plugin, then you can join the [Discord Server](https://discord.gg/W4Fu8fqCKs) and ask for help in the support channel
 
 ---
