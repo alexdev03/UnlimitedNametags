@@ -1,2 +1,9 @@
 jdk:
   - openjdk17
+
+stages:
+  - name: build
+
+build:
+  script:
+    - ./gradlew build
