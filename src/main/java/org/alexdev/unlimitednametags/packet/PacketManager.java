@@ -6,6 +6,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
 import me.tofaa.entitylib.APIConfig;
 import me.tofaa.entitylib.EntityLib;
 import me.tofaa.entitylib.spigot.SpigotEntityLibPlatform;
@@ -71,7 +72,8 @@ public class PacketManager {
     }
 
     public synchronized int getEntityIndex() {
-        return this.entityIndex++;
+        return SpigotReflectionUtil.generateEntityId();
+        //return this.entityIndex++;
     }
 
     public void removePassenger(int passenger) {

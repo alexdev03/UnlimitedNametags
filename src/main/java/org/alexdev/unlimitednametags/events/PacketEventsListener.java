@@ -14,6 +14,7 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTe
 import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -84,6 +85,9 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
 
         final WrapperPlayServerTeams packet = new WrapperPlayServerTeams(event);
+        if (packet.getPlayers().stream().noneMatch(p -> Bukkit.getPlayer(p) != null)) {
+            return;
+        }
         if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
             packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
             event.markForReEncode(true);

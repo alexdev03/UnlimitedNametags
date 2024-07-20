@@ -19,7 +19,6 @@ public class SpigotTrackerListener {
         startCheckTask();
     }
 
-    @SuppressWarnings("UnstableApiUsage")
     private void startCheckTask() {
         plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
             for (Player player : Bukkit.getOnlinePlayers()) {

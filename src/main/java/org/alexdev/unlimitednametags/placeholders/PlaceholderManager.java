@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class PlaceholderManager {
 
@@ -33,7 +34,7 @@ public class PlaceholderManager {
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.executorService = Executors.newCachedThreadPool(getThreadFactory());
+        this.executorService = Executors.newFixedThreadPool(15, getThreadFactory());
         this.papiManager = new PAPIManager(plugin);
         startIndexTask();
         createDecimalFormat();
@@ -85,7 +86,7 @@ public class PlaceholderManager {
         return CompletableFuture.supplyAsync(() -> createComponent(player, lines), executorService);
     }
 
-    private static int MORE_LINES = 15;
+    private static final int MORE_LINES = 15;
 
     @NotNull
     private Component createComponent(@NotNull Player player, @NotNull List<String> strings) {
@@ -103,7 +104,7 @@ public class PlaceholderManager {
                 .map(this::formatPhases)
                 .map(t -> format(t, player))
                 .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
-                .toArray(Component[]::new))
+                .collect(Collectors.toSet()))
                 .compact();
     }
 

@@ -40,12 +40,13 @@ repositories {
         name = 'jitpack'
         url = 'https://jitpack.io'
     }
+    maven { url = "https://repo.viaversion.com" }
 }
 
 dependencies {
     compileOnly "io.papermc.paper:paper-api:${paperApiVersion}"
     compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
-    compileOnly ("com.github.gabber235:typewriter:${typeWriterVersion}" ) {
+    compileOnly("com.github.gabber235:typewriter:${typeWriterVersion}") {
         exclude group: 'io.papermc.paper' // Exclude Paper API
     }
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
@@ -58,6 +59,9 @@ dependencies {
     compileOnly "com.github.retrooper:packetevents-spigot:${packeteventsSpigotVersion}"
     compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
     compileOnly 'io.th0rgal:oraxen:1.174.0'
+    compileOnly("com.viaversion:viaversion-api:${viaVersionApiVersion}") {
+        exclude group: 'io.papermc.paper' // Exclude Paper API
+    }
 
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 

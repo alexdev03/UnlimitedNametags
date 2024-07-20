@@ -4,7 +4,7 @@ import com.github.Anon8281.universalScheduler.foliaScheduler.FoliaScheduler;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import io.github.retrooper.packetevents.util.viaversion.ViaVersionUtil;
+import com.viaversion.viaversion.api.Via;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -14,10 +14,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerGameModeChangeEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
@@ -73,13 +70,16 @@ public class PlayerListener implements Listener {
         return Optional.ofNullable(plugin.getServer().getPlayer(player));
     }
 
-
+    @EventHandler
+    public void onLogin(PlayerLoginEvent event) {
+        protocolVersion.put(event.getPlayer().getUniqueId(), getProtocolVersion(event.getPlayer()));
+    }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
+        protocolVersion.put(event.getPlayer().getUniqueId(), getProtocolVersion(event.getPlayer()));
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 1);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
-        protocolVersion.put(event.getPlayer().getUniqueId(), getProtocolVersion(event.getPlayer()));
     }
 
     public int getProtocolVersion(@NotNull UUID player) {
@@ -88,7 +88,7 @@ public class PlayerListener implements Listener {
 
     private int getProtocolVersion(@NotNull Player player) {
         if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
-            return ViaVersionUtil.getProtocolVersion(player);
+            return Via.getAPI().getPlayerVersion(player.getUniqueId());
         }
         return PacketEvents.getAPI().getPlayerManager().getUser(player).getClientVersion().getProtocolVersion();
     }
