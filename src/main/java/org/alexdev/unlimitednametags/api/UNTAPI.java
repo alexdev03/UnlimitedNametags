@@ -94,6 +94,26 @@ public class UNTAPI {
         plugin.getVanishManager().unVanishPlayer(player);
     }
 
+    /**
+     * Hides the nametag of the specified player.
+     *
+     * @param player The player whose nametag should be hidden
+     * @throws IllegalArgumentException if player is null
+     */
+    public void hideNametag(@NotNull Player player) {
+        plugin.getNametagManager().removeAllViewers(player);
+    }
+
+    /**
+     * Shows the nametag of the specified player to the tracked players.
+     *
+     * @param player the player whose nametag should be shown
+     * @throws IllegalArgumentException if player is null
+     */
+    public void showNametag(@NotNull Player player) {
+        plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()));
+    }
+
 
     static final class NotRegisteredException extends IllegalStateException {
 
