@@ -26,8 +26,7 @@ public class UNTAPI {
     /**
      * Entrypoint to the {@link UNTAPI} API - returns an instance of the API
      *
-     * @return instance of the HuskSync API
-     * @since 1.5.2
+     * @return instance of the UnlimitedNameTags API
      */
     @NotNull
     public static UNTAPI getInstance() {
@@ -41,7 +40,6 @@ public class UNTAPI {
      * <b>(Internal use only)</b> - Register the API.
      *
      * @param plugin the plugin instance
-     * @since 3.0
      */
     @ApiStatus.Internal
     public static void register(@NotNull UnlimitedNameTags plugin) {
@@ -99,6 +97,7 @@ public class UNTAPI {
      *
      * @param player The player whose nametag should be hidden
      * @throws IllegalArgumentException if player is null
+     * @since 1.5
      */
     public void hideNametag(@NotNull Player player) {
         plugin.getNametagManager().removeAllViewers(player);
@@ -109,6 +108,7 @@ public class UNTAPI {
      *
      * @param player the player whose nametag should be shown
      * @throws IllegalArgumentException if player is null
+     * @since 1.5
      */
     public void showNametag(@NotNull Player player) {
         plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()));
