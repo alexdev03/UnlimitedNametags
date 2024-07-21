@@ -16,7 +16,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 public class PlaceholderManager {
 
@@ -56,19 +55,19 @@ public class PlaceholderManager {
     }
 
     private void startIndexTask() {
-        plugin.getTaskScheduler().runTaskTimerAsynchronously( () -> {
+        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
             index -= 1;
             if (index == 0) {
                 index = 16777215;
             }
         }, 0, 1);
-        plugin.getTaskScheduler().runTaskTimerAsynchronously( () -> {
+        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
             mmIndex -= 1;
             if (mmIndex == 1) {
                 mmIndex = maxMIndex;
             }
         }, 0, 2);
-        plugin.getTaskScheduler().runTaskTimerAsynchronously( () -> {
+        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
             mGIndex += 0.1;
             if (mGIndex >= 1d) {
                 mGIndex = minMGIndex;
@@ -99,12 +98,12 @@ public class PlaceholderManager {
             }
         }
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
-                .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
-                .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
-                .map(this::formatPhases)
-                .map(t -> format(t, player))
-                .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
-                .collect(Collectors.toSet()))
+                        .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
+                        .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
+                        .map(this::formatPhases)
+                        .map(t -> format(t, player))
+                        .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
+                        .toList())
                 .compact();
     }
 
