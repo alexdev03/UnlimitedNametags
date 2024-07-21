@@ -16,6 +16,7 @@ public class MainCommand {
     private final UnlimitedNameTags plugin;
 
     @Command(name = "unt", desc = "Main command for UnlimitedNameTags", usage = "/unt")
+    @SuppressWarnings("deprecation")
     public void onMain(@Sender CommandSender sender) {
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags v" + plugin.getDescription().getVersion()));
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt reload &7- Reloads the plugin"));

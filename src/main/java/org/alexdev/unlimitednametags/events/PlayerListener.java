@@ -70,11 +70,6 @@ public class PlayerListener implements Listener {
         return Optional.ofNullable(plugin.getServer().getPlayer(player));
     }
 
-    @EventHandler
-    public void onLogin(PlayerLoginEvent event) {
-        protocolVersion.put(event.getPlayer().getUniqueId(), getProtocolVersion(event.getPlayer()));
-    }
-
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
         protocolVersion.put(event.getPlayer().getUniqueId(), getProtocolVersion(event.getPlayer()));

@@ -11,20 +11,20 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEn
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
-import lombok.RequiredArgsConstructor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
-import java.util.Optional;
+import java.util.*;
 
-@RequiredArgsConstructor
 public class PacketEventsListener extends PacketListenerAbstract {
 
     private final UnlimitedNameTags plugin;
+
+    public PacketEventsListener(UnlimitedNameTags plugin) {
+        this.plugin = plugin;
+    }
 
     public void onEnable() {
         PacketEvents.getAPI().getEventManager().registerListener(this);
@@ -85,9 +85,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
 
         final WrapperPlayServerTeams packet = new WrapperPlayServerTeams(event);
-        if (packet.getPlayers().stream().noneMatch(p -> Bukkit.getPlayer(p) != null)) {
-            return;
-        }
         if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
             packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
             event.markForReEncode(true);
@@ -105,15 +102,13 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
 
         final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
-        final @NotNull Optional<PacketDisplayText> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
-
+        final Optional<PacketDisplayText> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
         if (textDisplay.isEmpty()) {
             return;
         }
 
         for (final EntityData eData : packet.getEntityMetadata()) {
             if (eData.getIndex() == 11) {
-
                 final Vector3f old = (Vector3f) eData.getValue();
                 final Vector3f newV = new Vector3f(old.getX(), old.getY() + 0.45f, old.getZ());
                 eData.setValue(newV);
