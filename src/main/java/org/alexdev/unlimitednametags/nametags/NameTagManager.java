@@ -2,6 +2,7 @@ package org.alexdev.unlimitednametags.nametags;
 
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.github.retrooper.packetevents.util.Vector3f;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
@@ -31,12 +32,14 @@ public class NameTagManager {
     private final Map<Integer, PacketDisplayText> entityIdToDisplay;
     private final Set<UUID> creating;
     private final Set<UUID> blocked;
+    private final List<MyScheduledTask> tasks;
     private MyScheduledTask task;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.nameTags = Maps.newConcurrentMap();
         this.entityIdToDisplay = Maps.newConcurrentMap();
+        this.tasks = Lists.newCopyOnWriteArrayList();
         this.creating = Sets.newConcurrentHashSet();
         this.blocked = Sets.newConcurrentHashSet();
         this.loadAll();
@@ -50,19 +53,20 @@ public class NameTagManager {
     }
 
     private void startTask() {
-        if (task != null) {
-            task.cancel();
-        }
-        task = plugin.getTaskScheduler().runTaskTimerAsynchronously(
+        tasks.forEach(MyScheduledTask::cancel);
+        final MyScheduledTask refresh = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                 () -> Bukkit.getOnlinePlayers().forEach(p -> refresh(p, false)),
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
 
         // Refresh passengers
-        plugin.getTaskScheduler().runTaskTimerAsynchronously(() ->
+        final MyScheduledTask passengers = plugin.getTaskScheduler().runTaskTimerAsynchronously(() ->
                         Bukkit.getOnlinePlayers().forEach(player ->
                                 getPacketDisplayText(player)
                                         .ifPresent(PacketDisplayText::sendPassengerPacketToViewers))
                 , 20, 20 * 5L);
+
+        tasks.add(refresh);
+        tasks.add(passengers);
     }
 
 
@@ -171,7 +175,7 @@ public class NameTagManager {
         }
     }
 
-    private void handleVanish(@NotNull Player player, PacketDisplayText display) {
+    private void handleVanish(@NotNull Player player, @NotNull PacketDisplayText display) {
         final boolean isVanished = plugin.getVanishManager().isVanished(player);
 
         //if player is vanished, hide display for all players except for who can see the player
