@@ -4,13 +4,16 @@ import com.google.common.collect.Sets;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public class SpigotTrackerListener {
+public class SpigotTrackerListener implements Listener {
 
     private final UnlimitedNameTags plugin;
 
@@ -41,6 +44,12 @@ public class SpigotTrackerListener {
                         .forEach(p -> plugin.getTrackerManager().handleAdd(player, p));
             }
         }, 0, 5);
+    }
+
+    @EventHandler
+    private void onQuit(PlayerQuitEvent event) {
+        final Player player = event.getPlayer();
+        plugin.getTrackerManager().handleQuit(player);
     }
 
 }

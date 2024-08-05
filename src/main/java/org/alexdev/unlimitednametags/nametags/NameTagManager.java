@@ -6,6 +6,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
+import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -15,7 +16,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
@@ -33,7 +33,6 @@ public class NameTagManager {
     private final Set<UUID> creating;
     private final Set<UUID> blocked;
     private final List<MyScheduledTask> tasks;
-    private MyScheduledTask task;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -156,7 +155,8 @@ public class NameTagManager {
             creating.remove(player.getUniqueId());
             display.getMeta().setUseDefaultBackground(false);
             display.text(component);
-            display.setBillboard(Display.Billboard.CENTER);
+//            display.setBillboard(Display.Billboard.CENTER);
+            display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
             display.setShadowed(nameTag.background().shadowed());
             display.setSeeThrough(nameTag.background().seeThrough());
             //background color, if disabled, set to transparent
@@ -252,11 +252,12 @@ public class NameTagManager {
     public void reload() {
         final float yOffset = plugin.getConfigManager().getSettings().getYOffset();
         final float viewDistance = plugin.getConfigManager().getSettings().getViewDistance();
-
+        final AbstractDisplayMeta.BillboardConstraints billboard = plugin.getConfigManager().getSettings().getDefaultBillboard();
 
         plugin.getTaskScheduler().runTaskAsynchronously(() -> Bukkit.getOnlinePlayers().forEach(p -> {
             setYOffset(p, yOffset);
             setViewDistance(p, viewDistance);
+            setBillBoard(p, billboard);
             refresh(p, true);
         }));
         startTask();
@@ -309,6 +310,12 @@ public class NameTagManager {
     private void setYOffset(@NotNull Player player, float yOffset) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
             packetDisplayText.setYOffset(yOffset);
+        });
+    }
+
+    private void setBillBoard(@NotNull Player player, AbstractDisplayMeta.BillboardConstraints billboard) {
+        getPacketDisplayText(player).ifPresent(packetDisplayText -> {
+            packetDisplayText.setBillboard(billboard);
         });
     }
 

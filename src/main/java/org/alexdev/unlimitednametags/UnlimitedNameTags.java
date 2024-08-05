@@ -2,10 +2,13 @@ package org.alexdev.unlimitednametags;
 
 import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.jonahseguin.drink.CommandService;
 import com.jonahseguin.drink.Drink;
 import lombok.Getter;
+import net.byteflux.libby.BukkitLibraryManager;
+import net.byteflux.libby.Library;
 import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
@@ -23,8 +26,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Getter
 public final class UnlimitedNameTags extends JavaPlugin {
@@ -50,6 +55,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     @Override
     public void onEnable() {
         isPaper = isPaperSupported();
+        loadLibraries().join();
         kyoriManager = new KyoriManager(this);
 
         taskScheduler = UniversalScheduler.getScheduler(this);
@@ -84,6 +90,28 @@ public final class UnlimitedNameTags extends JavaPlugin {
         return true;
     }
 
+    private CompletableFuture<Void> loadLibraries() {
+        if (isPaper) {
+            return CompletableFuture.completedFuture(null);
+        }
+        final BukkitLibraryManager bukkitLibraryManager = new BukkitLibraryManager(this);
+        bukkitLibraryManager.addMavenCentral();
+
+        final List<Library> libraries = Lists.newArrayList(
+                Library.builder()
+                        .groupId("net{}kyori")
+                        .artifactId("adventure-text-minimessage")
+                        .version("4.17.0")
+                        .relocate("net{}]kyori{}adventure{}text{}serializer", "io{}github{}retrooper{}packetevents{}adventure{}serializer")
+                        .build()
+
+        );
+
+        return CompletableFuture.runAsync(() -> {
+            libraries.forEach(bukkitLibraryManager::loadLibrary);
+        });
+    }
+
     private void loadListeners() {
         playerListener = new PlayerListener(this);
         Bukkit.getPluginManager().registerEvents(playerListener, this);
@@ -98,7 +126,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
                 return;
             }
             getLogger().info("Paper not found, using Spigot's tracker");
-            new SpigotTrackerListener(this);
+            Bukkit.getPluginManager().registerEvents(new SpigotTrackerListener(this), this);
         }
 
         getLogger().info("PacketEvents found, hooking into it");

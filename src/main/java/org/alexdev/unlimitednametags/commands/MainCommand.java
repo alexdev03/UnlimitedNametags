@@ -4,6 +4,7 @@ import com.jonahseguin.drink.annotation.Command;
 import com.jonahseguin.drink.annotation.Require;
 import com.jonahseguin.drink.annotation.Sender;
 import lombok.RequiredArgsConstructor;
+import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Formatter;
 import org.bukkit.command.CommandSender;
@@ -50,4 +51,31 @@ public class MainCommand {
     public void onShow(@Sender CommandSender sender, Player target) {
         plugin.getNametagManager().showToTrackedPlayers(target, plugin.getTrackerManager().getTrackedPlayers(target.getUniqueId()));
     }
+
+    @Command(name = "refresh", desc = "Refreshes the nametag of a player for you", usage = "/unt refresh")
+    @Require(value = "unt.refresh", message = "&cYou do not have permission to refresh the nametag")
+    public void onRefresh(@Sender Player sender, Player target) {
+        plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
+            packetDisplayText.refreshForPlayer(sender);
+        });
+    }
+
+    @Command(name = "billboard", desc = "Sets the default billboard", usage = "/unt billboard")
+    @Require(value = "unt.billboard", message = "&cYou do not have permission to set the default billboard")
+    public void onBillboard(@Sender CommandSender sender, AbstractDisplayMeta.BillboardConstraints billboardConstraints) {
+        plugin.getConfigManager().getSettings().setDefaultBillboard(billboardConstraints);
+        plugin.getConfigManager().save();
+        plugin.getNametagManager().reload();
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aDefault billboard set to " + billboardConstraints.name()));
+    }
+
+    @Command(name = "formatter", desc = "Sets the default formatter", usage = "/unt formatter")
+    @Require(value = "unt.formatter", message = "&cYou do not have permission to set the default formatter")
+    public void onFormatter(@Sender CommandSender sender, Formatter formatter) {
+        plugin.getConfigManager().getSettings().setFormat(formatter);
+        plugin.getConfigManager().save();
+        plugin.getNametagManager().reload();
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aDefault formatter set to " + formatter.name()));
+    }
+
 }

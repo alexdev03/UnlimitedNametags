@@ -41,6 +41,8 @@ repositories {
         url = 'https://jitpack.io'
     }
     maven { url = "https://repo.viaversion.com" }
+    maven { url = "https://maven.evokegames.gg/snapshots" }
+    maven {url = 'https://repo.alessiodp.com/releases'}
 }
 
 dependencies {
@@ -48,6 +50,7 @@ dependencies {
     compileOnly "net.kyori:adventure-api:${adventureApiVersion}"
     compileOnly("com.github.gabber235:typewriter:${typeWriterVersion}") {
         exclude group: 'io.papermc.paper' // Exclude Paper API
+        exclude group: 'com.github.Tofaa2.EntityLib'
     }
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     compileOnly "me.clip:placeholderapi:${placeholderapiVersion}"
@@ -68,10 +71,12 @@ dependencies {
     implementation "org.jetbrains:annotations:${annotationsVersion}"
     implementation "de.themoep:minedown-adventure:${minedownAdventureVersion}"
     implementation "com.github.alexdev03:drink:${drinkVersion}"
-    implementation "com.github.Tofaa2.EntityLib:spigot:${EntityLibVersion}"
+    implementation "me.tofaa.entitylib:spigot:${EntityLibVersion}"
     implementation "com.github.Anon8281:UniversalScheduler:${universalSchedulerVersion}"
-    implementation "net.kyori:adventure-text-serializer-legacy:${adventureTextSerializerLegacyVersion}"
-    implementation "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
+
+    compileOnly "net.kyori:adventure-text-serializer-legacy:${adventureTextSerializerLegacyVersion}"
+    compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
+    implementation "net.byteflux:libby-bukkit:${libbyBukkitVersion}"
 }
 
 
@@ -83,9 +88,8 @@ shadowJar {
     relocate 'com.jonahseguin.drink', relocator + 'drink'
     relocate 'javax.annotation', relocator + 'annotation'
     relocate 'com.github.Anon8281.universalScheduler', relocator + 'universalScheduler'
-
-    relocate 'net.kyori.adventure.text.serializer.legacy', relocator + 'adventure.text.serializer.legacy'
-    relocate 'net.kyori.adventure.text.minimessage', relocator + 'adventure.text.minimessage'
+    relocate 'net.kyori.adventure.text.serializer', 'io.github.retrooper.packetevents.adventure.serializer'
+    relocate 'net.byteflux.libby', relocator + 'libby.bukkit'
 
 
     dependencies {
@@ -124,8 +128,9 @@ tasks {
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
+            url("https://github.com/MiniPlaceholders/Player-Expansion/releases/download/1.2.0/MiniPlaceholders-Player-Expansion-1.2.0.jar")
             url("https://download.luckperms.net/1552/bukkit/loader/LuckPerms-Bukkit-5.4.137.jar")
-            url("https://github.com/retrooper/packetevents/releases/download/v2.3.0/packetevents-spigot-2.3.0.jar")
+            url("https://github.com/retrooper/packetevents/releases/download/v2.4.0/packetevents-spigot-2.4.0.jar")
             github("ViaVersion", "ViaVersion", "5.0.1", "ViaVersion-5.0.1.jar")
         }
     }
@@ -136,7 +141,7 @@ tasks {
             github("Anon8281", "PlaceholderAPI", "2.11.7", "PlaceholderAPI-2.11.7-DEV-Folia.jar")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
             url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.117.jar")
-            url("https://github.com/retrooper/packetevents/releases/download/v2.3.0/packetevents-spigot-2.3.0.jar")
+            url("https://github.com/retrooper/packetevents/releases/download/v2.4.0/packetevents-spigot-2.4.0.jar")
         }
     }
 }

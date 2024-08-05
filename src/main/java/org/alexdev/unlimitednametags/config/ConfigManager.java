@@ -14,6 +14,13 @@ import java.util.Optional;
 @Getter
 public class ConfigManager {
 
+    private static final YamlConfigurationProperties PROPERTIES = ConfigLib.BUKKIT_DEFAULT_PROPERTIES.toBuilder()
+            .charset(StandardCharsets.UTF_8)
+            .outputNulls(true)
+            .inputNulls(false)
+            .footer("Authors: AlexDev_")
+            .build();
+
     private final UnlimitedNameTags plugin;
     private Settings settings;
 
@@ -23,19 +30,13 @@ public class ConfigManager {
 
     @NotNull
     public Optional<Throwable> loadConfigs() {
-        final YamlConfigurationProperties properties = ConfigLib.BUKKIT_DEFAULT_PROPERTIES.toBuilder()
-                .charset(StandardCharsets.UTF_8)
-                .outputNulls(true)
-                .inputNulls(false)
-                .footer("Authors: AlexDev_")
-                .build();
         final File settingsFile = new File(plugin.getDataFolder(), "settings.yml");
 
         try {
             settings = YamlConfigurations.update(
                     settingsFile.toPath(),
                     Settings.class,
-                    properties
+                    PROPERTIES
             );
             checkData();
             return Optional.empty();
@@ -45,13 +46,7 @@ public class ConfigManager {
     }
 
     public void reload() {
-        final YamlConfigurationProperties properties = ConfigLib.BUKKIT_DEFAULT_PROPERTIES.toBuilder()
-                .charset(StandardCharsets.UTF_8)
-                .outputNulls(true)
-                .inputNulls(false)
-                .footer("Authors: AlexDev_")
-                .build();
-        settings = YamlConfigurations.load(new File(plugin.getDataFolder(), "settings.yml").toPath(), Settings.class, properties);
+        settings = YamlConfigurations.load(new File(plugin.getDataFolder(), "settings.yml").toPath(), Settings.class, PROPERTIES);
         checkData();
     }
 
@@ -64,5 +59,9 @@ public class ConfigManager {
             throw new IllegalStateException("Default name tag is empty");
         }
 
+    }
+
+    public void save() {
+        YamlConfigurations.save(new File(plugin.getDataFolder(), "settings.yml").toPath(), Settings.class, settings, PROPERTIES);
     }
 }

@@ -24,7 +24,7 @@ public class TrackerManager {
         loadTracker();
     }
 
-    @SuppressWarnings({"UnstableApiUsage", "deprecation"})
+    @SuppressWarnings({"deprecation"})
     private void loadTracker() {
         final boolean isPaper = plugin.isPaper();
         Bukkit.getOnlinePlayers().forEach(player -> {
@@ -76,7 +76,13 @@ public class TrackerManager {
 
             plugin.getNametagManager().removeDisplay(player, target);
         });
+    }
 
+    public void handleQuit(@NotNull Player player) {
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
+            trackedPlayers.removeAll(player.getUniqueId());
+            trackedPlayers.values().remove(player.getUniqueId());
+        });
     }
 
 

@@ -7,11 +7,16 @@ import de.exlll.configlib.PolymorphicTypes;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.Accessors;
+import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import org.bukkit.Color;
 import org.bukkit.entity.Player;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Configuration
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
@@ -24,6 +29,10 @@ public class Settings {
         put("default", new NameTag("nametag.default", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%", "%vault_eco_balance_formatted%"),
                 new HexBackground(false, "#ffffff", 255, false, false)));
     }};
+
+    @Setter
+    @Comment("The default billboard constraints for the nametag. CENTER, HORIZONTAL, VERTICAL, FIXED)")
+    private AbstractDisplayMeta.BillboardConstraints defaultBillboard = AbstractDisplayMeta.BillboardConstraints.CENTER;
 
     public NameTag getNametag(Player player) {
         return nameTags.entrySet().stream()
@@ -50,6 +59,7 @@ public class Settings {
             Take note that UNIVERSAL is the most resource intensive but it supports all formatting options. \
 
             (&x&0&8&4&c&f&bc LEGACY OF LEGACY - &#084cfbc LEGACY - &#084cfbc& MINEDOWN - <color:#084cfbc> MINIMESSAGE)""")
+    @Setter
     private Formatter format = Formatter.LEGACY;
 
     @Comment("Whether to disable the default name tag or not.")

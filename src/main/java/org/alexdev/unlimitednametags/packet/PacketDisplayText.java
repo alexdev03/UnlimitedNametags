@@ -9,7 +9,6 @@ import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
-import me.tofaa.entitylib.EntityLib;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import me.tofaa.entitylib.meta.display.TextDisplayMeta;
 import me.tofaa.entitylib.wrapper.WrapperEntity;
@@ -31,7 +30,6 @@ import java.util.UUID;
 @Getter
 public class PacketDisplayText {
 
-    private static final int startId = 1000000;
     private final UnlimitedNameTags plugin;
     private final WrapperEntity entity;
     private final TextDisplayMeta meta;
@@ -47,7 +45,7 @@ public class PacketDisplayText {
         this.plugin = plugin;
         this.owner = owner;
         final int randomId = plugin.getPacketManager().getEntityIndex();
-        this.entity = EntityLib.getApi().createEntity(UUID.randomUUID(), randomId, EntityTypes.TEXT_DISPLAY);
+        this.entity = new WrapperEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
         this.meta = (TextDisplayMeta) entity.getEntityMeta();
         this.blocked = Sets.newConcurrentHashSet();
         this.meta.setLineWidth(1000);
@@ -68,6 +66,10 @@ public class PacketDisplayText {
 
     public void setBillboard(@NotNull Display.Billboard billboard) {
         meta.setBillboardConstraints(AbstractDisplayMeta.BillboardConstraints.valueOf(billboard.name()));
+    }
+
+    public void setBillboard(@NotNull AbstractDisplayMeta.BillboardConstraints billboard) {
+        meta.setBillboardConstraints(billboard);
     }
 
     public void setShadowed(boolean shadowed) {
@@ -181,6 +183,11 @@ public class PacketDisplayText {
     public void refresh() {
         fixViewers();
         entity.refresh();
+    }
+
+    public void refreshForPlayer(@NotNull Player player) {
+        final var packet = meta.createPacket();
+        PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
     }
 
     private void fixViewers() {

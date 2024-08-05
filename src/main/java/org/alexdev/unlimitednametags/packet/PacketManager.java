@@ -25,7 +25,6 @@ public class PacketManager {
     private final UnlimitedNameTags plugin;
     private final Multimap<UUID, Integer> passengers;
     private final ExecutorService executorService;
-    private int entityIndex;
 
     public PacketManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -35,13 +34,9 @@ public class PacketManager {
     }
 
     private void initialize() {
-        entityIndex = 1_000_000_000;
-        final int random = (int) (Math.random() * 1000000);
-        entityIndex += random;
         final SpigotEntityLibPlatform platform = new SpigotEntityLibPlatform(plugin);
         final APIConfig settings = new APIConfig(PacketEvents.getAPI())
                 .usePlatformLogger();
-
         EntityLib.init(platform, settings);
     }
 
@@ -73,7 +68,6 @@ public class PacketManager {
 
     public synchronized int getEntityIndex() {
         return SpigotReflectionUtil.generateEntityId();
-        //return this.entityIndex++;
     }
 
     public void removePassenger(int passenger) {
