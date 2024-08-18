@@ -61,7 +61,7 @@ public class TrackerManager {
             final Optional<PacketDisplayText> display = plugin.getNametagManager().getPacketDisplayText(target);
 
             if (display.isEmpty()) {
-                plugin.getLogger().warning("Display is empty for " + target.getName());
+//                plugin.getLogger().warning("Display is empty for " + target.getName());
                 return;
             }
 

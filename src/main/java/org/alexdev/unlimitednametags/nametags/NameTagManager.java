@@ -94,8 +94,8 @@ public class NameTagManager {
             blockPlayer(player);
             return;
         }
-
-        final PacketDisplayText display = new PacketDisplayText(plugin, player);
+        final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
+        final PacketDisplayText display = new PacketDisplayText(plugin, player, nametag);
         display.text(Component.empty());
         display.spawn(player);
 
@@ -105,7 +105,6 @@ public class NameTagManager {
         entityIdToDisplay.put(display.getEntity().getEntityId(), display);
 
         creating.add(player.getUniqueId());
-        final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
                 .thenAccept(lines -> loadDisplay(player, lines, nametag, display))
@@ -134,6 +133,9 @@ public class NameTagManager {
     private void editDisplay(@NotNull Player player, @NotNull Component component,
                              @NotNull Settings.NameTag nameTag, boolean force) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
+            if(!packetDisplayText.getNameTag().equals(nameTag)) {
+                packetDisplayText.setNameTag(nameTag);
+            }
             final boolean update = packetDisplayText.text(component) || force;
             packetDisplayText.setBackgroundColor(nameTag.background().getColor());
             packetDisplayText.setShadowed(nameTag.background().shadowed());
@@ -155,7 +157,6 @@ public class NameTagManager {
             creating.remove(player.getUniqueId());
             display.getMeta().setUseDefaultBackground(false);
             display.text(component);
-//            display.setBillboard(Display.Billboard.CENTER);
             display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
             display.setShadowed(nameTag.background().shadowed());
             display.setSeeThrough(nameTag.background().seeThrough());
@@ -243,7 +244,9 @@ public class NameTagManager {
 
     public void updateSneaking(@NotNull Player player, boolean sneaking) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            packetDisplayText.setSeeThrough(!sneaking);
+            if(packetDisplayText.getNameTag().background().seeThrough()) {
+                packetDisplayText.setSeeThrough(!sneaking);
+            }
             packetDisplayText.setTextOpacity((byte) (sneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
             packetDisplayText.refresh();
         });
@@ -314,15 +317,11 @@ public class NameTagManager {
     }
 
     private void setBillBoard(@NotNull Player player, AbstractDisplayMeta.BillboardConstraints billboard) {
-        getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            packetDisplayText.setBillboard(billboard);
-        });
+        getPacketDisplayText(player).ifPresent(packetDisplayText -> packetDisplayText.setBillboard(billboard));
     }
 
     private void setViewDistance(@NotNull Player player, float viewDistance) {
-        getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            packetDisplayText.setViewRange(viewDistance);
-        });
+        getPacketDisplayText(player).ifPresent(packetDisplayText -> packetDisplayText.setViewRange(viewDistance));
     }
 
 
@@ -381,9 +380,7 @@ public class NameTagManager {
         if (player == target) {
             return;
         }
-        getPacketDisplayText(target).ifPresent(packetDisplayText -> {
-            packetDisplayText.hideFromPlayer(player);
-        });
+        getPacketDisplayText(target).ifPresent(packetDisplayText -> packetDisplayText.hideFromPlayer(player));
     }
 
     public void updateDisplaysForPlayer(@NotNull Player player) {

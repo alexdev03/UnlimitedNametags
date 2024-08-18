@@ -65,20 +65,19 @@ dependencies {
     compileOnly("com.viaversion:viaversion-api:${viaVersionApiVersion}") {
         exclude group: 'io.papermc.paper' // Exclude Paper API
     }
-
-    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    compileOnly "net.kyori:adventure-text-serializer-legacy:${adventureTextSerializerLegacyVersion}"
+    compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
+    implementation "org.bstats:bstats-bukkit:${bstatsBukkitVersion}"
 
     implementation "org.jetbrains:annotations:${annotationsVersion}"
     implementation "de.themoep:minedown-adventure:${minedownAdventureVersion}"
     implementation "com.github.alexdev03:drink:${drinkVersion}"
     implementation "me.tofaa.entitylib:spigot:${EntityLibVersion}"
     implementation "com.github.Anon8281:UniversalScheduler:${universalSchedulerVersion}"
-
-    compileOnly "net.kyori:adventure-text-serializer-legacy:${adventureTextSerializerLegacyVersion}"
-    compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
     implementation "net.byteflux:libby-bukkit:${libbyBukkitVersion}"
-}
 
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+}
 
 shadowJar {
     relocate 'org.jetbrains', relocator + 'jetbrains'
@@ -90,6 +89,7 @@ shadowJar {
     relocate 'com.github.Anon8281.universalScheduler', relocator + 'universalScheduler'
     relocate 'net.kyori.adventure.text.serializer', 'io.github.retrooper.packetevents.adventure.serializer'
     relocate 'net.byteflux.libby', relocator + 'libby.bukkit'
+    relocate 'org.bstats', relocator + 'bstats'
 
 
     dependencies {

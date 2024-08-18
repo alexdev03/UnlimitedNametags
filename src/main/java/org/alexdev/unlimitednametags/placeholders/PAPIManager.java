@@ -17,7 +17,12 @@ public class PAPIManager {
 
     @NotNull
     public String setPlaceholders(Player player, String text) {
-        return PlaceholderAPI.setPlaceholders(player, text);
+        try {
+            return PlaceholderAPI.setPlaceholders(player, text);
+        } catch (Throwable e) {
+            plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to set placeholders for text: " + text, e);
+            return text;
+        }
     }
 
 }

@@ -6,6 +6,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.jonahseguin.drink.CommandService;
 import com.jonahseguin.drink.Drink;
+import io.github.retrooper.packetevents.bstats.Metrics;
 import lombok.Getter;
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;
@@ -75,6 +76,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
         loadCommands();
         loadListeners();
         loadHooks();
+        loadStats();
 
         UNTAPI.register(this);
         getLogger().info("API registered");
@@ -182,6 +184,23 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
         drink.register(new MainCommand(this), "unt", "unlimitednametags");
         drink.registerCommands();
+    }
+
+    private void loadStats() {
+        final Metrics metrics = new Metrics(this, 23081);
+        metrics.addCustomChart(new Metrics.SimplePie("paper", () -> String.valueOf(isPaper)));
+        metrics.addCustomChart(new Metrics.AdvancedPie("nametags", () -> {
+            final Map<String, Integer> map = Maps.newHashMap();
+            configManager.getSettings().getNameTags().forEach((key, value) -> {
+               final int count = (int) nametagManager.getNameTags().values().stream()
+                       .filter(n -> n.getNameTag().equals(value))
+                        .count();
+                 map.put(key, count);
+            });
+            return map;
+        }));
+        metrics.addCustomChart(new Metrics.SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
+        metrics.addCustomChart(new Metrics.SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
     }
 
     public <H extends Hook> Optional<H> getHook(@NotNull Class<H> hookType) {

@@ -36,11 +36,8 @@ public enum Formatter {
     ),
     UNIVERSAL(
             (plugin, player, text) -> {
-                text = text.replaceAll(getLEGACY_RESET(), getREPLACE_RESET());
                 text = getHEX().serialize(getSTUPID().deserialize(text));
-                text = replaceHexColorCodes(text);
-                text = text.replaceAll(getREPLACE_RESET(), getLEGACY_RESET());
-                final Component component = MINEDOWN.formatter.apply(plugin, player, text);
+                final Component component = getHEX().deserialize(text);
                 final String string = MiniMessage.miniMessage().serialize(component).replace("\\<", "<").replace("\\", "");
                 return MINIMESSAGE.formatter.apply(plugin, player, string);
             },

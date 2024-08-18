@@ -15,6 +15,7 @@ import me.tofaa.entitylib.wrapper.WrapperEntity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.config.Settings;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -40,8 +41,10 @@ public class PacketDisplayText {
     private long lastUpdate;
     @Setter
     private boolean visible;
+    @Setter
+    private Settings.NameTag nameTag;
 
-    public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner) {
+    public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
         this.plugin = plugin;
         this.owner = owner;
         final int randomId = plugin.getPacketManager().getEntityIndex();
@@ -51,6 +54,7 @@ public class PacketDisplayText {
         this.meta.setLineWidth(1000);
         this.meta.setNotifyAboutChanges(false);
         this.lastUpdate = System.currentTimeMillis();
+        this.nameTag = nameTag;
     }
 
     public boolean text(@NotNull Component text) {

@@ -25,12 +25,12 @@ public class OraxenHook extends Hook implements Listener {
 
     private static final File ORAXEN_FOLDER = new File("plugins/Oraxen/pack/models");
 
-    private final Map<String, Double> high;
+    private final Map<String, Double> height;
     private final JsonParser jsonParser;
 
     public OraxenHook(@NotNull UnlimitedNameTags plugin) {
         super(plugin);
-        this.high = Maps.newConcurrentMap();
+        this.height = Maps.newConcurrentMap();
         this.jsonParser = new JsonParser();
     }
 
@@ -57,8 +57,8 @@ public class OraxenHook extends Hook implements Listener {
     }
 
     private double getHigh(@NotNull String model) {
-        if (high.containsKey(model)) {
-            return high.get(model);
+        if (height.containsKey(model)) {
+            return height.get(model);
         }
         final File file = new File(ORAXEN_FOLDER, model);
         if (!file.exists()) {
@@ -92,7 +92,7 @@ public class OraxenHook extends Hook implements Listener {
 
 
         final double value = highest + translation;
-        high.put(model, value);
+        height.put(model, value);
         return value;
     }
 
@@ -107,7 +107,7 @@ public class OraxenHook extends Hook implements Listener {
 
     @EventHandler
     public void onEnable(OraxenItemsLoadedEvent event) {
-        high.clear();
+        height.clear();
         plugin.getLogger().info("Oraxen items loaded, clearing cache");
     }
 

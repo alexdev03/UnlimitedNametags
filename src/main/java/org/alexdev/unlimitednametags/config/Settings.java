@@ -55,12 +55,12 @@ public class Settings {
     private float viewDistance = 60;
 
     @Comment("""
-            Which text formatter to use (MINEDOWN, MINIMESSAGE, LEGACY or UNIVERSAL)\s
-            Take note that UNIVERSAL is the most resource intensive but it supports all formatting options. \
+            Which text formatter to use (MINIMESSAGE, MINEDOWN, LEGACY or UNIVERSAL)\s
+            Take note that UNIVERSAL is the most resource intensive but it supports all formatting options (except for MINEDOWN)\s
 
             (&x&0&8&4&c&f&bc LEGACY OF LEGACY - &#084cfbc LEGACY - &#084cfbc& MINEDOWN - <color:#084cfbc> MINIMESSAGE)""")
     @Setter
-    private Formatter format = Formatter.LEGACY;
+    private Formatter format = Formatter.MINIMESSAGE;
 
     @Comment("Whether to disable the default name tag or not.")
     private boolean disableDefaultNameTag = false;
