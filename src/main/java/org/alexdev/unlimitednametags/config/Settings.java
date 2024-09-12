@@ -10,8 +10,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
+import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Color;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,9 +26,10 @@ import java.util.Optional;
 public class Settings {
 
     private Map<String, NameTag> nameTags = new LinkedHashMap<>() {{
-        put("staffer", new NameTag("nametag.staffer", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"),
+        put("staffer", new NameTag("nametag.staffer", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true)))),
                 new IntegerBackground(true, 255, 0, 0, 255, true, false)));
-        put("default", new NameTag("nametag.default", List.of("%luckperms_prefix% %player_name% %luckperms_suffix%", "%vault_eco_balance_formatted%"),
+        put("default", new NameTag("nametag.default", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true))),
+                new LinesGroup(List.of("Rich Player"), List.of(new ConditionalModifier("%vault_eco_balance%", ">", "1000")))),
                 new HexBackground(false, "#ffffff", 255, false, false)));
     }};
 
@@ -63,15 +66,69 @@ public class Settings {
     private Formatter format = Formatter.MINIMESSAGE;
 
     @Comment("Whether to disable the default name tag or not.")
-    private boolean disableDefaultNameTag = false;
+    private boolean disableDefaultNameTag = true;
 
     private boolean removeEmptyLines = true;
+
+    @Comment("Whether to see the NameTag of a user only while pointing at them")
+    private boolean showWhileLooking = false;
 
     public float getViewDistance() {
         return viewDistance / 160;
     }
 
-    public record NameTag(String permission, List<String> lines, Background background) {
+    public record NameTag(String permission, List<LinesGroup> linesGroups, Background background) {
+    }
+
+    public record LinesGroup(List<String> lines, List<Modifier> modifiers) {
+
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Accessors(fluent = true)
+    @Polymorphic
+    @PolymorphicTypes({
+            @PolymorphicTypes.Type(type = GlobalModifier.class, alias = "global"),
+            @PolymorphicTypes.Type(type = ConditionalModifier.class, alias = "conditional")
+    })
+    @Configuration
+    public abstract static class Modifier {
+
+        public abstract boolean isVisible(@NotNull Player player, @NotNull UnlimitedNameTags plugin);
+
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GlobalModifier extends Modifier {
+
+        private boolean enabled;
+
+        @Override
+        public boolean isVisible(@NotNull Player player, @NotNull UnlimitedNameTags plugin) {
+            return enabled;
+        }
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ConditionalModifier extends Modifier {
+
+        private String parameter;
+        private String condition;
+        private String value;
+
+        public String getExpression() {
+            return parameter + " " + condition + " " + value;
+        }
+
+        @Override
+        public boolean isVisible(@NotNull Player player, @NotNull UnlimitedNameTags plugin) {
+            return plugin.getConditionalManager().evaluateExpression(this, player);
+        }
     }
 
 

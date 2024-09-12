@@ -139,4 +139,32 @@ public class PlayerListener implements Listener {
         }, 1);
     }
 
+    @EventHandler
+    public void onPlayerVanishes(@NotNull PlayerShowEntityEvent event) {
+        if(!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+
+        if(plugin.getConfigManager().getSettings().isShowWhileLooking()) {
+            return;
+        }
+
+        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(display -> {
+            display.showToPlayer(event.getPlayer());
+//            plugin.getLogger().info("Showing display to " + event.getPlayer().getName() + " for " + player.getName() + " after vanish");
+        });
+    }
+
+    @EventHandler
+    public void onPlayerUnvanishes(@NotNull PlayerHideEntityEvent event) {
+        if(!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+
+        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(display -> {
+            display.hideFromPlayer(event.getPlayer());
+//            plugin.getLogger().info("Hiding display from " + event.getPlayer().getName() + " for " + player.getName() + " after unvanish");
+        });
+    }
+
 }

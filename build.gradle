@@ -67,8 +67,10 @@ dependencies {
     }
     compileOnly "net.kyori:adventure-text-serializer-legacy:${adventureTextSerializerLegacyVersion}"
     compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
-    implementation "org.bstats:bstats-bukkit:${bstatsBukkitVersion}"
+    compileOnly "net.jodah:expiringmap:${expiringMapVersion}"
+    compileOnly "org.apache.commons:commons-jexl3:${commonsJexl3Version}"
 
+    implementation "org.bstats:bstats-bukkit:${bstatsBukkitVersion}"
     implementation "org.jetbrains:annotations:${annotationsVersion}"
     implementation "de.themoep:minedown-adventure:${minedownAdventureVersion}"
     implementation "com.github.alexdev03:drink:${drinkVersion}"
@@ -129,9 +131,11 @@ tasks {
             hangar("PlaceholderAPI", "2.11.6")
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
             url("https://github.com/MiniPlaceholders/Player-Expansion/releases/download/1.2.0/MiniPlaceholders-Player-Expansion-1.2.0.jar")
-            url("https://download.luckperms.net/1552/bukkit/loader/LuckPerms-Bukkit-5.4.137.jar")
+            url("https://download.luckperms.net/1556/bukkit/loader/LuckPerms-Bukkit-5.4.141.jar")
             url("https://github.com/retrooper/packetevents/releases/download/v2.4.0/packetevents-spigot-2.4.0.jar")
             github("ViaVersion", "ViaVersion", "5.0.1", "ViaVersion-5.0.1.jar")
+            github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
+            url("https://ci.ender.zone/job/EssentialsX/lastSuccessfulBuild/artifact/jars/EssentialsX-2.21.0-dev+111-b54c8c1.jar")
         }
     }
     runPaper.folia.registerTask() {
@@ -139,9 +143,11 @@ tasks {
 
         downloadPlugins {
             github("Anon8281", "PlaceholderAPI", "2.11.7", "PlaceholderAPI-2.11.7-DEV-Folia.jar")
+
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
-            url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.117.jar")
+            url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.141.jar")
             url("https://github.com/retrooper/packetevents/releases/download/v2.4.0/packetevents-spigot-2.4.0.jar")
+            github("ViaVersion", "ViaVersion", "5.0.1", "ViaVersion-5.0.1.jar")
         }
     }
 }
@@ -150,10 +156,12 @@ tasks {
 build.dependsOn shadowJar
 clean.delete "$rootDir/target"
 
-def targetJavaVersion = 17
+def targetJavaVersion = 21
 java {
     sourceCompatibility = targetJavaVersion
     targetCompatibility = 21
+
+    disableAutoTargetJvm()
 }
 
 tasks.withType(JavaCompile).configureEach {

@@ -19,6 +19,8 @@ import org.alexdev.unlimitednametags.config.Settings;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -43,6 +45,9 @@ public class PacketDisplayText {
     private boolean visible;
     @Setter
     private Settings.NameTag nameTag;
+    private float scale;
+    private float offset;
+    private float increasedOffset;
 
     public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
         this.plugin = plugin;
@@ -55,6 +60,7 @@ public class PacketDisplayText {
         this.meta.setNotifyAboutChanges(false);
         this.lastUpdate = System.currentTimeMillis();
         this.nameTag = nameTag;
+        this.scale = plugin.getNametagManager().getScale(owner);
     }
 
     public boolean text(@NotNull Component text) {
@@ -66,6 +72,32 @@ public class PacketDisplayText {
         meta.setText(text);
         lastUpdate = System.currentTimeMillis();
         return true;
+    }
+
+    public boolean checkScale() {
+        final AttributeInstance attribute = owner.getAttribute(Attribute.GENERIC_SCALE);
+        if (attribute == null) {
+            if (scale != 1.0F) {
+                setScale(1.0F);
+                return true;
+            }
+            return false;
+        }
+        final double playerScale = attribute.getValue();
+        final double diff = playerScale - scale;
+        if (diff < 0.01 && diff > 0) {
+            return false;
+        }
+
+        setScale((float) playerScale);
+        return true;
+    }
+
+    private void setScale(float scale) {
+        this.scale = scale;
+        this.increasedOffset = scale / 5;
+        updateYOOffset();
+        meta.setScale(new Vector3f(scale, scale, scale));
     }
 
     public void setBillboard(@NotNull Display.Billboard billboard) {
@@ -93,7 +125,12 @@ public class PacketDisplayText {
     }
 
     public void setYOffset(float offset) {
-        this.setTransformation(new Vector3f(0, offset, 0));
+        this.setTransformation(new Vector3f(0, offset + increasedOffset, 0));
+        this.offset = offset;
+    }
+
+    public void updateYOOffset() {
+        this.setTransformation(new Vector3f(0, offset + increasedOffset, 0));
     }
 
     public void setViewRange(float range) {
@@ -112,6 +149,10 @@ public class PacketDisplayText {
         }
 
         if(!player.canSee(owner)) {
+            return;
+        }
+
+        if(plugin.getConfigManager().getSettings().isShowWhileLooking() && !plugin.getNametagManager().isPlayerPointingAt(player, owner)) {
             return;
         }
 
@@ -142,7 +183,7 @@ public class PacketDisplayText {
     @SneakyThrows
     private void setPosition() {
         final Location location = owner.getLocation().clone();
-        location.setY(location.getY() + 1.8);
+        location.setY(location.getY() + (1.8) * scale);
         entity.setLocation(SpigotConversionUtil.fromBukkitLocation(location));
     }
 

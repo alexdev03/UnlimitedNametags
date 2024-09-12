@@ -28,6 +28,7 @@ public class TypeWriterListener extends Hook implements Listener {
     public void onEnd(@NotNull AsyncCinematicEndEvent event) {
         plugin.getNametagManager().unblockPlayer(event.getPlayer());
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+                    plugin.getNametagManager().unBlockForAllPlayers(event.getPlayer());
                     final Set<Player> viewers = plugin.getTrackerManager().getTrackedPlayers(event.getPlayer().getUniqueId())
                             .stream()
                             .map(Bukkit::getPlayer)
