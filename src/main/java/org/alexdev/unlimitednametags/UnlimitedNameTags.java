@@ -6,7 +6,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.jonahseguin.drink.CommandService;
 import com.jonahseguin.drink.Drink;
-import io.github.retrooper.packetevents.bstats.Metrics;
 import lombok.Getter;
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;
@@ -18,11 +17,15 @@ import org.alexdev.unlimitednametags.hook.Hook;
 import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
 import org.alexdev.unlimitednametags.hook.OraxenHook;
 import org.alexdev.unlimitednametags.hook.TypeWriterListener;
+import org.alexdev.unlimitednametags.nametags.ConditionalManager;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.packet.KyoriManager;
 import org.alexdev.unlimitednametags.packet.PacketManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
 import org.alexdev.unlimitednametags.vanish.VanishManager;
+import org.bstats.bukkit.Metrics;
+import org.bstats.charts.AdvancedPie;
+import org.bstats.charts.SimplePie;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -47,6 +50,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private Map<Class<? extends Hook>, Hook> hooks;
     private TaskScheduler taskScheduler;
     private KyoriManager kyoriManager;
+    private ConditionalManager conditionalManager;
 
     @Override
     public void onLoad() {
@@ -71,6 +75,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
         placeholderManager = new PlaceholderManager(this);
         vanishManager = new VanishManager(this);
         packetManager = new PacketManager(this);
+        conditionalManager = new ConditionalManager(this);
 
 
         loadCommands();
@@ -187,20 +192,20 @@ public final class UnlimitedNameTags extends JavaPlugin {
     }
 
     private void loadStats() {
-        final Metrics metrics = new Metrics(this, 23081);
-        metrics.addCustomChart(new Metrics.SimplePie("paper", () -> String.valueOf(isPaper)));
-        metrics.addCustomChart(new Metrics.AdvancedPie("nametags", () -> {
+        final Metrics metrics = new org.bstats.bukkit.Metrics(this, 23081);
+        metrics.addCustomChart(new SimplePie("paper", () -> String.valueOf(isPaper)));
+        metrics.addCustomChart(new AdvancedPie("nametags", () -> {
             final Map<String, Integer> map = Maps.newHashMap();
             configManager.getSettings().getNameTags().forEach((key, value) -> {
-               final int count = (int) nametagManager.getNameTags().values().stream()
-                       .filter(n -> n.getNameTag().equals(value))
+                final int count = (int) nametagManager.getNameTags().values().stream()
+                        .filter(n -> n.getNameTag().equals(value))
                         .count();
-                 map.put(key, count);
+                map.put(key, count);
             });
             return map;
         }));
-        metrics.addCustomChart(new Metrics.SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
-        metrics.addCustomChart(new Metrics.SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
+        metrics.addCustomChart(new SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
+        metrics.addCustomChart(new SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
     }
 
     public <H extends Hook> Optional<H> getHook(@NotNull Class<H> hookType) {
@@ -219,6 +224,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
         placeholderManager.close();
         packetManager.close();
         taskScheduler.cancelTasks();
+
     }
 
 }

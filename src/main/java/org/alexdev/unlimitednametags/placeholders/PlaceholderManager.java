@@ -3,6 +3,7 @@ package org.alexdev.unlimitednametags.placeholders;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.OraxenHook;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -23,6 +24,7 @@ public class PlaceholderManager {
     private static final int maxIndex = 16777215;
     private static final int maxMIndex = 10;
     private static final double minMGIndex = -1.0;
+    private static final int MORE_LINES = 15;
     private final UnlimitedNameTags plugin;
     private final ExecutorService executorService;
     private final PAPIManager papiManager;
@@ -81,11 +83,18 @@ public class PlaceholderManager {
 
 
     @NotNull
-    public CompletableFuture<Component> applyPlaceholders(@NotNull Player player, @NotNull List<String> lines) {
-        return CompletableFuture.supplyAsync(() -> createComponent(player, lines), executorService);
+    public CompletableFuture<Component> applyPlaceholders(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
+        return getCheckedLines(player, lines).thenApply(strings -> createComponent(player, strings));
     }
 
-    private static final int MORE_LINES = 15;
+    @NotNull
+    private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
+        return CompletableFuture.supplyAsync(() -> lines.stream()
+                .filter(l -> l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
+                .map(Settings.LinesGroup::lines)
+                .flatMap(List::stream)
+                .toList(), executorService);
+    }
 
     @NotNull
     private Component createComponent(@NotNull Player player, @NotNull List<String> strings) {

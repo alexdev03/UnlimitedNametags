@@ -11,7 +11,6 @@ import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -31,13 +30,13 @@ public enum Formatter {
             "MiniMessage"
     ),
     LEGACY(
-            (plugin, player, text) -> LegacyComponentSerializer.legacyAmpersand().deserialize(text),
+            (plugin, player, text) -> getSTUPID().deserialize(replaceHexColorCodes(text)),
             "Legacy Text"
     ),
     UNIVERSAL(
             (plugin, player, text) -> {
-                text = getHEX().serialize(getSTUPID().deserialize(text));
-                final Component component = getHEX().deserialize(text);
+                final String legacy = getHEX().serialize(getSTUPID().deserialize(replaceHexColorCodes(text)));
+                final Component component = getHEX().deserialize(legacy);
                 final String string = MiniMessage.miniMessage().serialize(component).replace("\\<", "<").replace("\\", "");
                 return MINIMESSAGE.formatter.apply(plugin, player, string);
             },
@@ -46,16 +45,7 @@ public enum Formatter {
 
     @NotNull
     private static String replaceHexColorCodes(@NotNull String text) {
-        final Matcher matcher = getHEX_PATTERN().matcher(text);
-        final StringBuilder valueBuffer = new StringBuilder();
-        while (matcher.find()) {
-            final String hex = matcher.group();
-            final int start = matcher.start();
-            final int end = matcher.end();
-            matcher.appendReplacement(valueBuffer, hex + "&");
-        }
-        matcher.appendTail(valueBuffer);
-        return valueBuffer.toString();
+        return text.replace('§', '&');
     }
 
     /**

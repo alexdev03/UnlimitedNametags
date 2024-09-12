@@ -1,6 +1,8 @@
 package org.alexdev.unlimitednametags.nametags;
 
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.util.Vector3f;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -15,9 +17,12 @@ import org.alexdev.unlimitednametags.packet.PacketDisplayText;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -64,10 +69,86 @@ public class NameTagManager {
                                         .ifPresent(PacketDisplayText::sendPassengerPacketToViewers))
                 , 20, 20 * 5L);
 
+        // Scale task
+        if(isScalePresent()) {
+            final MyScheduledTask scale = plugin.getTaskScheduler().runTaskTimerAsynchronously(() ->
+                            Bukkit.getOnlinePlayers().forEach(player ->
+                                    getPacketDisplayText(player)
+                                            .filter(PacketDisplayText::checkScale)
+                                            .ifPresent(PacketDisplayText::refresh))
+                    , 20, 10);
+            tasks.add(scale);
+        }
+
+        if(plugin.getConfigManager().getSettings().isShowWhileLooking()) {
+            final MyScheduledTask point = plugin.getTaskScheduler().runTaskTimerAsynchronously(() ->
+                            Bukkit.getOnlinePlayers().forEach(player1 -> {
+                                final Optional<PacketDisplayText> display = getPacketDisplayText(player1);
+                                if (display.isEmpty()) {
+                                    return;
+                                }
+                                Bukkit.getOnlinePlayers().forEach(player2 -> {
+                                    if (player1 == player2) {
+                                        return;
+                                    }
+
+
+                                    if (player1.getWorld() != player2.getWorld()) {
+                                        return;
+                                    }
+
+                                    final boolean isPointing = isPlayerPointingAt(player2, player1);
+                                    if (display.get().canPlayerSee(player2) && !isPointing) {
+                                        display.get().hideFromPlayer(player2);
+                                    } else if (!display.get().canPlayerSee(player2) && isPointing) {
+                                        display.get().showToPlayer(player2);
+                                    }
+
+                                });
+                            })
+
+                    , 5, 5);
+            tasks.add(point);
+        }
+
         tasks.add(refresh);
         tasks.add(passengers);
     }
 
+    public boolean isPlayerPointingAt(Player player1, Player player2) {
+        if(player1.getWorld() != player2.getWorld()) {
+            return false;
+        }
+
+        if (player1.getLocation().distance(player2.getLocation()) < 5) {
+            return true;
+        }
+
+        final org.bukkit.util.Vector direction = player1.getEyeLocation().getDirection();
+        final Vector toPlayer2 = player2.getEyeLocation().toVector().subtract(player1.getEyeLocation().toVector());
+        toPlayer2.normalize();
+
+        final double dotProduct = direction.dot(toPlayer2);
+        return dotProduct > 0.90;
+    }
+
+    private boolean isScalePresent() {
+        return PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_20_5);
+    }
+
+    public float getScale(@NotNull Player player) {
+        if(!isScalePresent()) {
+            return 1;
+        }
+
+        final AttributeInstance attribute = player.getAttribute(Attribute.GENERIC_SCALE);
+
+        if(attribute == null) {
+            return 1;
+        }
+
+        return (int) attribute.getValue();
+    }
 
     public void blockPlayer(@NotNull Player player) {
         blocked.add(player.getUniqueId());
@@ -106,7 +187,7 @@ public class NameTagManager {
 
         creating.add(player.getUniqueId());
 
-        plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
+        plugin.getPlaceholderManager().applyPlaceholders(player, nametag.linesGroups())
                 .thenAccept(lines -> loadDisplay(player, lines, nametag, display))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), throwable);
@@ -122,7 +203,7 @@ public class NameTagManager {
             return;
         }
 
-        plugin.getPlaceholderManager().applyPlaceholders(player, nametag.lines())
+        plugin.getPlaceholderManager().applyPlaceholders(player, nametag.linesGroups())
                 .thenAccept(lines -> editDisplay(player, lines, nametag, force))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to edit nametag for " + player.getName(), throwable);
@@ -386,6 +467,10 @@ public class NameTagManager {
     public void updateDisplaysForPlayer(@NotNull Player player) {
         nameTags.forEach((uuid, display) -> {
             final Player owner = display.getOwner();
+            if (owner == player) {
+                return;
+            }
+            final Set<UUID> tracked = plugin.getTrackerManager().getTrackedPlayers(owner.getUniqueId());
 
             if (player.getLocation().getWorld() != owner.getLocation().getWorld()) {
                 return;
@@ -395,10 +480,18 @@ public class NameTagManager {
                 return;
             }
 
+            if(!tracked.contains(player.getUniqueId())) {
+                return;
+            }
+
             display.getBlocked().remove(player.getUniqueId());
 
             display.hideFromPlayerSilently(player);
             display.showToPlayer(player);
         });
+    }
+
+    public void unBlockForAllPlayers(@NotNull Player player) {
+        nameTags.forEach((uuid, display) -> display.getBlocked().remove(player.getUniqueId()));
     }
 }
