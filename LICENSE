@@ -1,16 +1,17 @@
-
 # Unlimited Name Tags Plugin License
 
 The Unlimited Name Tags plugin is licensed under the following terms:
 
-1. **Non-Commercial Use**: This plugin is provided for non-commercial use only. You may not use the plugin, or any derivative works, for any commercial purposes without obtaining a commercial license from the author.
+1. **Non-Commercial Use**: This plugin is provided for non-commercial use only. Non-commercial use refers to personal or community use without any form of direct or indirect monetization. You may not use the plugin, or any derivative works, for any commercial purposes without obtaining a commercial license from the author.
 
-2. **Repository Cloning and Contributions**: You are permitted to clone the repository and make modifications for personal use. Contributions in the form of pull requests to the original repository are welcome and encouraged.
+2. **Repository Cloning and Contributions**: You are permitted to clone the repository and make modifications for personal use. Contributions in the form of pull requests to the original repository are welcome and encouraged. Contributions must be submitted under the same licensing terms as the original project, granting the original author rights to use and modify the contributed code.
 
-3. **Redistribution**: You may not redistribute the plugin, or any derivative works, in any form without prior written permission from the author.
+3. **Redistribution**: You may not redistribute the plugin, or any derivative works, in any form without prior written permission from the author. Forked versions of the software, even if they include attribution to the original creator, are not authorized for redistribution, either free or paid, without explicit written permission.
 
-4. **Attribution**: Any derivative works must include an attribution to the original author.
+4. **Attribution**: Any derivative works must include an attribution to the original author. This includes any public sharing of modifications, which must comply with the terms of this license.
 
 5. **Disclaimer of Warranty**: This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software.
 
-6. **Commercial License**: For commercial use, please contact the author at alexdev2k03@gmail.com to obtain a commercial license.
+6. **Commercial License**: For commercial use, including use on servers or platforms that generate revenue through donations, subscriptions, or other forms of financial support, please contact the author at alexdev2k03@gmail.com to obtain a commercial license.
+
+7. **License Updates**: The author reserves the right to modify the terms of this license at any time, with updated terms available at the plugin’s repository. Continued use of the plugin constitutes acceptance of the new terms.

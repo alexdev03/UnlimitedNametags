@@ -224,7 +224,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
         placeholderManager.close();
         packetManager.close();
         taskScheduler.cancelTasks();
-
     }
 
 }
