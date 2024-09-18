@@ -73,6 +73,9 @@ public class Settings {
     @Comment("Whether to see the NameTag of a user only while pointing at them")
     private boolean showWhileLooking = false;
 
+    @Comment("Whether to see your own NameTag")
+    private boolean showCurrentNameTag = false;
+
     public float getViewDistance() {
         return viewDistance / 160;
     }
