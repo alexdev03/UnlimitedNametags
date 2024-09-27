@@ -20,7 +20,7 @@ repositories {
     }
 
     maven {
-        url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/'
+        url = 'https://repo.extendedclip.com/releases'
     }
     maven { url = 'https://repo.minebench.de/' }
     maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' }
