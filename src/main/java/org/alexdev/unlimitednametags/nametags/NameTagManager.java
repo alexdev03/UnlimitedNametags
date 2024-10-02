@@ -468,7 +468,7 @@ public class NameTagManager {
     }
 
     public void updateDisplay(@NotNull Player player, @NotNull Player target) {
-        if (player == target) {
+        if (player == target && !plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             return;
         }
         getPacketDisplayText(target).ifPresent(packetDisplayText -> {
@@ -478,7 +478,7 @@ public class NameTagManager {
     }
 
     public void removeDisplay(@NotNull Player player, @NotNull Player target) {
-        if (player == target) {
+        if (player == target && !plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             return;
         }
         getPacketDisplayText(target).ifPresent(packetDisplayText -> packetDisplayText.hideFromPlayer(player));

@@ -151,7 +151,6 @@ public class PlayerListener implements Listener {
 
         plugin.getNametagManager().getPacketDisplayText(player).ifPresent(display -> {
             display.showToPlayer(event.getPlayer());
-//            plugin.getLogger().info("Showing display to " + event.getPlayer().getName() + " for " + player.getName() + " after vanish");
         });
     }
 
@@ -163,8 +162,16 @@ public class PlayerListener implements Listener {
 
         plugin.getNametagManager().getPacketDisplayText(player).ifPresent(display -> {
             display.hideFromPlayer(event.getPlayer());
-//            plugin.getLogger().info("Hiding display from " + event.getPlayer().getName() + " for " + player.getName() + " after unvanish");
         });
+    }
+
+    @EventHandler
+    public void onTeleport(@NotNull PlayerTeleportEvent event) {
+        if(!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            return;
+        }
+
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().updateDisplay(event.getPlayer(), event.getPlayer()), 5);
     }
 
 }
