@@ -30,7 +30,11 @@ public class PacketManager {
         this.plugin = plugin;
         this.initialize();
         this.passengers = (Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet)); //Multimaps.synchronizedMultimap
-        this.executorService = Executors.newFixedThreadPool(4);
+        this.executorService = Executors.newFixedThreadPool(2, r -> {
+            final Thread thread = new Thread(r);
+            thread.setName("UnlimitedNameTags-PacketManager");
+            return thread;
+        });
     }
 
     private void initialize() {

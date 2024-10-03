@@ -1,7 +1,8 @@
 package org.alexdev.unlimitednametags.hook;
 
-import me.gabber235.typewriter.events.AsyncCinematicEndEvent;
-import me.gabber235.typewriter.events.AsyncCinematicStartEvent;
+
+import com.typewritermc.engine.paper.events.AsyncCinematicEndEvent;
+import com.typewritermc.engine.paper.events.AsyncCinematicStartEvent;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
