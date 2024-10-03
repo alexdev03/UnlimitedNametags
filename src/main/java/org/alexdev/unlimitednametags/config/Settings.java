@@ -73,7 +73,7 @@ public class Settings {
     @Comment("Whether to see the NameTag of a user only while pointing at them")
     private boolean showWhileLooking = false;
 
-    @Comment("Whether to see your own NameTag")
+    @Comment("Whether to see your own NameTag (Similar to nametag mod of Lunar Client)")
     private boolean showCurrentNameTag = false;
 
     public float getViewDistance() {
