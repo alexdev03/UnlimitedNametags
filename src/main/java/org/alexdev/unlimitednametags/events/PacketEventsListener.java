@@ -11,6 +11,7 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEn
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
+import io.github.retrooper.packetevents.util.GeyserUtil;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketDisplayText;
 import org.bukkit.entity.Player;
@@ -97,7 +98,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
         int protocol = plugin.getPlayerListener().getProtocolVersion(player.getUniqueId());
         //handle metadata for : bedrock players && client with version 1.20.1 or lower
-        if (protocol >= 764) {
+        if (protocol >= 764 && !GeyserUtil.isGeyserPlayer(player.getUniqueId())) {
             return;
         }
 

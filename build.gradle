@@ -126,7 +126,7 @@ shadowJar {
 
 tasks {
     runServer {
-        minecraftVersion("1.20.6")
+        minecraftVersion("1.21.1")
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
@@ -134,13 +134,14 @@ tasks {
             url("https://github.com/MiniPlaceholders/Player-Expansion/releases/download/1.2.0/MiniPlaceholders-Player-Expansion-1.2.0.jar")
             url("https://download.luckperms.net/1556/bukkit/loader/LuckPerms-Bukkit-5.4.141.jar")
             url("https://github.com/retrooper/packetevents/releases/download/v2.4.0/packetevents-spigot-2.4.0.jar")
+            url("https://github.com/IntellectualSites/FastAsyncWorldEdit/releases/download/2.11.2/FastAsyncWorldEdit-Bukkit-2.11.2.jar")
             github("ViaVersion", "ViaVersion", "5.0.1", "ViaVersion-5.0.1.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
-            url("https://ci.ender.zone/job/EssentialsX/lastSuccessfulBuild/artifact/jars/EssentialsX-2.21.0-dev+111-b54c8c1.jar")
+            url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
         }
     }
     runPaper.folia.registerTask() {
-        minecraftVersion("1.20.6")
+        minecraftVersion("1.21.1")
 
         downloadPlugins {
             github("Anon8281", "PlaceholderAPI", "2.11.7", "PlaceholderAPI-2.11.7-DEV-Folia.jar")

@@ -73,7 +73,7 @@ public class PlayerListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
         protocolVersion.put(event.getPlayer().getUniqueId(), getProtocolVersion(event.getPlayer()));
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 1);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 2);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
@@ -168,6 +168,10 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onTeleport(@NotNull PlayerTeleportEvent event) {
         if(!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            return;
+        }
+
+        if(event.getFrom().getWorld() == event.getTo().getWorld() && event.getFrom().distance(event.getTo()) <= 80) {
             return;
         }
 
