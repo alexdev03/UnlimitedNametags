@@ -26,6 +26,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -84,8 +85,8 @@ public class PacketDisplayText {
             return false;
         }
         final double playerScale = attribute.getValue();
-        final double diff = playerScale - scale;
-        if (diff < 0.01 && diff > 0) {
+        final double diff = Math.abs(playerScale - scale);
+        if (diff <= 0.01 && diff >= 0) {
             return false;
         }
 
@@ -95,7 +96,7 @@ public class PacketDisplayText {
 
     private void setScale(float scale) {
         this.scale = scale;
-        this.increasedOffset = scale / 5;
+        this.increasedOffset = scale > 1 ? scale / 5 : 0;
         updateYOOffset();
         meta.setScale(new Vector3f(scale, scale, scale));
     }
@@ -129,6 +130,11 @@ public class PacketDisplayText {
         this.offset = offset;
     }
 
+    public void resetOffset(float offset) {
+        this.setTransformation(new Vector3f(0, offset + increasedOffset, 0));
+        this.offset = offset;
+    }
+
     public void updateYOOffset() {
         this.setTransformation(new Vector3f(0, offset + increasedOffset, 0));
     }
@@ -146,6 +152,19 @@ public class PacketDisplayText {
         }
 
         if(!player.canSee(owner)) {
+            return;
+        }
+
+        final boolean same = player.getUniqueId().equals(owner.getUniqueId());
+        if(!same && !player.hasPermission("unt.shownametags")) {
+            return;
+        }
+
+        if(same && !player.hasPermission("unt.showownnametag")) {
+            return;
+        }
+
+        if(plugin.getNametagManager().isHiddenOtherNametags(player)) {
             return;
         }
 
@@ -180,6 +199,8 @@ public class PacketDisplayText {
     @SneakyThrows
     private void setPosition() {
         final Location location = owner.getLocation().clone();
+        location.setPitch(0);
+        location.setYaw(0);
         location.setY(location.getY() + (1.8) * scale);
         entity.setLocation(SpigotConversionUtil.fromBukkitLocation(location));
     }
@@ -259,16 +280,18 @@ public class PacketDisplayText {
 
     @NotNull
     public Map<String, String> properties() {
-        return Map.of(
-                "text", MiniMessage.miniMessage().serialize(meta.getText()),
-                "billboard", meta.getBillboardConstraints().name(),
-                "shadowed", String.valueOf(meta.isShadow()),
-                "seeThrough", String.valueOf(meta.isSeeThrough()),
-                "backgroundColor", String.valueOf(meta.getBackgroundColor()),
-                "transformation", meta.getTranslation().toString(),
-                "yOffset", String.valueOf(meta.getTranslation().getY()),
-                "viewRange", String.valueOf(meta.getViewRange())
-        );
+        Map<String, String> properties = new LinkedHashMap<>();
+        properties.put("text", MiniMessage.miniMessage().serialize(meta.getText()));
+        properties.put("billboard", meta.getBillboardConstraints().name());
+        properties.put("shadowed", String.valueOf(meta.isShadow()));
+        properties.put("seeThrough", String.valueOf(meta.isSeeThrough()));
+        properties.put("backgroundColor", String.valueOf(meta.getBackgroundColor()));
+        properties.put("transformation", meta.getTranslation().toString());
+        properties.put("yOffset", String.valueOf(offset));
+        properties.put("scale", String.valueOf(meta.getScale()));
+        properties.put("increasedOffset", String.valueOf(increasedOffset));
+        properties.put("viewRange", String.valueOf(meta.getViewRange()));
+        return properties;
     }
 
 }

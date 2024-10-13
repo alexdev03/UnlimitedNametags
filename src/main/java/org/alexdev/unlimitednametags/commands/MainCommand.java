@@ -1,8 +1,6 @@
 package org.alexdev.unlimitednametags.commands;
 
-import com.jonahseguin.drink.annotation.Command;
-import com.jonahseguin.drink.annotation.Require;
-import com.jonahseguin.drink.annotation.Sender;
+import com.jonahseguin.drink.annotation.*;
 import lombok.RequiredArgsConstructor;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -76,6 +74,28 @@ public class MainCommand {
         plugin.getConfigManager().save();
         plugin.getNametagManager().reload();
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aDefault formatter set to " + formatter.name()));
+    }
+
+    @Command(name = "hideOtherNametags", desc = "Hides other nametags", usage = "/unt hideOtherNametags [-h]")
+    @Require(value = "unt.hideOtherNametags", message = "&cYou do not have permission to hide other nametags")
+    public void onHideOtherNametags(@Sender Player sender, @OptArg(value = "false") boolean hideMessage) {
+        if (!plugin.getNametagManager().isHiddenOtherNametags(sender)) {
+            plugin.getNametagManager().hideOtherNametags(sender);
+            if (!hideMessage) {
+                plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aOther nametags hidden"));
+            }
+        }
+    }
+
+    @Command(name = "showOtherNametags", desc = "Shows other nametags", usage = "/unt showOtherNametags [-h]")
+    @Require(value = "unt.showOtherNametags", message = "&cYou do not have permission to show other nametags")
+    public void onShowOtherNametags(@Sender Player sender, @OptArg(value = "false") boolean showMessage) {
+        if (plugin.getNametagManager().isHiddenOtherNametags(sender)) {
+            plugin.getNametagManager().showOtherNametags(sender);
+            if (!showMessage) {
+                plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aOther nametags shown"));
+            }
+        }
     }
 
 }

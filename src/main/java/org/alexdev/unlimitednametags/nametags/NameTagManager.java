@@ -3,7 +3,6 @@ package org.alexdev.unlimitednametags.nametags;
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.manager.server.ServerVersion;
-import com.github.retrooper.packetevents.util.Vector3f;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -37,6 +36,7 @@ public class NameTagManager {
     private final Map<Integer, PacketDisplayText> entityIdToDisplay;
     private final Set<UUID> creating;
     private final Set<UUID> blocked;
+    private final Set<UUID> hiddenOtherNametags;
     private final List<MyScheduledTask> tasks;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
@@ -46,6 +46,7 @@ public class NameTagManager {
         this.tasks = Lists.newCopyOnWriteArrayList();
         this.creating = Sets.newConcurrentHashSet();
         this.blocked = Sets.newConcurrentHashSet();
+        this.hiddenOtherNametags = Sets.newConcurrentHashSet();
         this.loadAll();
     }
 
@@ -264,7 +265,8 @@ public class NameTagManager {
             //background color, if disabled, set to transparent
             display.setBackgroundColor(nameTag.background().getColor());
 
-            display.setTransformation(new Vector3f(0, plugin.getConfigManager().getSettings().getYOffset(), 0));
+//            display.setTransformation(new Vector3f(0, plugin.getConfigManager().getSettings().getYOffset(), 0));
+            display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
@@ -413,7 +415,7 @@ public class NameTagManager {
 
     private void setYOffset(@NotNull Player player, float yOffset) {
         getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            packetDisplayText.setYOffset(yOffset);
+            packetDisplayText.resetOffset(yOffset);
         });
     }
 
@@ -513,5 +515,29 @@ public class NameTagManager {
 
     public void unBlockForAllPlayers(@NotNull Player player) {
         nameTags.forEach((uuid, display) -> display.getBlocked().remove(player.getUniqueId()));
+    }
+
+    public void hideOtherNametags(@NotNull Player player) {
+        hiddenOtherNametags.add(player.getUniqueId());
+        nameTags.forEach((uuid, display) -> {
+            if (display.canPlayerSee(player)) {
+                display.hideFromPlayer(player);
+            }
+        });
+    }
+
+    public void showOtherNametags(@NotNull Player player) {
+        hiddenOtherNametags.remove(player.getUniqueId());
+        plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()).forEach(uuid -> {
+            final Player tracked = Bukkit.getPlayer(uuid);
+            if (tracked == null) {
+                return;
+            }
+            getPacketDisplayText(tracked).ifPresent(display -> display.showToPlayer(player));
+        });
+    }
+
+    public boolean isHiddenOtherNametags(@NotNull Player player) {
+        return hiddenOtherNametags.contains(player.getUniqueId());
     }
 }
