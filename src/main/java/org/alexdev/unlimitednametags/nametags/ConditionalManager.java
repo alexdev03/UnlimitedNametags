@@ -42,7 +42,6 @@ public class ConditionalManager {
         return new MapContext();
     }
 
-
     public boolean evaluateExpression(@NotNull Settings.ConditionalModifier modifier, @NotNull Player player) {
         final String entireExpression = PlaceholderAPI.setPlaceholders(player, modifier.getExpression());
         if (cachedExpressions.containsKey(entireExpression)) {

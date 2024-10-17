@@ -47,6 +47,33 @@ public class PacketEventsListener extends PacketListenerAbstract {
         if (event.getPacketType() == PacketType.Play.Client.ENTITY_ACTION) {
             handleUseEntity(event);
         }
+//        else if (event.getPacketType() == PacketType.Play.Client.ENTITY_ACTION) {
+//            handlePlayerCommand(event);
+//        }
+    }
+
+    private void handlePlayerCommand(PacketReceiveEvent event) {
+        System.out.println("Player command");
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+
+        final WrapperPlayClientEntityAction packet = new WrapperPlayClientEntityAction(event);
+        System.out.println(packet.getAction());
+        if (packet.getAction() == WrapperPlayClientEntityAction.Action.START_FLYING_WITH_ELYTRA) {
+            System.out.println("Flying with elytra");
+            if(!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+                return;
+            }
+
+            plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetDisplayText -> {
+                packetDisplayText.hideForOwner();
+
+                plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+                    packetDisplayText.showForOwner();
+                }, 5);
+            });
+        }
     }
 
     private void handleUseEntity(PacketReceiveEvent event) {

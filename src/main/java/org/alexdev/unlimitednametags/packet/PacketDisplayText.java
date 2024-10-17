@@ -151,24 +151,24 @@ public class PacketDisplayText {
             return;
         }
 
-        if(!player.canSee(owner)) {
+        if (!player.canSee(owner)) {
             return;
         }
 
         final boolean same = player.getUniqueId().equals(owner.getUniqueId());
-        if(!same && !player.hasPermission("unt.shownametags")) {
+        if (!same && !player.hasPermission("unt.shownametags")) {
             return;
         }
 
-        if(same && !player.hasPermission("unt.showownnametag")) {
+        if (same && !player.hasPermission("unt.showownnametag")) {
             return;
         }
 
-        if(plugin.getNametagManager().isHiddenOtherNametags(player)) {
+        if (plugin.getNametagManager().isHiddenOtherNametags(player)) {
             return;
         }
 
-        if(plugin.getConfigManager().getSettings().isShowWhileLooking() && !plugin.getNametagManager().isPlayerPointingAt(player, owner)) {
+        if (plugin.getConfigManager().getSettings().isShowWhileLooking() && !plugin.getNametagManager().isPlayerPointingAt(player, owner)) {
             return;
         }
 
@@ -185,7 +185,7 @@ public class PacketDisplayText {
     }
 
     public void sendPassengerPacketToViewers() {
-        if(!visible) {
+        if (!visible) {
             return;
         }
         entity.getViewers().forEach(u -> {
@@ -276,6 +276,16 @@ public class PacketDisplayText {
 
     public void setTextOpacity(byte b) {
         meta.setTextOpacity(b);
+    }
+
+    public void hideForOwner() {
+        hideFromPlayer(owner);
+        blocked.add(owner.getUniqueId());
+    }
+
+    public void showForOwner() {
+        blocked.remove(owner.getUniqueId());
+        showToPlayer(owner);
     }
 
     @NotNull
