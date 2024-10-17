@@ -13,6 +13,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
+import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
@@ -176,6 +177,25 @@ public class PlayerListener implements Listener {
         }
 
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().updateDisplay(event.getPlayer(), event.getPlayer()), 5);
+    }
+
+    @EventHandler
+    public void onElytraFlight(@NotNull EntityToggleGlideEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+
+        if(!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            return;
+        }
+
+        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetDisplayText -> {
+            packetDisplayText.hideForOwner();
+
+            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+                packetDisplayText.showForOwner();
+            }, 5);
+        });
     }
 
 }
