@@ -13,7 +13,7 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSe
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
 import io.github.retrooper.packetevents.util.GeyserUtil;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
-import org.alexdev.unlimitednametags.packet.PacketDisplayText;
+import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -66,12 +66,10 @@ public class PacketEventsListener extends PacketListenerAbstract {
                 return;
             }
 
-            plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-                packetDisplayText.hideForOwner();
+            plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+                packetNameTag.hideForOwner();
 
-                plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-                    packetDisplayText.showForOwner();
-                }, 5);
+                plugin.getTaskScheduler().runTaskLaterAsynchronously(packetNameTag::showForOwner, 5);
             });
         }
     }
@@ -99,7 +97,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
-        final Optional<PacketDisplayText> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player.get());
+        final Optional<PacketNameTag> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player.get());
         if (optionalPacketDisplayText.isEmpty()) {
             return;
         }
@@ -123,14 +121,15 @@ public class PacketEventsListener extends PacketListenerAbstract {
         if (!(event.getPlayer() instanceof Player player)) {
             return;
         }
-        int protocol = plugin.getPlayerListener().getProtocolVersion(player.getUniqueId());
+
+        int protocol = event.getUser().getClientVersion().getProtocolVersion();
         //handle metadata for : bedrock players && client with version 1.20.1 or lower
         if (protocol >= 764 && !GeyserUtil.isGeyserPlayer(player.getUniqueId())) {
             return;
         }
 
         final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
-        final Optional<PacketDisplayText> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
+        final Optional<PacketNameTag> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
         if (textDisplay.isEmpty()) {
             return;
         }

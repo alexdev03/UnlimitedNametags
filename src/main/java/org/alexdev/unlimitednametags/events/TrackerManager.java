@@ -3,7 +3,7 @@ package org.alexdev.unlimitednametags.events;
 import com.google.common.collect.*;
 import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
-import org.alexdev.unlimitednametags.packet.PacketDisplayText;
+import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -58,7 +58,7 @@ public class TrackerManager {
                 return;
             }
 
-            final Optional<PacketDisplayText> display = plugin.getNametagManager().getPacketDisplayText(target);
+            final Optional<PacketNameTag> display = plugin.getNametagManager().getPacketDisplayText(target);
 
             if (display.isEmpty()) {
 //                plugin.getLogger().warning("Display is empty for " + target.getName());

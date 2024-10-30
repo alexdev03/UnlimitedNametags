@@ -2,10 +2,14 @@ package org.alexdev.unlimitednametags.api;
 
 
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.alexdev.unlimitednametags.vanish.VanishIntegration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Optional;
 
 /**
  * The UnlimitedNameTags API class.
@@ -114,6 +118,34 @@ public class UNTAPI {
         plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()));
     }
 
+    /**
+     * Adds a {@link HatHook} to the plugin.
+     * This hook is used to determine the height of the hat for a player.
+     *
+     * @param hook the hook to add
+     */
+    public void addHatHook(@NotNull HatHook hook) {
+        plugin.getHatHooks().add(hook);
+    }
+
+    /**
+     * Retrieves the display text packet for the specified player.
+     *
+     * @param player the player to retrieve the display text packet for
+     * @return the display text packet for the player
+     */
+    public Optional<PacketNameTag> getPacketDisplayText(@NotNull Player player) {
+        return plugin.getNametagManager().getPacketDisplayText(player);
+    }
+
+    /**
+     * Removes a {@link HatHook} from the plugin.
+     *
+     * @param hook the hook to remove
+     */
+    public void removeHatHook(@NotNull HatHook hook) {
+        plugin.getHatHooks().remove(hook);
+    }
 
     static final class NotRegisteredException extends IllegalStateException {
 

@@ -54,11 +54,11 @@ public class PacketManager {
         });
     }
 
-    public void sendPassengersPacket(@NotNull Player player, @NotNull PacketDisplayText packetDisplayText) {
-        final int entityId = packetDisplayText.getEntity().getEntityId();
-        final int ownerId = packetDisplayText.getOwner().getEntityId();
+    public void sendPassengersPacket(@NotNull Player player, @NotNull PacketNameTag packetNameTag) {
+        final int entityId = packetNameTag.getEntity().getEntityId();
+        final int ownerId = packetNameTag.getOwner().getEntityId();
         executorService.submit(() -> {
-            final Set<Integer> passengers = Sets.newHashSet(this.passengers.get(packetDisplayText.getOwner().getUniqueId()));
+            final Set<Integer> passengers = Sets.newHashSet(this.passengers.get(packetNameTag.getOwner().getUniqueId()));
             passengers.add(entityId);
             final int[] passengersArray = passengers.stream().mapToInt(i -> i).toArray();
             final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(ownerId, passengersArray);

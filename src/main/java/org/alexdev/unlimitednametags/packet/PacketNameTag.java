@@ -32,7 +32,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Getter
-public class PacketDisplayText {
+public class PacketNameTag {
 
     private final UnlimitedNameTags plugin;
     private final WrapperEntity entity;
@@ -50,7 +50,7 @@ public class PacketDisplayText {
     private float offset;
     private float increasedOffset;
 
-    public PacketDisplayText(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
+    public PacketNameTag(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
         this.plugin = plugin;
         this.owner = owner;
         final int randomId = plugin.getPacketManager().getEntityIndex();
@@ -290,7 +290,7 @@ public class PacketDisplayText {
 
     @NotNull
     public Map<String, String> properties() {
-        Map<String, String> properties = new LinkedHashMap<>();
+        final Map<String, String> properties = new LinkedHashMap<>();
         properties.put("text", MiniMessage.miniMessage().serialize(meta.getText()));
         properties.put("billboard", meta.getBillboardConstraints().name());
         properties.put("shadowed", String.valueOf(meta.isShadow()));

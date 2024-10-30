@@ -15,10 +15,7 @@ import org.bukkit.Color;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Configuration
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
@@ -80,11 +77,18 @@ public class Settings {
         return viewDistance / 160;
     }
 
+    private Map<String, List<PlaceholderReplacement>> placeholdersReplacements = new LinkedHashMap<>() {{
+        put("%advancedvanish_is_vanished%", List.of(new PlaceholderReplacement("Yes", " &7[V]&r"), new PlaceholderReplacement("No", "")));
+    }};
+
     public record NameTag(String permission, List<LinesGroup> linesGroups, Background background) {
     }
 
     public record LinesGroup(List<String> lines, List<Modifier> modifiers) {
 
+    }
+
+    public record PlaceholderReplacement(String placeholder, String replacement) {
     }
 
     @Getter

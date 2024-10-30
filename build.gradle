@@ -36,6 +36,7 @@ repositories {
         url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
     }
     maven { url = "https://repo.oraxen.com/releases" }
+    maven { url = "https://repo.oraxen.com/snapshots" }
     maven {
         name = 'jitpack'
         url = 'https://jitpack.io'
@@ -63,6 +64,7 @@ dependencies {
     compileOnly "com.github.retrooper:packetevents-spigot:${packeteventsSpigotVersion}"
     compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
     compileOnly 'io.th0rgal:oraxen:1.174.0'
+    compileOnly("io.th0rgal:oraxen:2.0-SNAPSHOT")
     compileOnly("com.viaversion:viaversion-api:${viaVersionApiVersion}") {
         exclude group: 'io.papermc.paper' // Exclude Paper API
     }
