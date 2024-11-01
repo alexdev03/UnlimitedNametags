@@ -17,6 +17,7 @@ import org.alexdev.unlimitednametags.hook.Hook;
 import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
 import org.alexdev.unlimitednametags.hook.OraxenHook;
 import org.alexdev.unlimitednametags.hook.TypeWriterListener;
+import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.alexdev.unlimitednametags.nametags.ConditionalManager;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.packet.KyoriManager;
@@ -48,6 +49,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private PlayerListener playerListener;
     private TrackerManager trackerManager;
     private Map<Class<? extends Hook>, Hook> hooks;
+    private List<HatHook> hatHooks;
     private TaskScheduler taskScheduler;
     private KyoriManager kyoriManager;
     private ConditionalManager conditionalManager;
@@ -55,6 +57,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
     @Override
     public void onLoad() {
         hooks = Maps.newConcurrentMap();
+        hatHooks = Lists.newCopyOnWriteArrayList();
     }
 
     @Override
@@ -177,7 +180,9 @@ public final class UnlimitedNameTags extends JavaPlugin {
         }
 
         if (Bukkit.getPluginManager().isPluginEnabled("Oraxen")) {
-            hooks.put(OraxenHook.class, new OraxenHook(this));
+            final OraxenHook hook = new OraxenHook(this);
+            hatHooks.add(hook);
+            hooks.put(OraxenHook.class, hook);
             getLogger().info("Oraxen found, hooking into it");
         }
 

@@ -4,7 +4,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
-import org.alexdev.unlimitednametags.hook.OraxenHook;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,6 +11,7 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -98,7 +98,12 @@ public class PlaceholderManager {
 
     @NotNull
     private Component createComponent(@NotNull Player player, @NotNull List<String> strings) {
-        final double moreLines = plugin.getHook(OraxenHook.class).map(hook -> hook.getHigh(player)).orElse(0d);
+        final double moreLines = plugin.getHatHooks().stream()
+                .mapToDouble(h -> h.getHigh(player))
+                .filter(h -> h > 0)
+                .findFirst()
+                .orElse(0d);
+
         if (moreLines > 0) {
             strings = new ArrayList<>(strings);
             int lines = (int) (moreLines / MORE_LINES);
@@ -109,6 +114,7 @@ public class PlaceholderManager {
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
                         .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
                         .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
+                        .map(this::replacePlaceholders)
                         .map(this::formatPhases)
                         .map(t -> format(t, player))
                         .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
@@ -125,6 +131,25 @@ public class PlaceholderManager {
     @NotNull
     private Component format(@NotNull String value, @NotNull Player player) {
         return plugin.getConfigManager().getSettings().getFormat().format(plugin, player, value);
+    }
+
+    @NotNull
+    private String replacePlaceholders(@NotNull String string) {
+        for (Map.Entry<String, List<Settings.PlaceholderReplacement>> entry : plugin.getConfigManager().getSettings().getPlaceholdersReplacements().entrySet()) {
+            if (!string.contains(entry.getKey())) {
+                continue;
+            }
+
+            for (Settings.PlaceholderReplacement replacement : entry.getValue()) {
+                final String copy = string;
+                string = string.replace(entry.getKey(), replacement.replacement());
+                if (!copy.equals(string)) {
+                    return string;
+                }
+            }
+        }
+
+        return string;
     }
 
 }

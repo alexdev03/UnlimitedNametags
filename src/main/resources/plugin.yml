@@ -19,3 +19,8 @@ softdepend:
   - ViaBackwards
   - ViaRewind
   - Oraxen
+permissions:
+  unt.shownametags:
+    default: true
+  unt.showownnametag:
+    default: true
