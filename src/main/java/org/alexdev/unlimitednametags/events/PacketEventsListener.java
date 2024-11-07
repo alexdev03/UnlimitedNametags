@@ -5,6 +5,7 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
@@ -12,14 +13,20 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEn
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
 import io.github.retrooper.packetevents.util.GeyserUtil;
+import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
+import org.alexdev.unlimitednametags.placeholders.PAPIManager;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
 public class PacketEventsListener extends PacketListenerAbstract {
+
+    private static final Pattern RELATIONAL_PLACEHOLDER = Pattern.compile("%rel_.*?%");
 
     private final UnlimitedNameTags plugin;
 
@@ -62,7 +69,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         System.out.println(packet.getAction());
         if (packet.getAction() == WrapperPlayClientEntityAction.Action.START_FLYING_WITH_ELYTRA) {
             System.out.println("Flying with elytra");
-            if(!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
                 return;
             }
 
@@ -122,15 +129,22 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
-        int protocol = event.getUser().getClientVersion().getProtocolVersion();
         //handle metadata for : bedrock players && client with version 1.20.1 or lower
-        if (protocol >= 764 && !GeyserUtil.isGeyserPlayer(player.getUniqueId())) {
-            return;
-        }
-
         final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
         final Optional<PacketNameTag> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
         if (textDisplay.isEmpty()) {
+            return;
+        }
+
+        checkOldVersion(player, event, packet);
+        checkRelationalPlaceholders(player, event, packet, textDisplay.get());
+    }
+
+    private void checkOldVersion(@NotNull Player player, @NotNull PacketSendEvent event,
+                                 @NotNull WrapperPlayServerEntityMetadata packet) {
+        int protocol = event.getUser().getClientVersion().getProtocolVersion();
+        final boolean changeY = GeyserUtil.isGeyserPlayer(player.getUniqueId()) || protocol <= 754;
+        if (!changeY) {
             return;
         }
 
@@ -143,6 +157,35 @@ public class PacketEventsListener extends PacketListenerAbstract {
                 return;
             }
         }
+    }
+
+    private void checkRelationalPlaceholders(@NotNull Player player, @NotNull PacketSendEvent event,
+                                             @NotNull WrapperPlayServerEntityMetadata packet, @NotNull PacketNameTag packetNameTag) {
+        final Player owner = packetNameTag.getOwner();
+        if (owner == null) {
+            return;
+        }
+
+        final PAPIManager papiManager = plugin.getPlaceholderManager().getPapiManager();
+        if (!papiManager.isPAPIEnabled()) {
+            return;
+        }
+
+        if(packetNameTag.getLines().stream().noneMatch(l -> RELATIONAL_PLACEHOLDER.matcher(l).find())) {
+            return;
+        }
+
+        final Optional<EntityData> relationalData = packet.getEntityMetadata().stream()
+                .filter(e -> e.getType().equals(EntityDataTypes.ADV_COMPONENT))
+                .findFirst();
+
+        if (relationalData.isEmpty()) {
+            return;
+        }
+
+        final Component relationalComponent = plugin.getPlaceholderManager().applyRelationalPlaceholders(player, owner, packetNameTag.getLines());
+        relationalData.get().setValue(relationalComponent);
+        event.markForReEncode(true);
     }
 
     public void onDisable() {

@@ -4,6 +4,8 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import lombok.Getter;
@@ -26,10 +28,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Getter
 public class PacketNameTag {
@@ -39,6 +38,10 @@ public class PacketNameTag {
     private final TextDisplayMeta meta;
     private final Player owner;
     private final Set<UUID> blocked;
+    @NotNull
+    private List<String> lines;
+    @NotNull
+    private Map<UUID, Component> relationalCache;
     @Nullable
     private Component lastText;
     private long lastUpdate;
@@ -53,6 +56,8 @@ public class PacketNameTag {
     public PacketNameTag(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
         this.plugin = plugin;
         this.owner = owner;
+        this.lines = Lists.newCopyOnWriteArrayList();
+        this.relationalCache = Maps.newConcurrentMap();
         final int randomId = plugin.getPacketManager().getEntityIndex();
         this.entity = new WrapperEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
         this.meta = (TextDisplayMeta) entity.getEntityMeta();
@@ -64,9 +69,12 @@ public class PacketNameTag {
         this.scale = plugin.getNametagManager().getScale(owner);
     }
 
-    public boolean text(@NotNull Component text) {
+    public boolean text(@NotNull Component text, @NotNull List<String> lines) {
         fixViewers();
-        if (lastText != null && lastText.equals(text)) {
+        this.lines.clear();
+        this.lines.addAll(lines);
+        if (lastText != null && lastText.equals(text) &&
+                nameTag.linesGroups().stream().noneMatch(l -> l.lines().stream().anyMatch(c -> c.contains("%rel_")))) {
             return false;
         }
         lastText = text;
@@ -210,6 +218,7 @@ public class PacketNameTag {
             return;
         }
         entity.removeViewer(player.getUniqueId());
+        relationalCache.remove(player.getUniqueId());
 
         plugin.getPacketManager().removePassenger(player, entity.getEntityId());
     }
@@ -232,6 +241,7 @@ public class PacketNameTag {
             return;
         }
         entity.removeViewerSilently(player.getUniqueId());
+        relationalCache.remove(player.getUniqueId());
     }
 
     public boolean canPlayerSee(@NotNull Player player) {
@@ -267,6 +277,7 @@ public class PacketNameTag {
     public void remove() {
         entity.remove();
         plugin.getPacketManager().removePassenger(entity.getEntityId());
+        relationalCache.clear();
     }
 
     public void handleQuit(@NotNull Player player) {

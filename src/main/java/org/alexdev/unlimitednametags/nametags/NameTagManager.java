@@ -178,7 +178,7 @@ public class NameTagManager {
         }
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
         final PacketNameTag display = new PacketNameTag(plugin, player, nametag);
-        display.text(Component.empty());
+        display.text(Component.empty(), Collections.emptyList());
         display.spawn(player);
 
         if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
@@ -193,7 +193,7 @@ public class NameTagManager {
         creating.add(player.getUniqueId());
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.linesGroups())
-                .thenAccept(lines -> loadDisplay(player, lines, nametag, display))
+                .thenAccept(lines -> loadDisplay(player, lines.key(), lines.right(), nametag, display))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(), throwable);
                     creating.remove(player.getUniqueId());
@@ -225,7 +225,7 @@ public class NameTagManager {
         }
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.linesGroups())
-                .thenAccept(lines -> editDisplay(player, lines, nametag, force))
+                .thenAccept(lines -> editDisplay(player, lines.key(), lines.right(), nametag, force))
                 .exceptionally(throwable -> {
                     plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to edit nametag for " + player.getName(), throwable);
                     return null;
@@ -233,12 +233,13 @@ public class NameTagManager {
     }
 
     private void editDisplay(@NotNull Player player, @NotNull Component component,
+                             @NotNull List<String> lines,
                              @NotNull Settings.NameTag nameTag, boolean force) {
         getPacketDisplayText(player).ifPresent(packetNameTag -> {
             if(!packetNameTag.getNameTag().equals(nameTag)) {
                 packetNameTag.setNameTag(nameTag);
             }
-            final boolean update = packetNameTag.text(component) || force;
+            final boolean update = packetNameTag.text(component, lines) || force;
             packetNameTag.setBackgroundColor(nameTag.background().getColor());
             packetNameTag.setShadowed(nameTag.background().shadowed());
             packetNameTag.setSeeThrough(nameTag.background().seeThrough());
@@ -249,6 +250,7 @@ public class NameTagManager {
     }
 
     private void loadDisplay(@NotNull Player player, @NotNull Component component,
+                             @NotNull List<String> lines,
                              @NotNull Settings.NameTag nameTag,
                              @NotNull PacketNameTag display) {
         try {
@@ -258,7 +260,7 @@ public class NameTagManager {
 
             creating.remove(player.getUniqueId());
             display.getMeta().setUseDefaultBackground(false);
-            display.text(component);
+            display.text(component, lines);
             display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
             display.setShadowed(nameTag.background().shadowed());
             display.setSeeThrough(nameTag.background().seeThrough());

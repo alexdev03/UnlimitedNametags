@@ -1,5 +1,8 @@
 package org.alexdev.unlimitednametags.placeholders;
 
+import com.google.common.collect.Lists;
+import it.unimi.dsi.fastutil.Pair;
+import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -18,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Getter
 public class PlaceholderManager {
 
     private static final Component EMPTY = Component.text("");
@@ -83,7 +87,7 @@ public class PlaceholderManager {
 
 
     @NotNull
-    public CompletableFuture<Component> applyPlaceholders(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
+    public CompletableFuture<Pair<Component, List<String>>> applyPlaceholders(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
         return getCheckedLines(player, lines).thenApply(strings -> createComponent(player, strings));
     }
 
@@ -97,7 +101,23 @@ public class PlaceholderManager {
     }
 
     @NotNull
-    private Component createComponent(@NotNull Player player, @NotNull List<String> strings) {
+    public Component applyRelationalPlaceholders(@NotNull Player whosees, @NotNull Player target, @NotNull List<String> strings) {
+        final PAPIManager papiManager = plugin.getPlaceholderManager().getPapiManager();
+        if (!papiManager.isPAPIEnabled()) {
+            return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
+                    .map(Component::text)
+                    .toList());
+        }
+
+        return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
+                .map(t -> papiManager.setRelationalPlaceholders(whosees, target, t))
+                .map(Component::text)
+                .toList())
+                .compact();
+    }
+
+    @NotNull
+    private Pair<Component, List<String>> createComponent(@NotNull Player player, @NotNull List<String> strings) {
         final double moreLines = plugin.getHatHooks().stream()
                 .mapToDouble(h -> h.getHigh(player))
                 .filter(h -> h > 0)
@@ -111,15 +131,19 @@ public class PlaceholderManager {
                 strings.add(" ");
             }
         }
-        return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
+
+        final List<String> finalStrings = Lists.newArrayList();
+
+        return Pair.of(Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
                         .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
                         .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
                         .map(this::replacePlaceholders)
                         .map(this::formatPhases)
+                        .peek(finalStrings::add)
                         .map(t -> format(t, player))
                         .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
                         .toList())
-                .compact();
+                .compact(), finalStrings);
     }
 
     @NotNull

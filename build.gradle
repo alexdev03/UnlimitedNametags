@@ -132,7 +132,7 @@ tasks {
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
-            url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
+//            url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
 //            url("https://github.com/MiniPlaceholders/Player-Expansion/releases/download/1.2.0/MiniPlaceholders-Player-Expansion-1.2.0.jar")
             url("https://download.luckperms.net/1556/bukkit/loader/LuckPerms-Bukkit-5.4.141.jar")
             url("https://github.com/retrooper/packetevents/releases/download/v2.6.0/packetevents-spigot-2.6.0.jar")

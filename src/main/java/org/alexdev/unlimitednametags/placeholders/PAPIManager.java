@@ -25,4 +25,14 @@ public class PAPIManager {
         }
     }
 
+    @NotNull
+    public String setRelationalPlaceholders(@NotNull Player whoSees, @NotNull Player target, @NotNull String text) {
+        try {
+            return PlaceholderAPI.setRelationalPlaceholders(whoSees, target, text);
+        } catch (Throwable e) {
+            plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to set relational placeholders for text: " + text, e);
+            return text;
+        }
+    }
+
 }
