@@ -12,13 +12,11 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEn
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
 import io.github.retrooper.packetevents.util.GeyserUtil;
-import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.FloodgateHook;
 import org.alexdev.unlimitednametags.hook.GeyserHook;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
-import org.alexdev.unlimitednametags.placeholders.PAPIManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -137,18 +135,20 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private void handleMetaData(@NotNull PacketSendEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) {
-            return;
-        }
+//        if (!(event.getPlayer() instanceof Player player)) {
+//            return;
+//        }
+//
+//        //handle metadata for : bedrock players && client with version 1.20.1 or lower
+//        final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
+//        final Optional<PacketNameTag> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
+//        if (textDisplay.isEmpty()) {
+//            return;
+//        }
+//
+//        System.out.println("Nametag packet  of " + textDisplay.get().getOwner().getName() + " to " + player.getName());
 
-        //handle metadata for : bedrock players && client with version 1.20.1 or lower
-        final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
-        final Optional<PacketNameTag> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
-        if (textDisplay.isEmpty()) {
-            return;
-        }
-
-        checkRelationalPlaceholders(player, event, packet, textDisplay.get());
+//        checkRelationalPlaceholders(player, event, packet, textDisplay.get());
     }
 
     private boolean checkOldVersion(@NotNull Player player, @NotNull PacketSendEvent event,
@@ -192,34 +192,34 @@ public class PacketEventsListener extends PacketListenerAbstract {
 //        }
     }
 
-    private void checkRelationalPlaceholders(@NotNull Player player, @NotNull PacketSendEvent event,
-                                             @NotNull WrapperPlayServerEntityMetadata packet, @NotNull PacketNameTag packetNameTag) {
-        final Player owner = packetNameTag.getOwner();
-        if (owner == null) {
-            return;
-        }
-
-        final PAPIManager papiManager = plugin.getPlaceholderManager().getPapiManager();
-        if (!papiManager.isPAPIEnabled()) {
-            return;
-        }
-
-        if(packetNameTag.getLines().stream().noneMatch(l -> RELATIONAL_PLACEHOLDER.matcher(l).find())) {
-            return;
-        }
-
-        final Optional<EntityData> relationalData = packet.getEntityMetadata().stream()
-                .filter(e -> e.getType().equals(EntityDataTypes.ADV_COMPONENT))
-                .findFirst();
-
-        if (relationalData.isEmpty()) {
-            return;
-        }
-
-        final Component relationalComponent = plugin.getPlaceholderManager().applyRelationalPlaceholders(player, owner, packetNameTag.getLines());
-        relationalData.get().setValue(relationalComponent);
-        event.markForReEncode(true);
-    }
+//    private void checkRelationalPlaceholders(@NotNull Player player, @NotNull PacketSendEvent event,
+//                                             @NotNull WrapperPlayServerEntityMetadata packet, @NotNull PacketNameTag packetNameTag) {
+//        final Player owner = packetNameTag.getOwner();
+//        if (owner == null) {
+//            return;
+//        }
+//
+//        final PAPIManager papiManager = plugin.getPlaceholderManager().getPapiManager();
+//        if (!papiManager.isPAPIEnabled()) {
+//            return;
+//        }
+//
+//        if(packetNameTag.getLines().stream().noneMatch(l -> RELATIONAL_PLACEHOLDER.matcher(l).find())) {
+//            return;
+//        }
+//
+//        final Optional<EntityData> relationalData = packet.getEntityMetadata().stream()
+//                .filter(e -> e.getType().equals(EntityDataTypes.ADV_COMPONENT))
+//                .findFirst();
+//
+//        if (relationalData.isEmpty()) {
+//            return;
+//        }
+//
+//        final Component relationalComponent = plugin.getPlaceholderManager().applyRelationalPlaceholders(player, owner, packetNameTag.getLines());
+//        relationalData.get().setValue(relationalComponent);
+//        event.markForReEncode(true);
+//    }
 
     public boolean isBedrockPlayer(Player player) {
         if (plugin.getHook(GeyserHook.class).map(h -> h.isBedrockPlayer(player)).orElse(false)) {

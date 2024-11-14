@@ -1,21 +1,24 @@
 package org.alexdev.unlimitednametags.packet;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
+import me.tofaa.entitylib.meta.EntityMeta;
+import me.tofaa.entitylib.meta.Metadata;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import me.tofaa.entitylib.meta.display.TextDisplayMeta;
 import me.tofaa.entitylib.wrapper.WrapperEntity;
+import me.tofaa.entitylib.wrapper.WrapperPerPlayerEntity;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
@@ -27,24 +30,27 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Getter
 public class PacketNameTag {
 
     private final UnlimitedNameTags plugin;
-    private final WrapperEntity entity;
-    private final TextDisplayMeta meta;
+    private final WrapperPerPlayerEntity perPlayerEntity;
+    private final Set<UUID> viewers;
+    private final int entityId;
+    private final UUID entityIdUuid;
     private final Player owner;
     private final Set<UUID> blocked;
     @NotNull
-    private List<String> lines;
-    @NotNull
-    private Map<UUID, Component> relationalCache;
-    @Nullable
-    private Component lastText;
+    private final Map<UUID, Component> relationalCache;
     private long lastUpdate;
     @Setter
     private boolean visible;
@@ -57,31 +63,72 @@ public class PacketNameTag {
     public PacketNameTag(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
         this.plugin = plugin;
         this.owner = owner;
-        this.lines = Lists.newCopyOnWriteArrayList();
         this.relationalCache = Maps.newConcurrentMap();
-        final int randomId = plugin.getPacketManager().getEntityIndex();
-        this.entity = new WrapperEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
-        this.meta = (TextDisplayMeta) entity.getEntityMeta();
+        this.entityId = plugin.getPacketManager().getEntityIndex();
+        this.entityIdUuid = UUID.randomUUID();
+        this.perPlayerEntity = new WrapperPerPlayerEntity(this.getBaseSupplier());
+        this.viewers = Sets.newConcurrentHashSet();
+//        this.entity = new WrapperEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
+//        this.meta = (TextDisplayMeta) entity.getEntityMeta();
         this.blocked = Sets.newConcurrentHashSet();
-        this.meta.setLineWidth(1000);
-        this.meta.setNotifyAboutChanges(false);
+//        this.meta.setLineWidth(1000);
+//        this.meta.setNotifyAboutChanges(false);
         this.lastUpdate = System.currentTimeMillis();
         this.nameTag = nameTag;
         this.scale = plugin.getNametagManager().getScale(owner);
     }
 
-    public boolean text(@NotNull Component text, @NotNull List<String> lines) {
+    private Function<User, WrapperEntity> getBaseSupplier() {
+        return user -> {
+            final WrapperEntity wrapper = new WrapperEntity(entityId, entityIdUuid, EntityTypes.TEXT_DISPLAY);
+            final TextDisplayMeta meta = (TextDisplayMeta) wrapper.getEntityMeta();
+            meta.setLineWidth(1000);
+            meta.setNotifyAboutChanges(false);
+            return wrapper;
+        };
+    }
+
+    public boolean text(@NotNull Player player, @NotNull Component text) {
         fixViewers();
-        this.lines.clear();
-        this.lines.addAll(lines);
-        if (lastText != null && lastText.equals(text) &&
-                nameTag.linesGroups().stream().noneMatch(l -> l.lines().stream().anyMatch(c -> c.contains("%rel_")))) {
+//        if (lastText != null && lastText.equals(text) &&
+//                nameTag.linesGroups().stream().noneMatch(l -> l.lines().stream().anyMatch(c -> c.contains("%rel_")))) {
+//            return false;
+//        }
+        if (text.equals(relationalCache.get(player.getUniqueId()))) {
             return false;
         }
-        lastText = text;
-        meta.setText(text);
+
+        relationalCache.put(player.getUniqueId(), text);
+        final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+        if (user == null) {
+            return false;
+        }
+
+        modify(user, meta -> meta.setText(text));
         lastUpdate = System.currentTimeMillis();
         return true;
+    }
+
+    public void modify(User user, Consumer<TextDisplayMeta> consumer) {
+        perPlayerEntity.modify(user, e -> {
+            final TextDisplayMeta meta = (TextDisplayMeta) e.getEntityMeta();
+            consumer.accept(meta);
+        });
+    }
+
+    public void modify(Consumer<TextDisplayMeta> consumer) {
+        perPlayerEntity.execute(e -> {
+            final TextDisplayMeta meta = (TextDisplayMeta) e.getEntityMeta();
+            consumer.accept(meta);
+        });
+    }
+
+    public void modifyEntity(User user, Consumer<WrapperEntity> consumer) {
+        perPlayerEntity.modify(user, consumer);
+    }
+
+    public void modifyEntity(Consumer<WrapperEntity> consumer) {
+        perPlayerEntity.execute(consumer);
     }
 
     public boolean checkScale() {
@@ -107,31 +154,32 @@ public class PacketNameTag {
         this.scale = scale;
         this.increasedOffset = scale > 1 ? scale / 5 : 0;
         updateYOOffset();
-        meta.setScale(new Vector3f(scale, scale, scale));
+        modify(meta -> meta.setScale(new Vector3f(scale, scale, scale)));
     }
 
     public void setBillboard(@NotNull Display.Billboard billboard) {
-        meta.setBillboardConstraints(AbstractDisplayMeta.BillboardConstraints.valueOf(billboard.name()));
+        final AbstractDisplayMeta.BillboardConstraints billboardConstraints = AbstractDisplayMeta.BillboardConstraints.valueOf(billboard.name());
+        modify(meta -> meta.setBillboardConstraints(billboardConstraints));
     }
 
     public void setBillboard(@NotNull AbstractDisplayMeta.BillboardConstraints billboard) {
-        meta.setBillboardConstraints(billboard);
+        modify(meta -> meta.setBillboardConstraints(billboard));
     }
 
     public void setShadowed(boolean shadowed) {
-        meta.setShadow(shadowed);
+        modify(meta -> meta.setShadow(shadowed));
     }
 
     public void setSeeThrough(boolean seeThrough) {
-        meta.setSeeThrough(seeThrough);
+        modify(meta -> meta.setSeeThrough(seeThrough));
     }
 
     public void setBackgroundColor(@NotNull Color color) {
-        meta.setBackgroundColor(color.asARGB());
+        modify(meta -> meta.setBackgroundColor(color.asARGB()));
     }
 
     public void setTransformation(@NotNull Vector3f vector3f) {
-        meta.setTranslation(vector3f);
+        modify(meta -> meta.setTranslation(vector3f));
     }
 
     public void setYOffset(float offset) {
@@ -149,7 +197,7 @@ public class PacketNameTag {
     }
 
     public void setViewRange(float range) {
-        meta.setViewRange(range);
+        modify(meta -> meta.setViewRange(range));
     }
 
     public void showToPlayer(@NotNull Player player) {
@@ -157,7 +205,7 @@ public class PacketNameTag {
             return;
         }
 
-        if(plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
+        if (plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
             return;
         }
 
@@ -186,8 +234,20 @@ public class PacketNameTag {
             return;
         }
 
+        if (viewers.contains(player.getUniqueId())) {
+            return;
+        }
+
+        spawn(player);
+        applyOwnerData(perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(player)));
+
         setPosition();
-        entity.addViewer(player.getUniqueId());
+        final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+        if (user == null) {
+            return;
+        }
+        viewers.add(user.getUUID());
+        perPlayerEntity.addViewer(user);
 
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             sendPassengersPacket(player);
@@ -202,7 +262,8 @@ public class PacketNameTag {
         if (!visible) {
             return;
         }
-        entity.getViewers().forEach(u -> {
+
+        viewers.forEach(u -> {
             final Player player = Bukkit.getPlayer(u);
             if (player != null) {
                 sendPassengersPacket(player);
@@ -216,21 +277,26 @@ public class PacketNameTag {
         location.setPitch(0);
         location.setYaw(0);
         location.setY(location.getY() + (1.8) * scale);
-        entity.setLocation(SpigotConversionUtil.fromBukkitLocation(location));
+        modifyEntity(meta -> meta.setLocation(SpigotConversionUtil.fromBukkitLocation(location)));
     }
 
     public void hideFromPlayer(@NotNull Player player) {
         if (blocked.contains(player.getUniqueId())) {
             return;
         }
-        entity.removeViewer(player.getUniqueId());
+        viewers.remove(player.getUniqueId());
+        final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+        if (user == null) {
+            return;
+        }
+        perPlayerEntity.removeViewer(user);
         relationalCache.remove(player.getUniqueId());
 
-        plugin.getPacketManager().removePassenger(player, entity.getEntityId());
+        plugin.getPacketManager().removePassenger(player, entityId);
     }
 
     public void clearViewers() {
-        entity.getViewers().forEach(u -> {
+        viewers.forEach(u -> {
             final Player player = Bukkit.getPlayer(u);
             if (player != null) {
                 hideFromPlayer(player);
@@ -246,53 +312,70 @@ public class PacketNameTag {
         if (blocked.contains(player.getUniqueId())) {
             return;
         }
-        entity.removeViewerSilently(player.getUniqueId());
+        viewers.remove(player.getUniqueId());
         relationalCache.remove(player.getUniqueId());
     }
 
     public boolean canPlayerSee(@NotNull Player player) {
-        return entity.getViewers().contains(player.getUniqueId());
+        return viewers.contains(player.getUniqueId());
     }
 
     public void spawn(@NotNull Player player) {
         this.visible = true;
-        entity.spawn(SpigotConversionUtil.fromBukkitLocation(player.getLocation()));
+        final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+        if (user == null) {
+            return;
+        }
+        modifyEntity(user, e -> e.spawn(SpigotConversionUtil.fromBukkitLocation(player.getLocation())));
     }
 
     public void refresh() {
         fixViewers();
-        entity.refresh();
+        perPlayerEntity.execute(WrapperEntity::refresh);
     }
 
     public void refreshForPlayer(@NotNull Player player) {
-        final var packet = meta.createPacket();
-        PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
+        final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+        if (user == null) {
+            return;
+        }
+        perPlayerEntity.getEntityOf(user).refresh();
     }
 
     private void fixViewers() {
-        entity.getViewers().stream().filter(u -> {
-            final Player player = Bukkit.getPlayer(u);
-            if (player == null) {
-                return true;
-            }
-            final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
-            return user == null || user.getChannel() == null;
-        }).forEach(entity::removeViewerSilently);
+//        entity.getViewers().stream().filter(u -> {
+//            final Player player = Bukkit.getPlayer(u);
+//            if (player == null) {
+//                return true;
+//            }
+//            final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+//            return user == null || user.getChannel() == null;
+//        }).forEach(entity::removeViewerSilently);
     }
 
     public void remove() {
-        entity.remove();
-        plugin.getPacketManager().removePassenger(entity.getEntityId());
+        viewers.forEach(u -> {
+            final Player player = Bukkit.getPlayer(u);
+            if (player == null) {
+                return;
+            }
+            final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+            if (user != null) {
+                perPlayerEntity.removeViewer(user);
+            }
+        });
+        viewers.clear();
+        plugin.getPacketManager().removePassenger(entityId);
         relationalCache.clear();
     }
 
     public void handleQuit(@NotNull Player player) {
-        entity.removeViewerSilently(player.getUniqueId());
-        plugin.getPacketManager().removePassenger(player, entity.getEntityId());
+        viewers.remove(player.getUniqueId());
+        plugin.getPacketManager().removePassenger(player, entityId);
     }
 
     public void setTextOpacity(byte b) {
-        meta.setTextOpacity(b);
+        modify(meta -> meta.setTextOpacity(b));
     }
 
     public void hideForOwner() {
@@ -305,19 +388,59 @@ public class PacketNameTag {
         showToPlayer(owner);
     }
 
+//    @NotNull
+//    public List<EntityData> copyMetadata() {
+//        final User ownerUser = PacketEvents.getAPI().getPlayerManager().getUser(owner);
+//        if (ownerUser == null) {
+//            return Collections.emptyList();
+//        }
+//        return perPlayerEntity.getEntityOf(ownerUser).getEntityMeta().entityData()
+//                .stream()
+//                .filter(m -> m.getType() != EntityDataTypes.ADV_COMPONENT)
+//                .toList();
+//    }
+
+    @SneakyThrows
+    //wait for tofaa
+    private void applyOwnerData(@NotNull WrapperEntity wrapper) {
+        final Field metadataField = EntityMeta.class.getDeclaredField("metadata");
+        metadataField.setAccessible(true);
+        final Metadata metadata = (Metadata) metadataField.get(wrapper.getEntityMeta());
+        final Field entityDataField = Metadata.class.getDeclaredField("metadataMap");
+        entityDataField.setAccessible(true);
+        final Map<Byte, EntityData> metadataMap = (Map<Byte, EntityData>) entityDataField.get(metadata);
+        final Field notNotifyField = metadata.getClass().getDeclaredField("notNotifiedChanges");
+        notNotifyField.setAccessible(true);
+        final Map<Byte, EntityData> notNotifyMap = (Map<Byte, EntityData>) notNotifyField.get(metadata);
+
+
+        final Metadata ownerMetadata = (Metadata) metadataField.get(perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(owner)).getEntityMeta());
+        final Map<Byte, EntityData> ownerMetadataMap = (Map<Byte, EntityData>) entityDataField.get(ownerMetadata);
+
+        ownerMetadataMap.forEach((b, entityData) -> {
+            if (entityData.getType() == EntityDataTypes.ADV_COMPONENT) {
+                return;
+            }
+            metadataMap.put(b, entityData);
+            notNotifyMap.put(b, entityData);
+        });
+
+        metadata.setNotifyAboutChanges(false);
+    }
+
     @NotNull
     public Map<String, String> properties() {
         final Map<String, String> properties = new LinkedHashMap<>();
-        properties.put("text", MiniMessage.miniMessage().serialize(meta.getText()));
-        properties.put("billboard", meta.getBillboardConstraints().name());
-        properties.put("shadowed", String.valueOf(meta.isShadow()));
-        properties.put("seeThrough", String.valueOf(meta.isSeeThrough()));
-        properties.put("backgroundColor", String.valueOf(meta.getBackgroundColor()));
-        properties.put("transformation", meta.getTranslation().toString());
-        properties.put("yOffset", String.valueOf(offset));
-        properties.put("scale", String.valueOf(meta.getScale()));
-        properties.put("increasedOffset", String.valueOf(increasedOffset));
-        properties.put("viewRange", String.valueOf(meta.getViewRange()));
+//        properties.put("text", MiniMessage.miniMessage().serialize(meta.getText()));
+//        properties.put("billboard", meta.getBillboardConstraints().name());
+//        properties.put("shadowed", String.valueOf(meta.isShadow()));
+//        properties.put("seeThrough", String.valueOf(meta.isSeeThrough()));
+//        properties.put("backgroundColor", String.valueOf(meta.getBackgroundColor()));
+//        properties.put("transformation", meta.getTranslation().toString());
+//        properties.put("yOffset", String.valueOf(offset));
+//        properties.put("scale", String.valueOf(meta.getScale()));
+//        properties.put("increasedOffset", String.valueOf(increasedOffset));
+//        properties.put("viewRange", String.valueOf(meta.getViewRange()));
         return properties;
     }
 

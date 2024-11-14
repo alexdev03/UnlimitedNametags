@@ -1,7 +1,5 @@
 package org.alexdev.unlimitednametags.placeholders;
 
-import com.google.common.collect.Lists;
-import it.unimi.dsi.fastutil.Pair;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
@@ -21,6 +19,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @Getter
 public class PlaceholderManager {
@@ -88,8 +87,9 @@ public class PlaceholderManager {
 
 
     @NotNull
-    public CompletableFuture<Pair<Component, List<String>>> applyPlaceholders(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
-        return getCheckedLines(player, lines).thenApply(strings -> createComponent(player, strings));
+    public CompletableFuture<Map<Player, Component>> applyPlaceholders(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines,
+                                                                       @NotNull List<Player> relationalPlayers) {
+        return getCheckedLines(player, lines).thenApply(strings -> createComponent(player, strings, relationalPlayers));
     }
 
     @NotNull
@@ -112,14 +112,14 @@ public class PlaceholderManager {
         }
 
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
-                .map(t -> papiManager.setRelationalPlaceholders(whosees, target, t))
-                .map(t -> format(t, whosees))
-                .toList())
+                        .map(t -> papiManager.setRelationalPlaceholders(whosees, target, t))
+                        .map(t -> format(t, whosees))
+                        .toList())
                 .compact();
     }
 
     @NotNull
-    private Pair<Component, List<String>> createComponent(@NotNull Player player, @NotNull List<String> strings) {
+    private Map<Player, Component> createComponent(@NotNull Player player, @NotNull List<String> strings, @NotNull List<Player> relationalPlayers) {
         final double moreLines = plugin.getHatHooks().stream()
                 .mapToDouble(h -> h.getHigh(player))
                 .filter(h -> h > 0)
@@ -134,18 +134,20 @@ public class PlaceholderManager {
             }
         }
 
-        final List<String> finalStrings = Lists.newArrayList();
-
-        return Pair.of(Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
-                        .map(s -> papiManager.isPAPIEnabled() ? replacePlaceholders(s, player) : s)
-                        .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
-                        .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
-                        .map(this::formatPhases)
-                        .peek(finalStrings::add)
-                        .map(t -> format(t, player))
-                        .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
-                        .toList())
-                .compact(), finalStrings);
+        final List<String> stringsCopy = strings.stream().
+                map(s -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, s) : s)
+                .toList();
+        return relationalPlayers.stream()
+                .map(r -> Map.entry(r, Component.join(JoinConfiguration.separator(Component.newline()), stringsCopy.stream()
+                                .map(s -> papiManager.isPAPIEnabled() ? replacePlaceholders(s, player) : s)
+                                .map(t -> papiManager.isPAPIEnabled() ? papiManager.setRelationalPlaceholders(r, player, t) : t)
+                                .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
+                                .map(this::formatPhases)
+                                .map(t -> format(t, player))
+                                .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
+                                .toList())
+                        .compact()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     @NotNull
@@ -171,7 +173,7 @@ public class PlaceholderManager {
                     .filter(r -> r.placeholder().equals(replaced))
                     .findFirst();
 
-            if(replacement.isPresent()) {
+            if (replacement.isPresent()) {
                 string = string.replace(entry.getKey(), replacement.get().replacement());
             }
 
