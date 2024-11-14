@@ -15,6 +15,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -105,13 +106,14 @@ public class PlaceholderManager {
         final PAPIManager papiManager = plugin.getPlaceholderManager().getPapiManager();
         if (!papiManager.isPAPIEnabled()) {
             return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
-                    .map(Component::text)
+                    .map(s -> replacePlaceholders(s, target))
+                    .map(s -> format(s, target))
                     .toList());
         }
 
         return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
                 .map(t -> papiManager.setRelationalPlaceholders(whosees, target, t))
-                .map(Component::text)
+                .map(t -> format(t, whosees))
                 .toList())
                 .compact();
     }
@@ -135,9 +137,9 @@ public class PlaceholderManager {
         final List<String> finalStrings = Lists.newArrayList();
 
         return Pair.of(Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
+                        .map(s -> papiManager.isPAPIEnabled() ? replacePlaceholders(s, player) : s)
                         .map(t -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, t) : t)
                         .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
-                        .map(this::replacePlaceholders)
                         .map(this::formatPhases)
                         .peek(finalStrings::add)
                         .map(t -> format(t, player))
@@ -158,19 +160,29 @@ public class PlaceholderManager {
     }
 
     @NotNull
-    private String replacePlaceholders(@NotNull String string) {
+    private String replacePlaceholders(@NotNull String string, @NotNull Player player) {
         for (Map.Entry<String, List<Settings.PlaceholderReplacement>> entry : plugin.getConfigManager().getSettings().getPlaceholdersReplacements().entrySet()) {
             if (!string.contains(entry.getKey())) {
                 continue;
             }
 
-            for (Settings.PlaceholderReplacement replacement : entry.getValue()) {
-                final String copy = string;
-                string = string.replace(entry.getKey(), replacement.replacement());
-                if (!copy.equals(string)) {
-                    return string;
-                }
+            final String replaced = papiManager.setPlaceholders(player, entry.getKey());
+            final Optional<Settings.PlaceholderReplacement> replacement = entry.getValue().stream()
+                    .filter(r -> r.placeholder().equals(replaced))
+                    .findFirst();
+
+            if(replacement.isPresent()) {
+                string = string.replace(entry.getKey(), replacement.get().replacement());
             }
+
+//            for (Settings.PlaceholderReplacement replacement : entry.getValue()) {
+//                final String copy = string;
+//
+//                string = string.replace(entry.getKey(), replacement.replacement());
+//                if (!copy.equals(string)) {
+//                    return string;
+//                }
+//            }
         }
 
         return string;

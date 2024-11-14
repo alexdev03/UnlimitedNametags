@@ -72,6 +72,10 @@ dependencies {
     compileOnly "net.kyori:adventure-text-minimessage:${adventureTextMinimessageVersion}"
     compileOnly "net.jodah:expiringmap:${expiringMapVersion}"
     compileOnly "org.apache.commons:commons-jexl3:${commonsJexl3Version}"
+    compileOnly("org.geysermc.floodgate:api:${floodgateApiVersion}")
+    compileOnly("org.geysermc.geyser:api:${geyserApiVersion}")
+
+
 
     implementation "org.bstats:bstats-bukkit:${bstatsBukkitVersion}"
     implementation "org.jetbrains:annotations:${annotationsVersion}"
@@ -137,7 +141,8 @@ tasks {
             url("https://download.luckperms.net/1556/bukkit/loader/LuckPerms-Bukkit-5.4.141.jar")
             url("https://github.com/retrooper/packetevents/releases/download/v2.6.0/packetevents-spigot-2.6.0.jar")
             url("https://github.com/IntellectualSites/FastAsyncWorldEdit/releases/download/2.11.2/FastAsyncWorldEdit-Bukkit-2.11.2.jar")
-            github("ViaVersion", "ViaVersion", "5.0.1", "ViaVersion-5.0.1.jar")
+            github("ViaVersion", "ViaVersion", "5.1.1", "ViaVersion-5.1.1.jar")
+            github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
             url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
         }

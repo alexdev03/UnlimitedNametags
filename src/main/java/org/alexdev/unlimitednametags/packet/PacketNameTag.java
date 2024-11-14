@@ -18,6 +18,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -155,6 +156,11 @@ public class PacketNameTag {
         if (!visible) {
             return;
         }
+
+        if(plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
+            return;
+        }
+
         if (blocked.contains(player.getUniqueId())) {
             return;
         }

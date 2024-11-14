@@ -12,6 +12,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -93,6 +94,10 @@ public class NameTagManager {
 //                                    if (player1 == player2) {
 //                                        return;
 //                                    }
+
+                                    if(plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player2)).orElse(false)) {
+                                        return;
+                                    }
 
                                     if (player1.getWorld() != player2.getWorld()) {
                                         return;

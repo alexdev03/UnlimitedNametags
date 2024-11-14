@@ -7,7 +7,6 @@ import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
@@ -15,8 +14,12 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTe
 import io.github.retrooper.packetevents.util.GeyserUtil;
 import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.hook.FloodgateHook;
+import org.alexdev.unlimitednametags.hook.GeyserHook;
+import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.alexdev.unlimitednametags.placeholders.PAPIManager;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -117,6 +120,15 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
+        final Player player = Bukkit.getPlayer(event.getUser().getUUID());
+        if(player == null) {
+            return;
+        }
+
+        if(plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
+            return;
+        }
+
         final WrapperPlayServerTeams packet = new WrapperPlayServerTeams(event);
         if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
             packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
@@ -136,27 +148,48 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
-        checkOldVersion(player, event, packet);
         checkRelationalPlaceholders(player, event, packet, textDisplay.get());
     }
 
-    private void checkOldVersion(@NotNull Player player, @NotNull PacketSendEvent event,
+    private boolean checkOldVersion(@NotNull Player player, @NotNull PacketSendEvent event,
                                  @NotNull WrapperPlayServerEntityMetadata packet) {
-        int protocol = event.getUser().getClientVersion().getProtocolVersion();
-        final boolean changeY = GeyserUtil.isGeyserPlayer(player.getUniqueId()) || protocol <= 754;
+        final boolean changeY = isBedrockPlayer(player);
         if (!changeY) {
-            return;
+            return false;
         }
 
-        for (final EntityData eData : packet.getEntityMetadata()) {
-            if (eData.getIndex() == 11) {
-                final Vector3f old = (Vector3f) eData.getValue();
-                final Vector3f newV = new Vector3f(old.getX(), old.getY() + 0.45f, old.getZ());
-                eData.setValue(newV);
-                event.markForReEncode(true);
-                return;
-            }
+        final Optional<EntityData> entityData = packet.getEntityMetadata().stream()
+                .filter(e -> e.getType().equals(EntityDataTypes.ADV_COMPONENT))
+                .findFirst();
+
+        if (entityData.isEmpty()) {
+            return false;
         }
+
+//        final Component space = Component.text("\t ");
+//
+//        final Component targetComponent = (Component) entityData.get().getValue();
+//        Component finalComponent = Component.empty();
+//        for (int i = 0; i < 10; i++) {
+//            finalComponent = finalComponent.append(space);
+//        }
+//        entityData.get().setValue(targetComponent.append(finalComponent));
+//        event.markForReEncode(true);
+//        System.out.println("Added 10 lines to " + player.getName());
+        return true;
+
+
+
+//        for (final EntityData eData : packet.getEntityMetadata()) {
+//            if (eData.getIndex() == 11) {
+//                final Vector3f old = (Vector3f) eData.getValue();
+//                final Vector3f newV = new Vector3f(old.getX(), old.getY() + 0.45f, old.getZ());
+//                System.out.println("Increasing y for packet to " + player.getName());
+//                eData.setValue(newV);
+//                event.markForReEncode(true);
+//                return;
+//            }
+//        }
     }
 
     private void checkRelationalPlaceholders(@NotNull Player player, @NotNull PacketSendEvent event,
@@ -186,6 +219,18 @@ public class PacketEventsListener extends PacketListenerAbstract {
         final Component relationalComponent = plugin.getPlaceholderManager().applyRelationalPlaceholders(player, owner, packetNameTag.getLines());
         relationalData.get().setValue(relationalComponent);
         event.markForReEncode(true);
+    }
+
+    public boolean isBedrockPlayer(Player player) {
+        if (plugin.getHook(GeyserHook.class).map(h -> h.isBedrockPlayer(player)).orElse(false)) {
+            return true;
+        }
+
+        if (plugin.getHook(FloodgateHook.class).map(h -> h.isFloodgatePlayer(player)).orElse(false)) {
+            return true;
+        }
+
+        return GeyserUtil.isGeyserPlayer(player.getUniqueId());
     }
 
     public void onDisable() {

@@ -13,10 +13,7 @@ import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.events.*;
-import org.alexdev.unlimitednametags.hook.Hook;
-import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
-import org.alexdev.unlimitednametags.hook.OraxenHook;
-import org.alexdev.unlimitednametags.hook.TypeWriterListener;
+import org.alexdev.unlimitednametags.hook.*;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.alexdev.unlimitednametags.nametags.ConditionalManager;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
@@ -184,6 +181,24 @@ public final class UnlimitedNameTags extends JavaPlugin {
             hatHooks.add(hook);
             hooks.put(OraxenHook.class, hook);
             getLogger().info("Oraxen found, hooking into it");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
+            final ViaVersionHook hook = new ViaVersionHook(this);
+            hooks.put(ViaVersionHook.class, hook);
+            getLogger().info("ViaVersion found, hooking into it");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("geyser")) {
+            final GeyserHook hook = new GeyserHook(this);
+            hooks.put(GeyserHook.class, hook);
+            getLogger().info("Geyser found, hooking into it");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("floodgate")) {
+            final FloodgateHook hook = new FloodgateHook(this);
+            hooks.put(FloodgateHook.class, hook);
+            getLogger().info("Floodgate found, hooking into it");
         }
 
         hooks.values().forEach(Hook::onEnable);
