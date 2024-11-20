@@ -17,12 +17,26 @@ Enhance your server's customization by tailoring player name tags, integrating d
 ---
 
 ## 🌟 **Features**
-- **🎨 Customizable Name Tags**: Change colors, formats, and add extra details to player name tags.
+- **🎨 Customizable Name Tags**: Change colors, formats, lines, and add extra details to player name tags.
 - **⚡ Placeholder Support**: Integrate with [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI) for dynamic, real-time information.
 - **👥 Relational Placeholders**: Fully supports relational placeholders to display dynamic information based on the relationship between players.
 - **🕵️ Vanish Integration**: Automatically hide name tags for vanished players.
 - **⚙️ Easy Configuration**: Simple yet powerful configuration via `settings.yml`.
 - **🛠️ Bedrock Support**: Limited Bedrock compatibility through Geyser; text displays are converted into armor stands due to platform restrictions.
+- **📏 Conditional Lines**: Add or remove lines dynamically based on specific conditions or placeholders.
+- **🔤 Multiple Text Formatters**: Choose from **MINIMESSAGE**, **MINEDOWN**, **LEGACY**, or **UNIVERSAL** formats:
+   - **UNIVERSAL**: The most resource-intensive but supports all formatting options (except for **MINEDOWN**).  
+     Examples:
+      - **LEGACY OF LEGACY**: `&x&0&8&4&c&f&bc`
+      - **LEGACY**: `&#084cfbc`
+      - **MINEDOWN**: `&#084cfbc&`
+      - **MINIMESSAGE**: `<color:#084cfbc>`
+- **🌌 Simulate Lunar Client's Show Own Nametag Mod**: Enable the ability to display your own name tag, simulating the behavior of Lunar Client's mod.
+- **🔄 Placeholder Replacements**: Customize placeholder outputs dynamically. Example:
+   - Placeholder: `%advancedvanish_is_vanished%`
+   - Replacements:
+      - **"Yes"**: `&7[V]&r`
+      - **"No"**: `""`
 
 ---
 
@@ -49,11 +63,9 @@ Enhance your server's customization by tailoring player name tags, integrating d
 
 ---
 
-## 🛠️ **Usage**
+## 🛠️ **Commands**
 
-### **Commands**
-
-#### Main Commands:
+#### Main:
 - **`/unt`**: Displays the plugin version and a list of available commands. *(Permission: none)*
 - **`/unt reload`**: Reloads the plugin configuration without restarting the server. *(Permission: `unt.reload`)*
 - **`/unt debug`**: Performs a debug operation for troubleshooting. *(Permission: `unt.debug`)*
@@ -73,7 +85,7 @@ Enhance your server's customization by tailoring player name tags, integrating d
 
 ---
 
-## **Default Permissions**
+## 🔒 **Default Permissions**
 - **`unt.shownametags`**: Enabled by default. Revoking this permission hides other name tags globally for the player.
 - **`unt.showownnametag`**: Enabled by default. Revoking this permission hides the player's own name tag.
 
@@ -83,9 +95,9 @@ Enhance your server's customization by tailoring player name tags, integrating d
 
 Unlimited Name Tags works seamlessly with:
 
-- **[PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI)**: Add dynamic data (e.g., health, rank) to name tags.
+- **[PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI)**: Add dynamic data (e.g., health, rank) to name tags. Relational placeholders are fully supported.
 - **Vanish Plugins**: Automatically hide name tags for invisible players.
-- **Type Writer**: Adjust name tags during cinematic mode.
+- **TypeWriter**: Adjust name tags during cinematic mode.
 - **[Oraxen](https://oraxen.com/)**: Ensures compatibility with 3D helmets.
 - **MiniPlaceholders**: Works when using MiniMessage for advanced formatting.
 - **Custom Plugins**: Easily hook into your custom plugins to extend functionality.
@@ -96,7 +108,7 @@ Unlimited Name Tags works seamlessly with:
 - **Paper**: Fully supported from **1.19.4+** *(highly recommended)*.
 - **Spigot**: Supported from **1.20.2+**, but Paper is preferred for enhanced performance.
 
-> **Note**: For versions below 1.19.4, text displays are not supported as the necessary packet functionality does not exist.
+> **Note**: Versions below **1.19.4** do not support text displays because the required packet functionality does not exist. Additionally, clients connecting with **ViaBackwards** are not compatible and will not display name tags correctly. For the best experience, ensure both the server and clients are using compatible versions.
 
 ---
 
