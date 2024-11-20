@@ -1,69 +1,109 @@
+# **Unlimited Name Tags Plugin** 🎮✨
+*A powerful tool to customize and manage player name tags like never before!*
 
-### Unlimited Name Tags Plugin
+[![Discord](https://img.shields.io/discord/1263414013040263249?label=Discord&logo=discord&color=5865F2)](https://discord.gg/W4Fu8fqCKs)  
+[![CodeFactor](https://www.codefactor.io/repository/github/alexdev03/unlimitednametags/badge)](https://www.codefactor.io/repository/github/alexdev03/unlimitednametags)  
+[![API Version](https://img.shields.io/github/v/release/alexdev03/UnlimitedNametags?&color=blue)](https://github.com/alexdev03/UnlimitedNametags/releases/latest)
 
-## Overview
-
-UnlimitedNameTags plugin is a server plugin designed to provide extensive customization and management of player name tags. It allows server administrators to customize how player names appear in-game, integrate with other plugins, and manage name tag settings with ease. This plugin requires Paper 1.19.4 or higher and PacketEvents to function.
-
-## Features
-
-- **Customizable Name Tags**: Change the appearance of player name tags including color, format, and additional information.
-- **Placeholder Support**: Integrate with PlaceholderAPI to include dynamic information in name tags.
-- **Vanish Integration**: Support for integrating with vanish plugins to hide player name tags when vanished.
-- **Configuration Management**: Easily configurable settings to tailor the plugin to your server's needs.
-
-## Installation
-
-1. **Download the Plugin**: Obtain the latest version of the Unlimited Name Tags plugin JAR file.
-2. **Add to Server**: Place the downloaded JAR file into the `plugins` directory of your Minecraft server.
-3. **Download PacketEvents**: Obtain the latest version of PacketEvents and place the JAR file into the `plugins` directory.
-4. **Restart Server**: Restart your Minecraft server to load the plugins.
-5. **Configure Plugin**: Edit the configuration file (`settings.yml`) in the plugin's directory to customize settings as desired.
-
-## Usage
-
-### Commands
-
-- `/unt show <player>`: Show the name tag for a specific player.
-- `/unt hide <player>`: Hide the name tag for a specific player.
-- `/unt reload`: Reload the plugin configuration without restarting the server.
-
-### Configuration
-
-For detailed configuration instructions, please refer to the [Unlimited Name Tags Wiki](https://alexdev-s-organization.gitbook.io/unlimitednametags).
-
-### Placeholders
-
-Utilize placeholders to dynamically insert information into name tags. For example, you can display a player's health, rank, or any other PlaceholderAPI-supported placeholder.
-
-## Integrations
-
-- **PlaceholderAPI**: Use placeholders to dynamically change the content of name tags.
-- **Vanish Plugins**: Integrate with popular vanish plugins to hide name tags for vanished players.
-- **Type Writer**: Support for removing name tags when players are in cinematic mode.
-- **Oraxen**: Support for 3D helmets. The name tag adjusts its position to avoid overlapping with the helmet.
-- **MiniPlaceholders**: Integration works only when using MiniMessage format.
-- **Other Plugins**: Easily hook into other plugins to extend the functionality of name tags.
-
-## Contributing
-
-We welcome contributions from the community! To contribute:
-
-1. Fork the repository on GitHub.
-2. Create a new branch for your feature or bugfix.
-3. Make your changes and commit them with clear, descriptive messages.
-4. Push your changes to your forked repository.
-5. Open a pull request to the main repository.
-
-## Where do you get the plugin
-You can buy the plugin on [BuiltByBit](https://builtbybit.com/resources/unlimitednametags.46172/) or on [SpigotMC](https://www.spigotmc.org/resources/unlimitednametags.117526/)
-
-## License
-
-This project is licensed under a custom License. See the `LICENSE` file for more details.
-
-## Support
-
-For support, you need to own a license of the plugin, then you can join the [Discord Server](https://discord.gg/W4Fu8fqCKs) and ask for help in the support channel
+![Unlimited Name Tags in Action](https://i.imgur.com/w7zlGaO.gif)
 
 ---
+
+## 📌 **Overview**
+Unlimited Name Tags is a robust plugin designed for Minecraft servers running **Paper 1.19.4+** or **Spigot 1.20.2+**. While the plugin supports Spigot, **Paper is highly recommended** for optimal performance and compatibility with advanced features.
+
+Enhance your server's customization by tailoring player name tags, integrating dynamic placeholders, and supporting vanish plugins seamlessly. Built with ease-of-use and flexibility in mind, this plugin elevates the player experience while simplifying server management.
+
+---
+
+## 🌟 **Features**
+- **🎨 Customizable Name Tags**: Change colors, formats, and add extra details to player name tags.
+- **⚡ Placeholder Support**: Integrate with [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI) for dynamic, real-time information.
+- **👥 Relational Placeholders**: Fully supports relational placeholders to display dynamic information based on the relationship between players.
+- **🕵️ Vanish Integration**: Automatically hide name tags for vanished players.
+- **⚙️ Easy Configuration**: Simple yet powerful configuration via `settings.yml`.
+- **🛠️ Bedrock Support**: Limited Bedrock compatibility through Geyser; text displays are converted into armor stands due to platform restrictions.
+
+---
+
+## 🚀 **Getting Started**
+
+### **Installation**
+
+1. **Download the Plugin**  
+   Get the latest Unlimited Name Tags JAR from:
+    - [BuiltByBit](https://builtbybit.com/resources/unlimitednametags.46172/)
+    - [SpigotMC](https://www.spigotmc.org/resources/unlimitednametags.117526/)
+
+2. **Add Dependencies**  
+   Download [PacketEvents](https://modrinth.com/plugin/packetevents) and place it in the `plugins` directory.
+
+3. **Upload to Server**  
+   Place both JAR files (`UnlimitedNameTags` and `PacketEvents`) in the `plugins` directory.
+
+4. **Restart the Server**  
+   Restart your server to load the plugin.
+
+5. **Configure**  
+   Customize the `settings.yml` file located in the plugin's folder to suit your server’s needs.
+
+---
+
+## 🛠️ **Usage**
+
+### **Commands**
+
+#### Main Commands:
+- **`/unt`**: Displays the plugin version and a list of available commands. *(Permission: none)*
+- **`/unt reload`**: Reloads the plugin configuration without restarting the server. *(Permission: `unt.reload`)*
+- **`/unt debug`**: Performs a debug operation for troubleshooting. *(Permission: `unt.debug`)*
+
+#### Name Tag Management:
+- **`/unt show <player>`**: Displays the name tag for a specific player. *(Permission: `unt.show`)*
+- **`/unt hide <player>`**: Hides the name tag for a specific player. *(Permission: `unt.hide`)*
+- **`/unt refresh <player>`**: Refreshes the name tag of a specific player for the command sender. *(Permission: `unt.refresh`)*
+
+#### Customization and Configuration:
+- **`/unt billboard <type>`**: Sets the default billboard type (e.g., `CENTER`, `FIXED`, etc.). *(Permission: `unt.billboard`)*
+- **`/unt formatter <formatter>`**: Sets the default name tag formatter. *(Permission: `unt.formatter`)*
+
+#### Managing Other Players' Name Tags:
+- **`/unt hideOtherNametags [-h]`**: Hides the name tags of other players. Use the `-h` flag to suppress the confirmation message. *(Permission: `unt.hideOtherNametags`)*
+- **`/unt showOtherNametags [-h]`**: Displays the name tags of other players. Use the `-h` flag to suppress the confirmation message. *(Permission: `unt.showOtherNametags`)*
+
+---
+
+## **Default Permissions**
+- **`unt.shownametags`**: Enabled by default. Revoking this permission hides other name tags globally for the player.
+- **`unt.showownnametag`**: Enabled by default. Revoking this permission hides the player's own name tag.
+
+---
+
+## 🔌 **Integrations**
+
+Unlimited Name Tags works seamlessly with:
+
+- **[PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI)**: Add dynamic data (e.g., health, rank) to name tags.
+- **Vanish Plugins**: Automatically hide name tags for invisible players.
+- **Type Writer**: Adjust name tags during cinematic mode.
+- **[Oraxen](https://oraxen.com/)**: Ensures compatibility with 3D helmets.
+- **MiniPlaceholders**: Works when using MiniMessage for advanced formatting.
+- **Custom Plugins**: Easily hook into your custom plugins to extend functionality.
+
+---
+
+## 📜 **Supported Versions**
+- **Paper**: Fully supported from **1.19.4+** *(highly recommended)*.
+- **Spigot**: Supported from **1.20.2+**, but Paper is preferred for enhanced performance.
+
+> **Note**: For versions below 1.19.4, text displays are not supported as the necessary packet functionality does not exist.
+
+---
+
+## 💬 **Support**
+
+Need help? Join our [Discord Server](https://discord.gg/W4Fu8fqCKs)! For **pre-sale questions**, feel free to use the **#chat** channel. If you need support, please open a ticket and ensure your license is verified to gain access to assistance.
+
+---
+
+Take your server customization to the next level with **Unlimited Name Tags**! 🚀

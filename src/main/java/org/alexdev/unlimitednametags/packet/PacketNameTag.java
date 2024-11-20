@@ -19,6 +19,7 @@ import me.tofaa.entitylib.meta.display.TextDisplayMeta;
 import me.tofaa.entitylib.wrapper.WrapperEntity;
 import me.tofaa.entitylib.wrapper.WrapperPerPlayerEntity;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
@@ -371,7 +372,16 @@ public class PacketNameTag {
 
     public void handleQuit(@NotNull Player player) {
         viewers.remove(player.getUniqueId());
+        clearCache(player.getUniqueId());
         plugin.getPacketManager().removePassenger(player, entityId);
+    }
+
+    @SneakyThrows
+    private void clearCache(@NotNull UUID uuid) {
+        final Field mapField = WrapperPerPlayerEntity.class.getDeclaredField("entities");
+        mapField.setAccessible(true);
+        final Map<UUID, WrapperEntity> entities = (Map<UUID, WrapperEntity>) mapField.get(perPlayerEntity);
+        entities.remove(uuid);
     }
 
     public void setTextOpacity(byte b) {
@@ -431,16 +441,17 @@ public class PacketNameTag {
     @NotNull
     public Map<String, String> properties() {
         final Map<String, String> properties = new LinkedHashMap<>();
-//        properties.put("text", MiniMessage.miniMessage().serialize(meta.getText()));
-//        properties.put("billboard", meta.getBillboardConstraints().name());
-//        properties.put("shadowed", String.valueOf(meta.isShadow()));
-//        properties.put("seeThrough", String.valueOf(meta.isSeeThrough()));
-//        properties.put("backgroundColor", String.valueOf(meta.getBackgroundColor()));
-//        properties.put("transformation", meta.getTranslation().toString());
-//        properties.put("yOffset", String.valueOf(offset));
-//        properties.put("scale", String.valueOf(meta.getScale()));
-//        properties.put("increasedOffset", String.valueOf(increasedOffset));
-//        properties.put("viewRange", String.valueOf(meta.getViewRange()));
+        final TextDisplayMeta meta = (TextDisplayMeta) this.perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(owner)).getEntityMeta();
+        properties.put("text", MiniMessage.miniMessage().serialize(meta.getText()));
+        properties.put("billboard", meta.getBillboardConstraints().name());
+        properties.put("shadowed", String.valueOf(meta.isShadow()));
+        properties.put("seeThrough", String.valueOf(meta.isSeeThrough()));
+        properties.put("backgroundColor", String.valueOf(meta.getBackgroundColor()));
+        properties.put("transformation", meta.getTranslation().toString());
+        properties.put("yOffset", String.valueOf(offset));
+        properties.put("scale", String.valueOf(meta.getScale()));
+        properties.put("increasedOffset", String.valueOf(increasedOffset));
+        properties.put("viewRange", String.valueOf(meta.getViewRange()));
         return properties;
     }
 

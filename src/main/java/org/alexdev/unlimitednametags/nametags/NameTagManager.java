@@ -185,8 +185,8 @@ public class NameTagManager {
         }
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
         final PacketNameTag display = new PacketNameTag(plugin, player, nametag);
-        display.spawn(player);
         display.text(player, Component.empty());
+        display.spawn(player);
 
         if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             display.showToPlayer(player);
