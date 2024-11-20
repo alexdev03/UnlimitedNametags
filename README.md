@@ -18,6 +18,7 @@ Enhance your server's customization by tailoring player name tags, integrating d
 
 ## 🌟 **Features**
 - **🎨 Customizable Name Tags**: Change colors, formats, lines, and add extra details to player name tags.
+- **🚀 Smooth Movement**: Name tags are not entities that are teleported every tick. This ensures that when a player moves, the name tag does not lag and follows the player smoothly, as the movement is entirely client-side. The effect is identical to vanilla name tag movement.
 - **⚡ Placeholder Support**: Integrate with [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI) for dynamic, real-time information.
 - **👥 Relational Placeholders**: Fully supports relational placeholders to display dynamic information based on the relationship between players.
 - **🕵️ Vanish Integration**: Automatically hide name tags for vanished players.
