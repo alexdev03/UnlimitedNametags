@@ -134,12 +134,11 @@ public class PlaceholderManager {
             }
         }
 
-        final List<String> stringsCopy = strings.stream().
-                map(s -> papiManager.isPAPIEnabled() ? papiManager.setPlaceholders(player, s) : s)
+        final List<String> stringsCopy = strings.stream()
+                .map(s -> replacePlaceholders(s, player))
                 .toList();
         return relationalPlayers.stream()
                 .map(r -> Map.entry(r, Component.join(JoinConfiguration.separator(Component.newline()), stringsCopy.stream()
-                                .map(s -> papiManager.isPAPIEnabled() ? replacePlaceholders(s, player) : s)
                                 .map(t -> papiManager.isPAPIEnabled() ? papiManager.setRelationalPlaceholders(r, player, t) : t)
                                 .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
                                 .map(this::formatPhases)
@@ -177,14 +176,10 @@ public class PlaceholderManager {
                 string = string.replace(entry.getKey(), replacement.get().replacement());
             }
 
-//            for (Settings.PlaceholderReplacement replacement : entry.getValue()) {
-//                final String copy = string;
-//
-//                string = string.replace(entry.getKey(), replacement.replacement());
-//                if (!copy.equals(string)) {
-//                    return string;
-//                }
-//            }
+        }
+
+        if (papiManager.isPAPIEnabled()) {
+            return papiManager.setPlaceholders(player, string);
         }
 
         return string;
