@@ -17,6 +17,9 @@ public class PAPIManager {
 
     @NotNull
     public String setPlaceholders(Player player, String text) {
+        if (text.isEmpty()) {
+            return text;
+        }
         try {
             return PlaceholderAPI.setPlaceholders(player, text);
         } catch (Throwable e) {
@@ -27,6 +30,9 @@ public class PAPIManager {
 
     @NotNull
     public String setRelationalPlaceholders(@NotNull Player whoSees, @NotNull Player target, @NotNull String text) {
+        if (text.isEmpty()) {
+            return text;
+        }
         try {
             return PlaceholderAPI.setRelationalPlaceholders(whoSees, target, text);
         } catch (Throwable e) {

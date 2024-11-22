@@ -17,8 +17,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Getter
@@ -39,20 +37,10 @@ public class PlaceholderManager {
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.executorService = Executors.newFixedThreadPool(3, getThreadFactory());
+        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
         this.papiManager = new PAPIManager(plugin);
         startIndexTask();
         createDecimalFormat();
-    }
-
-    @NotNull
-    private ThreadFactory getThreadFactory() {
-        AtomicInteger index = new AtomicInteger(1);
-        return r -> {
-            final Thread thread = new Thread(r);
-            thread.setName("UnlimitedNameTags-PlaceholderManager: " + index.getAndIncrement());
-            return thread;
-        };
     }
 
     private void createDecimalFormat() {
@@ -94,28 +82,11 @@ public class PlaceholderManager {
 
     @NotNull
     private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
-        return CompletableFuture.supplyAsync(() -> lines.stream()
-                .filter(l -> l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
-                .map(Settings.LinesGroup::lines)
-                .flatMap(List::stream)
-                .toList(), executorService);
-    }
-
-    @NotNull
-    public Component applyRelationalPlaceholders(@NotNull Player whosees, @NotNull Player target, @NotNull List<String> strings) {
-        final PAPIManager papiManager = plugin.getPlaceholderManager().getPapiManager();
-        if (!papiManager.isPAPIEnabled()) {
-            return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
-                    .map(s -> replacePlaceholders(s, target))
-                    .map(s -> format(s, target))
-                    .toList());
-        }
-
-        return Component.join(JoinConfiguration.separator(Component.newline()), strings.stream()
-                        .map(t -> papiManager.setRelationalPlaceholders(whosees, target, t))
-                        .map(t -> format(t, whosees))
-                        .toList())
-                .compact();
+        return CompletableFuture.supplyAsync(() -> lines.parallelStream()
+                        .filter(l -> l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
+                        .map(Settings.LinesGroup::lines)
+                        .flatMap(List::stream)
+                        .toList(), executorService);
     }
 
     @NotNull
@@ -138,7 +109,7 @@ public class PlaceholderManager {
                 .map(s -> replacePlaceholders(s, player))
                 .toList();
         return relationalPlayers.stream()
-                .map(r -> Map.entry(r, Component.join(JoinConfiguration.separator(Component.newline()), stringsCopy.stream()
+                .map(r -> Map.entry(r, Component.join(JoinConfiguration.separator(Component.newline()), stringsCopy.parallelStream()
                                 .map(t -> papiManager.isPAPIEnabled() ? papiManager.setRelationalPlaceholders(r, player, t) : t)
                                 .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
                                 .map(this::formatPhases)
@@ -151,7 +122,7 @@ public class PlaceholderManager {
 
     @NotNull
     private String formatPhases(@NotNull String value) {
-        return value.replaceAll("#phase-md#", String.valueOf(index)).replaceAll("#phase-mm#", Integer.toString(mmIndex))
+        return value.replaceAll("#phase-md#", Integer.toString(index)).replaceAll("#phase-mm#", Integer.toString(mmIndex))
                 .replaceAll("#phase-mm-g#", decimalFormat.format(mGIndex));
     }
 

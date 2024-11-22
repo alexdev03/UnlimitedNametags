@@ -24,10 +24,10 @@ public class Settings {
 
     private Map<String, NameTag> nameTags = new LinkedHashMap<>() {{
         put("staffer", new NameTag("nametag.staffer", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true)))),
-                new IntegerBackground(true, 255, 0, 0, 255, true, false)));
+                new IntegerBackground(true, 255, 0, 0, 255, true, false), 1f));
         put("default", new NameTag("nametag.default", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true))),
                 new LinesGroup(List.of("Rich Player"), List.of(new ConditionalModifier("%vault_eco_balance%", ">", "1000")))),
-                new HexBackground(false, "#ffffff", 255, false, false)));
+                new HexBackground(false, "#ffffff", 255, false, false), 1f));
     }};
 
     @Setter
@@ -81,7 +81,7 @@ public class Settings {
         put("%advancedvanish_is_vanished%", List.of(new PlaceholderReplacement("Yes", " &7[V]&r"), new PlaceholderReplacement("No", "")));
     }};
 
-    public record NameTag(String permission, List<LinesGroup> linesGroups, Background background) {
+    public record NameTag(String permission, List<LinesGroup> linesGroups, Background background, float scale) {
     }
 
     public record LinesGroup(List<String> lines, List<Modifier> modifiers) {

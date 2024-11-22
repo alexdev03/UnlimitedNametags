@@ -93,10 +93,6 @@ public class NameTagManager {
                                     return;
                                 }
                                 Bukkit.getOnlinePlayers().forEach(player2 -> {
-//                                    if (player1 == player2) {
-//                                        return;
-//                                    }
-
                                     if (plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player2)).orElse(false)) {
                                         return;
                                     }
@@ -249,6 +245,9 @@ public class NameTagManager {
         getPacketDisplayText(player).ifPresent(packetNameTag -> {
             if (!packetNameTag.getNameTag().equals(nameTag)) {
                 packetNameTag.setNameTag(nameTag);
+            }
+            if (force) {
+                packetNameTag.checkScale();
             }
             components.forEach((p, c) -> {
                 final AtomicBoolean update = new AtomicBoolean(false);

@@ -12,7 +12,6 @@ import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
-import me.tofaa.entitylib.meta.EntityMeta;
 import me.tofaa.entitylib.meta.Metadata;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import me.tofaa.entitylib.meta.display.TextDisplayMeta;
@@ -32,11 +31,7 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Field;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -76,7 +71,8 @@ public class PacketNameTag {
 //        this.meta.setNotifyAboutChanges(false);
         this.lastUpdate = System.currentTimeMillis();
         this.nameTag = nameTag;
-        this.scale = plugin.getNametagManager().getScale(owner);
+        this.scale = plugin.getNametagManager().getScale(owner) ;
+        this.setScale(scale);
     }
 
     private Function<User, WrapperEntity> getBaseSupplier() {
@@ -132,16 +128,20 @@ public class PacketNameTag {
         perPlayerEntity.execute(consumer);
     }
 
+    public float getDefaultScale() {
+        return nameTag.scale();
+    }
+
     public boolean checkScale() {
         final AttributeInstance attribute = owner.getAttribute(Attribute.GENERIC_SCALE);
         if (attribute == null) {
-            if (scale != 1.0F) {
-                setScale(1.0F);
+            if (scale != getDefaultScale()) {
+                setScale(getDefaultScale());
                 return true;
             }
             return false;
         }
-        final double playerScale = attribute.getValue();
+        final double playerScale = attribute.getValue() * getDefaultScale();
         final double diff = Math.abs(playerScale - scale);
         if (diff <= 0.01 && diff >= 0) {
             return false;
@@ -239,10 +239,14 @@ public class PacketNameTag {
             return;
         }
 
-        spawn(player);
-        applyOwnerData(perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(player)));
+        if(!player.getUniqueId().equals(owner.getUniqueId())) {
+            applyOwnerData(perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(player)));
+        }
 
         setPosition();
+
+        spawn(player);
+
         final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
         if (user == null) {
             return;
@@ -291,6 +295,9 @@ public class PacketNameTag {
             return;
         }
         perPlayerEntity.removeViewer(user);
+        if(!player.getUniqueId().equals(owner.getUniqueId())) {
+            perPlayerEntity.getEntities().remove(user.getUUID());
+        }
         relationalCache.remove(player.getUniqueId());
 
         plugin.getPacketManager().removePassenger(player, entityId);
@@ -378,10 +385,11 @@ public class PacketNameTag {
 
     @SneakyThrows
     private void clearCache(@NotNull UUID uuid) {
-        final Field mapField = WrapperPerPlayerEntity.class.getDeclaredField("entities");
-        mapField.setAccessible(true);
-        final Map<UUID, WrapperEntity> entities = (Map<UUID, WrapperEntity>) mapField.get(perPlayerEntity);
-        entities.remove(uuid);
+//        final Field mapField = WrapperPerPlayerEntity.class.getDeclaredField("entities");
+//        mapField.setAccessible(true);
+//        final Map<UUID, WrapperEntity> entities = (Map<UUID, WrapperEntity>) mapField.get(perPlayerEntity);
+//        entities.remove(uuid);
+        perPlayerEntity.getEntities().remove(uuid);
     }
 
     public void setTextOpacity(byte b) {
@@ -398,43 +406,27 @@ public class PacketNameTag {
         showToPlayer(owner);
     }
 
-//    @NotNull
-//    public List<EntityData> copyMetadata() {
-//        final User ownerUser = PacketEvents.getAPI().getPlayerManager().getUser(owner);
-//        if (ownerUser == null) {
-//            return Collections.emptyList();
-//        }
-//        return perPlayerEntity.getEntityOf(ownerUser).getEntityMeta().entityData()
-//                .stream()
-//                .filter(m -> m.getType() != EntityDataTypes.ADV_COMPONENT)
-//                .toList();
-//    }
+    public Optional<TextDisplayMeta> getTextDisplayMeta(@NotNull Player player) {
+        final User ownerUser = PacketEvents.getAPI().getPlayerManager().getUser(owner);
+        if (ownerUser == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable((TextDisplayMeta) perPlayerEntity.getEntityOf(ownerUser).getEntityMeta());
+    }
 
-    @SneakyThrows
-    //wait for tofaa
     private void applyOwnerData(@NotNull WrapperEntity wrapper) {
-        final Field metadataField = EntityMeta.class.getDeclaredField("metadata");
-        metadataField.setAccessible(true);
-        final Metadata metadata = (Metadata) metadataField.get(wrapper.getEntityMeta());
-        final Field entityDataField = Metadata.class.getDeclaredField("metadataMap");
-        entityDataField.setAccessible(true);
-        final Map<Byte, EntityData> metadataMap = (Map<Byte, EntityData>) entityDataField.get(metadata);
-        final Field notNotifyField = metadata.getClass().getDeclaredField("notNotifiedChanges");
-        notNotifyField.setAccessible(true);
-        final Map<Byte, EntityData> notNotifyMap = (Map<Byte, EntityData>) notNotifyField.get(metadata);
-
-
-        final Metadata ownerMetadata = (Metadata) metadataField.get(perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(owner)).getEntityMeta());
-        final Map<Byte, EntityData> ownerMetadataMap = (Map<Byte, EntityData>) entityDataField.get(ownerMetadata);
-
-        ownerMetadataMap.forEach((b, entityData) -> {
-            if (entityData.getType() == EntityDataTypes.ADV_COMPONENT) {
-                return;
-            }
-            metadataMap.put(b, entityData);
-            notNotifyMap.put(b, entityData);
-        });
-
+        final User ownerUser = PacketEvents.getAPI().getPlayerManager().getUser(owner);
+        final Metadata metadata = wrapper.getEntityMeta().getMetadata();
+        final Optional<EntityData> component = wrapper.getEntityMeta().entityData()
+                .stream()
+                .filter(e -> e.getType() == EntityDataTypes.ADV_COMPONENT)
+                .findFirst();
+        final Metadata ownerMetadata = perPlayerEntity.getEntityOf(ownerUser).getEntityMeta().getMetadata();
+        metadata.copyFrom(ownerMetadata);
+        if (component.isPresent()) {
+            System.out.println("Component: present");
+            ((TextDisplayMeta) wrapper.getEntityMeta()).setText((Component) component.get().getValue());
+        }
         metadata.setNotifyAboutChanges(false);
     }
 

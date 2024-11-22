@@ -1,5 +1,6 @@
 package org.alexdev.unlimitednametags.config;
 
+import com.google.common.collect.Maps;
 import de.exlll.configlib.ConfigLib;
 import de.exlll.configlib.YamlConfigurationProperties;
 import de.exlll.configlib.YamlConfigurations;
@@ -9,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Optional;
 
 @Getter
@@ -57,6 +59,26 @@ public class ConfigManager {
 
         if (settings.getDefaultNameTag().isEmpty()) {
             throw new IllegalStateException("Default name tag is empty");
+        }
+
+        final Map<String, Settings.NameTag> nameTags = Maps.newLinkedHashMap();
+        boolean save = false;
+
+        for (Map.Entry<String, Settings.NameTag> entry : settings.getNameTags().entrySet()) {
+            final Settings.NameTag nameTag = entry.getValue();
+            if (nameTag.scale() <= 0) {
+                plugin.getLogger().warning("Nametag scale is less than or equal to 0");
+                nameTags.put(entry.getKey(), new Settings.NameTag(nameTag.permission(), nameTag.linesGroups(), nameTag.background(), 1f));
+                save = true;
+            } else {
+                nameTags.put(entry.getKey(), nameTag);
+            }
+        }
+
+        if (save) {
+            settings.getNameTags().clear();
+            settings.getNameTags().putAll(nameTags);
+            save();
         }
 
     }
