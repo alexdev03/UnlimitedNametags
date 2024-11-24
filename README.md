@@ -100,16 +100,18 @@ Unlimited Name Tags works seamlessly with:
 - **Vanish Plugins**: Automatically hide name tags for invisible players.
 - **TypeWriter**: Adjust name tags during cinematic mode.
 - **[Oraxen](https://oraxen.com/)**: Ensures compatibility with 3D helmets.
+- **Nexo**: Support will come once Nexo is released.
 - **MiniPlaceholders**: Works when using MiniMessage for advanced formatting.
 - **Custom Plugins**: Easily hook into your custom plugins to extend functionality.
 
 ---
 
 ## 📜 **Supported Versions**
-- **Paper**: Fully supported from **1.19.4+** *(highly recommended)*.
+- **Paper**: Fully supported from **1.20.1+** *(highly recommended)*.
 - **Spigot**: Supported from **1.20.2+**, but Paper is preferred for enhanced performance.
 
 > **Note**: Versions below **1.19.4** do not support text displays because the required packet functionality does not exist. Additionally, clients connecting with **ViaBackwards** are not compatible and will not display name tags correctly. For the best experience, ensure both the server and clients are using compatible versions.
+> You may connect with 1.19.4 client using **ViaBackwards** and **ViaVersion** and a server on one of the supported versions.
 
 ---
 

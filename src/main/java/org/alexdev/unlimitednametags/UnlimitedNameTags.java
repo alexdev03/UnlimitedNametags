@@ -15,15 +15,13 @@ import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.events.*;
 import org.alexdev.unlimitednametags.hook.*;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.alexdev.unlimitednametags.metrics.Metrics;
 import org.alexdev.unlimitednametags.nametags.ConditionalManager;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.packet.KyoriManager;
 import org.alexdev.unlimitednametags.packet.PacketManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
 import org.alexdev.unlimitednametags.vanish.VanishManager;
-import org.bstats.bukkit.Metrics;
-import org.bstats.charts.AdvancedPie;
-import org.bstats.charts.SimplePie;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -212,9 +210,9 @@ public final class UnlimitedNameTags extends JavaPlugin {
     }
 
     private void loadStats() {
-        final Metrics metrics = new org.bstats.bukkit.Metrics(this, 23081);
-        metrics.addCustomChart(new SimplePie("paper", () -> String.valueOf(isPaper)));
-        metrics.addCustomChart(new AdvancedPie("nametags", () -> {
+        final org.alexdev.unlimitednametags.metrics.Metrics metrics = new org.alexdev.unlimitednametags.metrics.Metrics(this, 23081);
+        metrics.addCustomChart(new Metrics.SimplePie("paper", () -> String.valueOf(isPaper)));
+        metrics.addCustomChart(new Metrics.AdvancedPie("nametags", () -> {
             final Map<String, Integer> map = Maps.newHashMap();
             configManager.getSettings().getNameTags().forEach((key, value) -> {
                 final int count = (int) nametagManager.getNameTags().values().stream()
@@ -224,8 +222,8 @@ public final class UnlimitedNameTags extends JavaPlugin {
             });
             return map;
         }));
-        metrics.addCustomChart(new SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
-        metrics.addCustomChart(new SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
+        metrics.addCustomChart(new Metrics.SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
+        metrics.addCustomChart(new Metrics.SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
     }
 
     public <H extends Hook> Optional<H> getHook(@NotNull Class<H> hookType) {
