@@ -7,6 +7,7 @@ import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
@@ -135,20 +136,30 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private void handleMetaData(@NotNull PacketSendEvent event) {
-//        if (!(event.getPlayer() instanceof Player player)) {
-//            return;
-//        }
-//
-//        //handle metadata for : bedrock players && client with version 1.20.1 or lower
-//        final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
-//        final Optional<PacketNameTag> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
-//        if (textDisplay.isEmpty()) {
-//            return;
-//        }
-//
-//        System.out.println("Nametag packet  of " + textDisplay.get().getOwner().getName() + " to " + player.getName());
+        if (!(event.getPlayer() instanceof Player)) {
+            return;
+        }
+        int protocol = event.getUser().getClientVersion().getProtocolVersion();
+        //handle metadata for : bedrock players && client with version 1.20.1 or lower
+        if (protocol >= 764) {
+            return;
+        }
 
-//        checkRelationalPlaceholders(player, event, packet, textDisplay.get());
+        final WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
+        final Optional<PacketNameTag> textDisplay = plugin.getNametagManager().getPacketDisplayText(packet.getEntityId());
+        if (textDisplay.isEmpty()) {
+            return;
+        }
+
+        for (final EntityData eData : packet.getEntityMetadata()) {
+            if (eData.getIndex() == 11) {
+                final Vector3f old = (Vector3f) eData.getValue();
+                final Vector3f newV = new Vector3f(old.getX(), old.getY() + 0.45f, old.getZ());
+                eData.setValue(newV);
+                event.markForReEncode(true);
+                return;
+            }
+        }
     }
 
     private boolean checkOldVersion(@NotNull Player player, @NotNull PacketSendEvent event,

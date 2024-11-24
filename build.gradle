@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id "io.github.goooler.shadow" version "8.1.7"
+    id "com.gradleup.shadow" version "8.3.5"
     id 'maven-publish'
     id 'xyz.jpenilla.run-paper' version '2.3.0'
 }
@@ -165,10 +165,10 @@ tasks {
 build.dependsOn shadowJar
 clean.delete "$rootDir/target"
 
-def targetJavaVersion = 21
+def targetJavaVersion = 17
 java {
     sourceCompatibility = targetJavaVersion
-    targetCompatibility = 21
+    targetCompatibility = 17
 
     disableAutoTargetJvm()
 }

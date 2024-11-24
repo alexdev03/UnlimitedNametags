@@ -243,9 +243,9 @@ public class PacketNameTag {
             applyOwnerData(perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(player)));
         }
 
-        setPosition();
-
         spawn(player);
+
+        setPosition();
 
         final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
         if (user == null) {
@@ -256,7 +256,7 @@ public class PacketNameTag {
 
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             sendPassengersPacket(player);
-        }, 2);
+        }, 1);
     }
 
     public void sendPassengersPacket(@NotNull Player player) {
@@ -276,13 +276,17 @@ public class PacketNameTag {
         });
     }
 
-    @SneakyThrows
     private void setPosition() {
+        final Location location = getOffsetLocation();
+        modifyEntity(meta -> meta.setLocation(SpigotConversionUtil.fromBukkitLocation(location)));
+    }
+
+    public Location getOffsetLocation() {
         final Location location = owner.getLocation().clone();
         location.setPitch(0);
         location.setYaw(0);
         location.setY(location.getY() + (1.8) * scale);
-        modifyEntity(meta -> meta.setLocation(SpigotConversionUtil.fromBukkitLocation(location)));
+        return location;
     }
 
     public void hideFromPlayer(@NotNull Player player) {
@@ -334,7 +338,7 @@ public class PacketNameTag {
         if (user == null) {
             return;
         }
-        modifyEntity(user, e -> e.spawn(SpigotConversionUtil.fromBukkitLocation(player.getLocation())));
+        modifyEntity(user, e -> e.spawn(SpigotConversionUtil.fromBukkitLocation(getOffsetLocation())));
     }
 
     public void refresh() {
@@ -423,10 +427,7 @@ public class PacketNameTag {
                 .findFirst();
         final Metadata ownerMetadata = perPlayerEntity.getEntityOf(ownerUser).getEntityMeta().getMetadata();
         metadata.copyFrom(ownerMetadata);
-        if (component.isPresent()) {
-            System.out.println("Component: present");
-            ((TextDisplayMeta) wrapper.getEntityMeta()).setText((Component) component.get().getValue());
-        }
+        component.ifPresent(entityData -> ((TextDisplayMeta) wrapper.getEntityMeta()).setText((Component) entityData.getValue()));
         metadata.setNotifyAboutChanges(false);
     }
 

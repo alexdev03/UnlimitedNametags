@@ -136,12 +136,16 @@ public class NameTagManager {
         return dotProduct > 0.90;
     }
 
-    private boolean isScalePresent() {
+    public boolean isScalePresent() {
         return PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_20_5);
     }
 
     public float getScale(@NotNull Player player) {
         if (!isScalePresent()) {
+            return 1;
+        }
+
+        if(PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_20_5)) {
             return 1;
         }
 
@@ -207,7 +211,7 @@ public class NameTagManager {
     public void refresh(@NotNull Player player, boolean force) {
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
-        if (!(player.isConnected())) {
+        if(PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
             return;
         }
 
@@ -246,7 +250,7 @@ public class NameTagManager {
             if (!packetNameTag.getNameTag().equals(nameTag)) {
                 packetNameTag.setNameTag(nameTag);
             }
-            if (force) {
+            if (force && isScalePresent()) {
                 packetNameTag.checkScale();
             }
             components.forEach((p, c) -> {

@@ -37,7 +37,7 @@ public class PlaceholderManager {
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
+        this.executorService = Executors.newFixedThreadPool(5);
         this.papiManager = new PAPIManager(plugin);
         startIndexTask();
         createDecimalFormat();
