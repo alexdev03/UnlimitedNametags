@@ -23,8 +23,10 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class PacketEventsListener extends PacketListenerAbstract {
 
@@ -111,7 +113,13 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
-        plugin.getPacketManager().setPassengers(player.get(), Arrays.stream(packet.getPassengers()).boxed().toList());
+        final List<Integer> passengers = Arrays.stream(packet.getPassengers()).boxed().collect(Collectors.toList());
+
+        plugin.getPacketManager().setPassengers(player.get(), passengers);
+        if(!passengers.contains(optionalPacketDisplayText.get().getEntityId())) {
+            passengers.add(optionalPacketDisplayText.get().getEntityId());
+            packet.setPassengers(passengers.stream().mapToInt(i -> i).toArray());
+        }
     }
 
     private void handleTeams(@NotNull PacketSendEvent event) {

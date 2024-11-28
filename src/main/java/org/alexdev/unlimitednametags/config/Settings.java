@@ -81,6 +81,10 @@ public class Settings {
         put("%advancedvanish_is_vanished%", List.of(new PlaceholderReplacement("Yes", " &7[V]&r"), new PlaceholderReplacement("No", "")));
     }};
 
+
+    public record PlaceholderReplacement(String placeholder, String replacement) {
+    }
+
     public record NameTag(String permission, List<LinesGroup> linesGroups, Background background, float scale) {
     }
 
@@ -88,8 +92,6 @@ public class Settings {
 
     }
 
-    public record PlaceholderReplacement(String placeholder, String replacement) {
-    }
 
     @Getter
     @NoArgsConstructor

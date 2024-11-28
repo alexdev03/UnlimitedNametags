@@ -500,13 +500,21 @@ public class NameTagManager {
     }
 
     public void updateDisplay(@NotNull Player player, @NotNull Player target) {
-        if (player == target && !plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (player == target && plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            showToOwner(player);
             return;
         }
         getPacketDisplayText(target).ifPresent(packetNameTag -> {
             packetNameTag.hideFromPlayerSilently(player);
             packetNameTag.showToPlayer(player);
         });
+    }
+
+    public void showToOwner(@NotNull Player player) {
+        if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            return;
+        }
+        getPacketDisplayText(player).ifPresent(PacketNameTag::spawnForOwner);
     }
 
     public void removeDisplay(@NotNull Player player, @NotNull Player target) {

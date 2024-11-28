@@ -259,6 +259,22 @@ public class PacketNameTag {
         }, 1);
     }
 
+    public void spawnForOwner() {
+        this.visible = true;
+        final User user = PacketEvents.getAPI().getPlayerManager().getUser(owner);
+        if (user == null) {
+            return;
+        }
+        modifyEntity(user, e -> {
+            e.despawn();
+            e.spawn(SpigotConversionUtil.fromBukkitLocation(getOffsetLocation()));
+        });
+
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            sendPassengersPacket(owner);
+        }, 1);
+    }
+
     public void sendPassengersPacket(@NotNull Player player) {
         plugin.getPacketManager().sendPassengersPacket(player, this);
     }
@@ -325,6 +341,7 @@ public class PacketNameTag {
             return;
         }
         viewers.remove(player.getUniqueId());
+        perPlayerEntity.getEntities().remove(player.getUniqueId());
         relationalCache.remove(player.getUniqueId());
     }
 

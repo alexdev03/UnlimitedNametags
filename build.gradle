@@ -144,6 +144,7 @@ tasks {
             github("ViaVersion", "ViaVersion", "5.1.1", "ViaVersion-5.1.1.jar")
             github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
+            github("gecolay", "GSit", "1.11.2", "GSit-1.11.2.jar")
             url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
         }
     }
