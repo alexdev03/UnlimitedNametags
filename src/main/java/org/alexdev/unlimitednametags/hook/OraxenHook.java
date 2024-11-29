@@ -34,11 +34,11 @@ public class OraxenHook extends Hook implements Listener, HatHook {
     private static Method getModelName2 = null;
 
     static {
-        try {
-            getCustomModelData1 = OraxenMeta.class.getDeclaredMethod("getCustomModelData");
-            getCustomModelData1.setAccessible(true);
-        } catch (NoSuchMethodException e) {
-        }
+//        try {
+//            getCustomModelData1 = OraxenMeta.class.getDeclaredMethod("getCustomModelData");
+//            getCustomModelData1.setAccessible(true);
+//        } catch (NoSuchMethodException e) {
+//        }
 
         if(getCustomModelData1 == null) {
             try {
@@ -48,11 +48,11 @@ public class OraxenHook extends Hook implements Listener, HatHook {
             }
         }
 
-        try {
-            getModelName1 = OraxenMeta.class.getDeclaredMethod("getModelName");
-            getModelName1.setAccessible(true);
-        } catch (NoSuchMethodException e) {
-        }
+//        try {
+//            getModelName1 = OraxenMeta.class.getDeclaredMethod("getModelName");
+//            getModelName1.setAccessible(true);
+//        } catch (NoSuchMethodException e) {
+//        }
 
         if(getModelName1 == null) {
             try {

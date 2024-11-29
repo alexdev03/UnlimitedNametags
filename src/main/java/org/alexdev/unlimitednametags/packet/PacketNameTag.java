@@ -86,11 +86,6 @@ public class PacketNameTag {
     }
 
     public boolean text(@NotNull Player player, @NotNull Component text) {
-        fixViewers();
-//        if (lastText != null && lastText.equals(text) &&
-//                nameTag.linesGroups().stream().noneMatch(l -> l.lines().stream().anyMatch(c -> c.contains("%rel_")))) {
-//            return false;
-//        }
         if (text.equals(relationalCache.get(player.getUniqueId()))) {
             return false;
         }
@@ -359,7 +354,6 @@ public class PacketNameTag {
     }
 
     public void refresh() {
-        fixViewers();
         perPlayerEntity.execute(WrapperEntity::refresh);
     }
 
@@ -369,17 +363,6 @@ public class PacketNameTag {
             return;
         }
         perPlayerEntity.getEntityOf(user).refresh();
-    }
-
-    private void fixViewers() {
-//        entity.getViewers().stream().filter(u -> {
-//            final Player player = Bukkit.getPlayer(u);
-//            if (player == null) {
-//                return true;
-//            }
-//            final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
-//            return user == null || user.getChannel() == null;
-//        }).forEach(entity::removeViewerSilently);
     }
 
     public void remove() {

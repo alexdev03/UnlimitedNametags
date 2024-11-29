@@ -261,14 +261,24 @@ public class NameTagManager {
                     return;
                 }
                 packetNameTag.modify(user, m -> {
-                    if(m.isShadow() != nameTag.background().shadowed()) {
+
+                    if(force) {
                         m.setShadow(nameTag.background().shadowed());
-                        update.set(true);
-                    }
-                    if(m.isSeeThrough() != nameTag.background().seeThrough()) {
                         m.setSeeThrough(nameTag.background().seeThrough());
+                        m.setBackgroundColor(nameTag.background().getColor().asARGB());
                         update.set(true);
+                    } else {
+                        if(m.isShadow() != nameTag.background().shadowed()) {
+                            m.setShadow(nameTag.background().shadowed());
+                            update.set(true);
+                        }
+                        if(m.isSeeThrough() != nameTag.background().seeThrough()) {
+                            m.setSeeThrough(nameTag.background().seeThrough());
+                            update.set(true);
+                        }
                     }
+
+
                 });
 
                 if (update.get()) {
