@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Getter
 public class PlaceholderManager {
 
-    private static final Component EMPTY = Component.text("");
+    private static final String ELSE_PLACEHOLDER = "ELSE";
     private static final int maxIndex = 16777215;
     private static final int maxMIndex = 10;
     private static final double minMGIndex = -1.0;
@@ -114,7 +114,7 @@ public class PlaceholderManager {
                                 .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
                                 .map(this::formatPhases)
                                 .map(t -> format(t, player))
-                                .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(EMPTY))
+                                .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(Component.empty()))
                                 .toList())
                         .compact()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -145,6 +145,13 @@ public class PlaceholderManager {
 
             if (replacement.isPresent()) {
                 string = string.replace(entry.getKey(), replacement.get().replacement());
+            } else {
+                final Optional<Settings.PlaceholderReplacement> elseReplacement = entry.getValue().stream()
+                        .filter(r -> r.placeholder().equalsIgnoreCase(ELSE_PLACEHOLDER))
+                        .findFirst();
+                if (elseReplacement.isPresent()) {
+                    string = string.replace(entry.getKey(), elseReplacement.get().replacement());
+                }
             }
 
         }
