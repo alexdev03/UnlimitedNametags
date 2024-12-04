@@ -68,10 +68,11 @@ public class Metrics {
         boolean logErrors = config.getBoolean("logFailedRequests", false);
         boolean logSentData = config.getBoolean("logSentData", false);
         boolean logResponseStatusText = config.getBoolean("logResponseStatusText", false);
-        boolean isFolia = false;
+        boolean isFolia;
         try {
             isFolia = Class.forName("io.papermc.paper.threadedregions.RegionizedServer") != null;
         } catch (Exception e) {
+            isFolia = false;
         }
         metricsBase =
                 new // See https://github.com/Bastian/bstats-metrics/pull/126
