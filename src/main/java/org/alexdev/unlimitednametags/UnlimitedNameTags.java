@@ -13,20 +13,15 @@ import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.events.*;
-import org.alexdev.unlimitednametags.hook.Hook;
-import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
-import org.alexdev.unlimitednametags.hook.OraxenHook;
-import org.alexdev.unlimitednametags.hook.TypeWriterListener;
+import org.alexdev.unlimitednametags.hook.*;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.alexdev.unlimitednametags.metrics.Metrics;
 import org.alexdev.unlimitednametags.nametags.ConditionalManager;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
 import org.alexdev.unlimitednametags.packet.KyoriManager;
 import org.alexdev.unlimitednametags.packet.PacketManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
 import org.alexdev.unlimitednametags.vanish.VanishManager;
-import org.bstats.bukkit.Metrics;
-import org.bstats.charts.AdvancedPie;
-import org.bstats.charts.SimplePie;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -186,6 +181,31 @@ public final class UnlimitedNameTags extends JavaPlugin {
             getLogger().info("Oraxen found, hooking into it");
         }
 
+        if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
+            final NexoHook hook = new NexoHook(this);
+            hatHooks.add(hook);
+            hooks.put(NexoHook.class, hook);
+            getLogger().info("Nexo found, hooking into it");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
+            final ViaVersionHook hook = new ViaVersionHook(this);
+            hooks.put(ViaVersionHook.class, hook);
+            getLogger().info("ViaVersion found, hooking into it");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("geyser")) {
+            final GeyserHook hook = new GeyserHook(this);
+            hooks.put(GeyserHook.class, hook);
+            getLogger().info("Geyser found, hooking into it");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("floodgate")) {
+            final FloodgateHook hook = new FloodgateHook(this);
+            hooks.put(FloodgateHook.class, hook);
+            getLogger().info("Floodgate found, hooking into it");
+        }
+
         hooks.values().forEach(Hook::onEnable);
     }
 
@@ -197,9 +217,9 @@ public final class UnlimitedNameTags extends JavaPlugin {
     }
 
     private void loadStats() {
-        final Metrics metrics = new org.bstats.bukkit.Metrics(this, 23081);
-        metrics.addCustomChart(new SimplePie("paper", () -> String.valueOf(isPaper)));
-        metrics.addCustomChart(new AdvancedPie("nametags", () -> {
+        final org.alexdev.unlimitednametags.metrics.Metrics metrics = new org.alexdev.unlimitednametags.metrics.Metrics(this, 23081);
+        metrics.addCustomChart(new Metrics.SimplePie("paper", () -> String.valueOf(isPaper)));
+        metrics.addCustomChart(new Metrics.AdvancedPie("nametags", () -> {
             final Map<String, Integer> map = Maps.newHashMap();
             configManager.getSettings().getNameTags().forEach((key, value) -> {
                 final int count = (int) nametagManager.getNameTags().values().stream()
@@ -209,8 +229,13 @@ public final class UnlimitedNameTags extends JavaPlugin {
             });
             return map;
         }));
-        metrics.addCustomChart(new SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
-        metrics.addCustomChart(new SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
+        metrics.addCustomChart(new Metrics.SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
+        metrics.addCustomChart(new Metrics.SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
+        metrics.addCustomChart(new Metrics.AdvancedPie("hooks", () -> {
+            final Map<String, Integer> map = Maps.newHashMap();
+            hooks.values().forEach(hook -> map.put(hook.getClass().getSimpleName(), 1));
+            return map;
+        }));
     }
 
     public <H extends Hook> Optional<H> getHook(@NotNull Class<H> hookType) {

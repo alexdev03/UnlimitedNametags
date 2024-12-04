@@ -14,7 +14,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -48,14 +48,15 @@ public class PacketManager {
         this.executorService.shutdown();
     }
 
-    public void setPassengers(@NotNull Player player, @NotNull Collection<Integer> passengers) {
+    public void setPassengers(@NotNull Player player, @NotNull List<Integer> passengers) {
+        final List<Integer> clone = List.copyOf(passengers);
         plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-            executorService.submit(() -> this.passengers.replaceValues(player.getUniqueId(), passengers));
+            executorService.submit(() -> this.passengers.replaceValues(player.getUniqueId(), clone));
         });
     }
 
     public void sendPassengersPacket(@NotNull Player player, @NotNull PacketNameTag packetNameTag) {
-        final int entityId = packetNameTag.getEntity().getEntityId();
+        final int entityId = packetNameTag.getEntityId();
         final int ownerId = packetNameTag.getOwner().getEntityId();
         executorService.submit(() -> {
             final Set<Integer> passengers = Sets.newHashSet(this.passengers.get(packetNameTag.getOwner().getUniqueId()));

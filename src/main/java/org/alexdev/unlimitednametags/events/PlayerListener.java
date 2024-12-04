@@ -156,7 +156,7 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().updateDisplay(event.getPlayer(), event.getPlayer()), 5);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToOwner(event.getPlayer()), 5);
     }
 
     @EventHandler

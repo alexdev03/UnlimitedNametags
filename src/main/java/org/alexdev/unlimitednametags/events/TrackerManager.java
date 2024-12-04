@@ -6,6 +6,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -55,6 +56,10 @@ public class TrackerManager {
 
             final boolean isVanished = plugin.getVanishManager().isVanished(target);
             if (isVanished && !plugin.getVanishManager().canSee(player, target)) {
+                return;
+            }
+
+            if (target.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
                 return;
             }
 
