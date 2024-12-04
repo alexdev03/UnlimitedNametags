@@ -92,7 +92,6 @@ public class Settings {
 
     }
 
-
     @Getter
     @NoArgsConstructor
     @Accessors(fluent = true)

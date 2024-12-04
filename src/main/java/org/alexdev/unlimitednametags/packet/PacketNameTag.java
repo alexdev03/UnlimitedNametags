@@ -64,11 +64,7 @@ public class PacketNameTag {
         this.entityIdUuid = UUID.randomUUID();
         this.perPlayerEntity = new WrapperPerPlayerEntity(this.getBaseSupplier());
         this.viewers = Sets.newConcurrentHashSet();
-//        this.entity = new WrapperEntity(randomId, UUID.randomUUID(), EntityTypes.TEXT_DISPLAY);
-//        this.meta = (TextDisplayMeta) entity.getEntityMeta();
         this.blocked = Sets.newConcurrentHashSet();
-//        this.meta.setLineWidth(1000);
-//        this.meta.setNotifyAboutChanges(false);
         this.lastUpdate = System.currentTimeMillis();
         this.nameTag = nameTag;
         this.scale = plugin.getNametagManager().getScale(owner) ;
@@ -176,11 +172,6 @@ public class PacketNameTag {
 
     public void setTransformation(@NotNull Vector3f vector3f) {
         modify(meta -> meta.setTranslation(vector3f));
-    }
-
-    public void setYOffset(float offset) {
-        this.setTransformation(new Vector3f(0, offset + increasedOffset, 0));
-        this.offset = offset;
     }
 
     public void resetOffset(float offset) {
@@ -389,10 +380,6 @@ public class PacketNameTag {
 
     @SneakyThrows
     private void clearCache(@NotNull UUID uuid) {
-//        final Field mapField = WrapperPerPlayerEntity.class.getDeclaredField("entities");
-//        mapField.setAccessible(true);
-//        final Map<UUID, WrapperEntity> entities = (Map<UUID, WrapperEntity>) mapField.get(perPlayerEntity);
-//        entities.remove(uuid);
         perPlayerEntity.getEntities().remove(uuid);
     }
 
@@ -408,14 +395,6 @@ public class PacketNameTag {
     public void showForOwner() {
         blocked.remove(owner.getUniqueId());
         showToPlayer(owner);
-    }
-
-    public Optional<TextDisplayMeta> getTextDisplayMeta(@NotNull Player player) {
-        final User ownerUser = PacketEvents.getAPI().getPlayerManager().getUser(owner);
-        if (ownerUser == null) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable((TextDisplayMeta) perPlayerEntity.getEntityOf(ownerUser).getEntityMeta());
     }
 
     private void applyOwnerData(@NotNull WrapperEntity wrapper) {

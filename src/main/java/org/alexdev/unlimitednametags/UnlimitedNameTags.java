@@ -181,6 +181,13 @@ public final class UnlimitedNameTags extends JavaPlugin {
             getLogger().info("Oraxen found, hooking into it");
         }
 
+        if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
+            final NexoHook hook = new NexoHook(this);
+            hatHooks.add(hook);
+            hooks.put(NexoHook.class, hook);
+            getLogger().info("Nexo found, hooking into it");
+        }
+
         if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
             final ViaVersionHook hook = new ViaVersionHook(this);
             hooks.put(ViaVersionHook.class, hook);
@@ -224,6 +231,11 @@ public final class UnlimitedNameTags extends JavaPlugin {
         }));
         metrics.addCustomChart(new Metrics.SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
         metrics.addCustomChart(new Metrics.SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
+        metrics.addCustomChart(new Metrics.AdvancedPie("hooks", () -> {
+            final Map<String, Integer> map = Maps.newHashMap();
+            hooks.values().forEach(hook -> map.put(hook.getClass().getSimpleName(), 1));
+            return map;
+        }));
     }
 
     public <H extends Hook> Optional<H> getHook(@NotNull Class<H> hookType) {

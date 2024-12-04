@@ -10,7 +10,7 @@
 ---
 
 ## 📌 **Overview**
-Unlimited Name Tags is a robust plugin designed for Minecraft servers running **Paper 1.19.4+** or **Spigot 1.20.2+**. While the plugin supports Spigot, **Paper is highly recommended** for optimal performance and compatibility with advanced features.
+Unlimited Name Tags is a robust plugin designed for Minecraft servers running **Paper 1.20.1+** or **Spigot 1.20.2+**. While the plugin supports Spigot, **Paper is highly recommended** for optimal performance and compatibility with advanced features.
 
 Enhance your server's customization by tailoring player name tags, integrating dynamic placeholders, and supporting vanish plugins seamlessly. Built with ease-of-use and flexibility in mind, this plugin elevates the player experience while simplifying server management.
 
@@ -99,8 +99,8 @@ Unlimited Name Tags works seamlessly with:
 - **[PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI)**: Add dynamic data (e.g., health, rank) to name tags. Relational placeholders are fully supported.
 - **Vanish Plugins**: Automatically hide name tags for invisible players.
 - **TypeWriter**: Adjust name tags during cinematic mode.
+- **[Nexo](https://polymart.org/resource/nexo.6901)**: Ensures compatibility with 3D helmets.
 - **[Oraxen](https://oraxen.com/)**: Ensures compatibility with 3D helmets.
-- **Nexo**: Support will come once Nexo is released.
 - **MiniPlaceholders**: Works when using MiniMessage for advanced formatting.
 - **Custom Plugins**: Easily hook into your custom plugins to extend functionality.
 
