@@ -13,7 +13,6 @@ import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -24,7 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @SuppressWarnings("DuplicatedCode")
-public class NexoHook extends Hook implements Listener, HatHook {
+public class NexoHook extends Hook implements PackSendHandler, HatHook {
 
     private static final File NEXO_FOLDER = new File("plugins/Nexo/pack/assets/minecraft/models");
 

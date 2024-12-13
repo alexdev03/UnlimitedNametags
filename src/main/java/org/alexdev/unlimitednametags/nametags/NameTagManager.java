@@ -310,6 +310,8 @@ public class NameTagManager {
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
+            plugin.getTaskScheduler().runTaskLater(() -> display.modifyOwner(meta -> meta.setText(component)), 1);
+
             display.refresh();
 
             handleVanish(player, display);
@@ -558,6 +560,16 @@ public class NameTagManager {
 
             display.hideFromPlayerSilently(player);
             display.showToPlayer(player);
+        });
+    }
+
+    public void refreshDisplaysForPlayer(@NotNull Player player) {
+        nameTags.forEach((uuid, display) -> {
+            if (!display.canPlayerSee(player)) {
+                return;
+            }
+
+            display.refreshForPlayer(player);
         });
     }
 

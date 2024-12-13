@@ -174,6 +174,13 @@ public final class UnlimitedNameTags extends JavaPlugin {
             getLogger().info("MiniPlaceholders found, hooking into it");
         }
 
+        if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
+            final NexoHook hook = new NexoHook(this);
+            hatHooks.add(hook);
+            hooks.put(NexoHook.class, hook);
+            getLogger().info("Nexo found, hooking into it");
+        }
+
         if (Bukkit.getPluginManager().isPluginEnabled("Oraxen")) {
             final OraxenHook hook = new OraxenHook(this);
             hatHooks.add(hook);
@@ -181,12 +188,13 @@ public final class UnlimitedNameTags extends JavaPlugin {
             getLogger().info("Oraxen found, hooking into it");
         }
 
-        if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
-            final NexoHook hook = new NexoHook(this);
+        if (Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
+            final ItemsAdderHook hook = new ItemsAdderHook(this);
             hatHooks.add(hook);
-            hooks.put(NexoHook.class, hook);
-            getLogger().info("Nexo found, hooking into it");
+            hooks.put(ItemsAdderHook.class, hook);
+            getLogger().info("ItemsAdder found, hooking into it");
         }
+
 
         if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
             final ViaVersionHook hook = new ViaVersionHook(this);

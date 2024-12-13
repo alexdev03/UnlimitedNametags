@@ -14,7 +14,6 @@ import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,7 +25,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Optional;
 
-public class OraxenHook extends Hook implements Listener, HatHook {
+public class OraxenHook extends Hook implements PackSendHandler, HatHook {
 
     private static Method getCustomModelData1 = null;
     private static Method getCustomModelData2 = null;

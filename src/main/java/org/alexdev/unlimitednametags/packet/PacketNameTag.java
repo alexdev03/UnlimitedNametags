@@ -104,6 +104,10 @@ public class PacketNameTag {
         });
     }
 
+    public void modifyOwner(Consumer<TextDisplayMeta> consumer) {
+        modify(PacketEvents.getAPI().getPlayerManager().getUser(owner), consumer);
+    }
+
     public void modify(Consumer<TextDisplayMeta> consumer) {
         perPlayerEntity.execute(e -> {
             final TextDisplayMeta meta = (TextDisplayMeta) e.getEntityMeta();
