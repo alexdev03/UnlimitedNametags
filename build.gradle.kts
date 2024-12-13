@@ -54,12 +54,15 @@ dependencies {
     compileOnly(libs.commonsJexl3)
     compileOnly(libs.nexo)
     compileOnly(libs.oraxen)
+    compileOnly(libs.itemsAdder)
 
     implementation(libs.minedownAdventure)
     implementation(libs.drink)
     implementation(libs.entityLib)
     implementation(libs.universalScheduler)
     implementation(libs.libbyBukkit)
+
+    compileOnly(libs.gson)
 
 
     compileOnly(libs.lombok)

@@ -24,6 +24,8 @@ expiringMapVersion = "0.5.11"
 commonsJexl3Version = "3.4.0"
 nexoVersion = "0.1.0-dev.0"
 oraxenVersion = "1.174.0"
+itemsAdderVersion = "3.6.1"
+gsonVersion = "2.11.0"
 
 [libraries]
 paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApiVersion" }
@@ -49,3 +51,5 @@ expiringMap = { module = "net.jodah:expiringmap", version.ref = "expiringMapVers
 commonsJexl3 = { module = "org.apache.commons:commons-jexl3", version.ref = "commonsJexl3Version" }
 nexo = { module = "com.nexomc:nexo", version.ref = "nexoVersion" }
 oraxen = { module = "io.th0rgal:oraxen", version.ref = "oraxenVersion" }
+itemsAdder = { module = "com.github.LoneDev6:API-ItemsAdder", version.ref = "itemsAdderVersion" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gsonVersion" }
