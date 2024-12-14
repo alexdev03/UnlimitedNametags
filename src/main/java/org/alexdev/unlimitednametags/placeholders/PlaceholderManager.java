@@ -105,9 +105,11 @@ public class PlaceholderManager {
             }
         }
 
-        final List<String> stringsCopy = strings.stream()
-                .map(s -> replacePlaceholders(s, player))
-                .toList();
+        final List<String> stringsCopy = papiManager.isPAPIEnabled() ?
+                strings.stream()
+                        .map(s -> replacePlaceholders(s, player))
+                        .toList()
+                : strings;
         return relationalPlayers.stream()
                 .map(r -> Map.entry(r, Component.join(JoinConfiguration.separator(Component.newline()), stringsCopy.parallelStream()
                                 .map(t -> papiManager.isPAPIEnabled() ? papiManager.setRelationalPlaceholders(r, player, t) : t)

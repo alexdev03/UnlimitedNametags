@@ -44,7 +44,9 @@ public class ConditionalManager {
     }
 
     public boolean evaluateExpression(@NotNull Settings.ConditionalModifier modifier, @NotNull Player player) {
-        final String entireExpression = PlaceholderAPI.setPlaceholders(player, modifier.getExpression());
+        final String entireExpression = plugin.getPlaceholderManager().getPapiManager().isPAPIEnabled() ?
+                PlaceholderAPI.setPlaceholders(player, modifier.getExpression()) :
+                modifier.getExpression();
 
         if (cachedExpressions.containsKey(entireExpression)) {
             return (boolean) cachedExpressions.get(entireExpression);
