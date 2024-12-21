@@ -1,5 +1,6 @@
 package org.alexdev.unlimitednametags.events;
 
+import com.github.retrooper.packetevents.PacketEvents;
 import com.google.common.collect.*;
 import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -29,7 +30,9 @@ public class TrackerManager {
     private void loadTracker() {
         final boolean isPaper = plugin.isPaper();
         Bukkit.getOnlinePlayers().forEach(player -> {
-            final Set<Player> currentTracked = (isPaper ? player.getTrackedPlayers() : player.getTrackedBy());
+            final Set<Player> currentTracked = (isPaper ? player.getTrackedPlayers() : player.getTrackedBy()).stream()
+                            .filter(p -> Bukkit.getPlayer(p.getUniqueId()) != null)
+                            .collect(ImmutableSet.toImmutableSet());
             trackedPlayers.putAll(player.getUniqueId(), currentTracked
                     .stream()
                     .map(Player::getUniqueId)
@@ -47,7 +50,16 @@ public class TrackerManager {
     }
 
     public void handleAdd(@NotNull Player player, @NotNull Player target) {
-        if (!target.isOnline()) {
+        if (!target.isConnected()) {
+            return;
+        }
+
+        // Check if it's a real player
+        if (Bukkit.getPlayer(target.getUniqueId()) == null || Bukkit.getPlayer(player.getUniqueId()) == null) {
+            return;
+        }
+
+        if (PacketEvents.getAPI().getPlayerManager().getUser(target) == null || PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
             return;
         }
 

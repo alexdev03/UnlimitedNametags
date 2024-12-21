@@ -8,6 +8,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
+import lombok.Setter;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -41,6 +42,8 @@ public class NameTagManager {
     private final Set<UUID> blocked;
     private final Set<UUID> hiddenOtherNametags;
     private final List<MyScheduledTask> tasks;
+    @Setter
+    private boolean debug = false;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -168,18 +171,30 @@ public class NameTagManager {
 
     public void addPlayer(@NotNull Player player) {
         if (nameTags.containsKey(player.getUniqueId())) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " already has a nametag");
+            }
             return;
         }
 
         if (creating.contains(player.getUniqueId())) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is already creating a nametag");
+            }
             return;
         }
 
         if (blocked.contains(player.getUniqueId())) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is blocked");
+            }
             return;
         }
 
         if (player.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " has invisibility potion effect, blocking");
+            }
             blockPlayer(player);
             return;
         }
