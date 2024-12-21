@@ -18,13 +18,13 @@ public class MainCommand {
     @SuppressWarnings("deprecation")
     public void onMain(@Sender CommandSender sender) {
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags v" + plugin.getDescription().getVersion()));
-        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt reload &7- Reloads the plugin"));
-        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt debug &7- Debugs the plugin"));
-        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt hide <player> &7- Hides the nametag"));
-        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt show <player> &7- Shows the nametag"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&areload &7- Reloads the plugin"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&adebug &7- Debugs the plugin"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&ahide <player> &7- Hides the nametag"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&ashow <player> &7- Shows the nametag"));
     }
 
-    @Command(name = "reload", desc = "Reloads the plugin", usage = "/unt reload")
+    @Command(name = "reload", desc = "Reloads the plugin", usage = "reload")
     @Require(value = "unt.reload", message = "&cYou do not have permission to reload the plugin")
     public void onReload(@Sender CommandSender sender) {
         plugin.getConfigManager().reload();
@@ -32,25 +32,32 @@ public class MainCommand {
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags has been reloaded!"));
     }
 
-    @Command(name = "debug", desc = "Debugs the plugin", usage = "/unt debug")
+    @Command(name = "debugger", desc = "Enables/Disables the debug mode", usage = "debugger")
+    @Require(value = "unt.debug", message = "&cYou do not have permission to debug the plugin")
+    public void onDebug(@Sender CommandSender sender, boolean debug) {
+        plugin.getNametagManager().setDebug(debug);
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags debug mode set to " + debug));
+    }
+
+    @Command(name = "debug", desc = "Debugs the plugin", usage = "debug")
     @Require(value = "unt.debug", message = "&cYou do not have permission to debug the plugin")
     public void onDebug(@Sender CommandSender sender) {
         plugin.getNametagManager().debug(sender);
     }
 
-    @Command(name = "hide", desc = "Hides the nametag", usage = "/unt hide")
+    @Command(name = "hide", desc = "Hides the nametag", usage = "hide")
     @Require(value = "unt.hide", message = "&cYou do not have permission to hide the nametag")
     public void onHide(@Sender CommandSender sender, Player target) {
         plugin.getNametagManager().removeAllViewers(target);
     }
 
-    @Command(name = "show", desc = "Shows the nametag", usage = "/unt show")
+    @Command(name = "show", desc = "Shows the nametag", usage = "show")
     @Require(value = "unt.show", message = "&cYou do not have permission to show the nametag")
     public void onShow(@Sender CommandSender sender, Player target) {
         plugin.getNametagManager().showToTrackedPlayers(target, plugin.getTrackerManager().getTrackedPlayers(target.getUniqueId()));
     }
 
-    @Command(name = "refresh", desc = "Refreshes the nametag of a player for you", usage = "/unt refresh")
+    @Command(name = "refresh", desc = "Refreshes the nametag of a player for you", usage = "refresh")
     @Require(value = "unt.refresh", message = "&cYou do not have permission to refresh the nametag")
     public void onRefresh(@Sender Player sender, Player target) {
         plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
@@ -58,7 +65,7 @@ public class MainCommand {
         });
     }
 
-    @Command(name = "billboard", desc = "Sets the default billboard", usage = "/unt billboard")
+    @Command(name = "billboard", desc = "Sets the default billboard", usage = "billboard")
     @Require(value = "unt.billboard", message = "&cYou do not have permission to set the default billboard")
     public void onBillboard(@Sender CommandSender sender, AbstractDisplayMeta.BillboardConstraints billboardConstraints) {
         plugin.getConfigManager().getSettings().setDefaultBillboard(billboardConstraints);
@@ -67,7 +74,7 @@ public class MainCommand {
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aDefault billboard set to " + billboardConstraints.name()));
     }
 
-    @Command(name = "formatter", desc = "Sets the default formatter", usage = "/unt formatter")
+    @Command(name = "formatter", desc = "Sets the default formatter", usage = "formatter")
     @Require(value = "unt.formatter", message = "&cYou do not have permission to set the default formatter")
     public void onFormatter(@Sender CommandSender sender, Formatter formatter) {
         plugin.getConfigManager().getSettings().setFormat(formatter);
@@ -76,7 +83,7 @@ public class MainCommand {
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aDefault formatter set to " + formatter.name()));
     }
 
-    @Command(name = "hideOtherNametags", desc = "Hides other nametags", usage = "/unt hideOtherNametags [-h]")
+    @Command(name = "hideOtherNametags", desc = "Hides other nametags", usage = "hideOtherNametags [-h]")
     @Require(value = "unt.hideOtherNametags", message = "&cYou do not have permission to hide other nametags")
     public void onHideOtherNametags(@Sender Player sender, @OptArg(value = "false") boolean hideMessage) {
         if (!plugin.getNametagManager().isHiddenOtherNametags(sender)) {
@@ -87,7 +94,7 @@ public class MainCommand {
         }
     }
 
-    @Command(name = "showOtherNametags", desc = "Shows other nametags", usage = "/unt showOtherNametags [-h]")
+    @Command(name = "showOtherNametags", desc = "Shows other nametags", usage = "showOtherNametags [-h]")
     @Require(value = "unt.showOtherNametags", message = "&cYou do not have permission to show other nametags")
     public void onShowOtherNametags(@Sender Player sender, @OptArg(value = "false") boolean showMessage) {
         if (plugin.getNametagManager().isHiddenOtherNametags(sender)) {
