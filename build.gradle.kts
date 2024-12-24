@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "org.alexdev"
-version = "1.0"
+version = "1.6.6"
 
 repositories {
     mavenCentral()
@@ -36,9 +36,11 @@ repositories {
 dependencies {
     compileOnly(libs.paperApi)
     compileOnly(libs.adventureApi)
+    implementation(libs.entityLib)
     compileOnly(libs.typeWriter) {
         exclude(group = "io.papermc.paper") // Exclude Paper API
         exclude(group = "com.github.Tofaa2.EntityLib") // Exclude EntityLib
+        exclude(group = "me.tofaa.entitylib") // Exclude EntityLib
     }
     compileOnly(libs.placeholderapi)
     compileOnly(libs.miniplaceholdersApi)
@@ -58,7 +60,6 @@ dependencies {
 
     implementation(libs.minedownAdventure)
     implementation(libs.drink)
-    implementation(libs.entityLib)
     implementation(libs.universalScheduler)
     implementation(libs.libbyBukkit)
 
@@ -144,7 +145,7 @@ tasks {
             github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
             github("gecolay", "GSit", "1.11.2", "GSit-1.11.2.jar")
-            url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
+//            url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
         }
     }
     runPaper.folia.registerTask {

@@ -3,15 +3,15 @@ package org.alexdev.unlimitednametags.events;
 import com.github.Anon8281.universalScheduler.foliaScheduler.FoliaScheduler;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.hook.PackSendHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
-import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
@@ -22,8 +22,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-public class PlayerListener implements Listener {
+public class PlayerListener implements PackSendHandler {
 
+    @Getter
     private final UnlimitedNameTags plugin;
     private final Set<UUID> diedPlayers;
     private final Map<Integer, UUID> playerEntityId;
@@ -83,6 +84,10 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        if(player.getGameMode() == GameMode.SPECTATOR) {
+            return;
+        }
+
         if (event.getAction() == EntityPotionEffectEvent.Action.ADDED) {
             if (event.getNewEffect() == null || event.getNewEffect().getType() != PotionEffectType.INVISIBILITY) {
                 return;
@@ -92,7 +97,10 @@ public class PlayerListener implements Listener {
             if (event.getOldEffect() == null || event.getOldEffect().getType() != PotionEffectType.INVISIBILITY) {
                 return;
             }
-            plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers().get(player.getUniqueId()));
+            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+                plugin.getNametagManager().unblockPlayer(player);
+                plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers().get(player.getUniqueId()));
+            }, 1);
 
         }
     }
@@ -156,25 +164,33 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToOwner(event.getPlayer()), 5);
-    }
-
-    @EventHandler
-    public void onElytraFlight(@NotNull EntityToggleGlideEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
+        if(event.getPlayer().getGameMode() == GameMode.SPECTATOR) {
             return;
         }
 
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToOwner(event.getPlayer()), 5);
+    }
+
+//    @EventHandler
+//    public void onElytraFlight(@NotNull EntityToggleGlideEvent event) {
+//        if (!(event.getEntity() instanceof Player player)) {
+//            return;
+//        }
+//
+//        if(true) return;
+//
+//        logicElytra(player);
+//    }
+
+    public void logicElytra(Player player) {
         if(!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             return;
         }
 
         plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            packetDisplayText.hideForOwner();
+            packetDisplayText.handleElytraOn();
 
-            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-                packetDisplayText.showForOwner();
-            }, 5);
+            plugin.getTaskScheduler().runTaskLaterAsynchronously(packetDisplayText::handleELytraOff, 20);
         });
     }
 

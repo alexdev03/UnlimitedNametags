@@ -384,7 +384,10 @@ public class NameTagManager {
                     .map(Bukkit::getPlayer)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet()));
+            return;
         }
+
+        addPlayer(player);
     }
 
     public void hideAllDisplays(@NotNull Player player) {
