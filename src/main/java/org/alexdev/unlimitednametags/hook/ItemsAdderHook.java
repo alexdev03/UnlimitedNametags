@@ -7,12 +7,13 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 
 @SuppressWarnings("DuplicatedCode")
-public class ItemsAdderHook extends Hook implements PackSendHandler, HatHook {
+public class ItemsAdderHook extends Hook implements Listener, HatHook {
 
 
     private final Map<String, Double> height;
