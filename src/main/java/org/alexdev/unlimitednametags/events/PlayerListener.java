@@ -1,6 +1,8 @@
 package org.alexdev.unlimitednametags.events;
 
 import com.github.Anon8281.universalScheduler.foliaScheduler.FoliaScheduler;
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
@@ -36,7 +38,6 @@ public class PlayerListener implements PackSendHandler {
         this.loadFoliaRespawnTask();
         this.loadEntityIds();
     }
-
 
     private void loadEntityIds() {
         Bukkit.getOnlinePlayers().forEach(player -> playerEntityId.put(player.getEntityId(), player.getUniqueId()));
@@ -84,7 +85,7 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        if(player.getGameMode() == GameMode.SPECTATOR) {
+        if (player.getGameMode() == GameMode.SPECTATOR) {
             return;
         }
 
@@ -130,11 +131,11 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler
     public void onPlayerVanishes(@NotNull PlayerShowEntityEvent event) {
-        if(!(event.getEntity() instanceof Player player)) {
+        if (!(event.getEntity() instanceof Player player)) {
             return;
         }
 
-        if(plugin.getConfigManager().getSettings().isShowWhileLooking()) {
+        if (plugin.getConfigManager().getSettings().isShowWhileLooking()) {
             return;
         }
 
@@ -145,7 +146,7 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler
     public void onPlayerUnvanishes(@NotNull PlayerHideEntityEvent event) {
-        if(!(event.getEntity() instanceof Player player)) {
+        if (!(event.getEntity() instanceof Player player)) {
             return;
         }
 
@@ -156,34 +157,29 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler
     public void onTeleport(@NotNull PlayerTeleportEvent event) {
-        if(!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        //1.20.1+ bug
+        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_1) &&
+                event.getFrom().getWorld() != event.getTo().getWorld()
+        ) {
+            plugin.getTrackerManager().forceUntrack(event.getPlayer());
+        }
+        if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             return;
         }
 
-        if(event.getFrom().getWorld() == event.getTo().getWorld() && event.getFrom().distance(event.getTo()) <= 80) {
+        if (event.getFrom().getWorld() == event.getTo().getWorld() && event.getFrom().distance(event.getTo()) <= 80) {
             return;
         }
 
-        if(event.getPlayer().getGameMode() == GameMode.SPECTATOR) {
+        if (event.getPlayer().getGameMode() == GameMode.SPECTATOR) {
             return;
         }
 
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToOwner(event.getPlayer()), 5);
     }
 
-//    @EventHandler
-//    public void onElytraFlight(@NotNull EntityToggleGlideEvent event) {
-//        if (!(event.getEntity() instanceof Player player)) {
-//            return;
-//        }
-//
-//        if(true) return;
-//
-//        logicElytra(player);
-//    }
-
     public void logicElytra(Player player) {
-        if(!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             return;
         }
 
