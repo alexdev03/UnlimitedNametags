@@ -1,5 +1,5 @@
 name: UnlimitedNameTags
-version: '${version}'
+version: ${version}
 main: org.alexdev.unlimitednametags.UnlimitedNameTags
 api-version: '1.19'
 author: AlexDev_

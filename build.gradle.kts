@@ -124,8 +124,6 @@ java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
 
-version = rootProject.version
-
 tasks.named<Jar>("jar").configure {
     dependsOn("shadowJar")
 }
@@ -140,6 +138,7 @@ tasks {
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
             modrinth("luckperms", "v5.4.145-bukkit")
+            modrinth("multiverse-core", "4.3.14")
             url("https://github.com/retrooper/packetevents/releases/download/v2.6.0/packetevents-spigot-2.6.0.jar")
             github("ViaVersion", "ViaVersion", "5.1.1", "ViaVersion-5.1.1.jar")
             github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
@@ -170,7 +169,7 @@ tasks.processResources {
             "configlibVersion" to libs.versions.configlibVersion.get(),
             "expiringMapVersion" to libs.versions.expiringMapVersion.get(),
             "commonsJexl3Version" to libs.versions.commonsJexl3Version.get(),
-            "version" to project.version
+            "version" to version
         )
     }
 

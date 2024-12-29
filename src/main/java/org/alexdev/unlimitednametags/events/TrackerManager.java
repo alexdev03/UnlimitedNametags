@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -99,6 +100,19 @@ public class TrackerManager {
         plugin.getTaskScheduler().runTaskAsynchronously(() -> {
             trackedPlayers.removeAll(player.getUniqueId());
             trackedPlayers.values().remove(player.getUniqueId());
+        });
+    }
+
+    public void forceUntrack(@NotNull Player player) {
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
+            trackedPlayers.get(player.getUniqueId())
+                    .stream()
+                    .map(Bukkit::getPlayer)
+                    .filter(Objects::nonNull)
+                    .forEach(p -> handleRemove(p, player));
+            Bukkit.getOnlinePlayers().stream()
+                    .filter(p -> trackedPlayers.get(player.getUniqueId()).contains(p.getUniqueId()))
+                    .forEach(p -> handleRemove(player, p));
         });
     }
 

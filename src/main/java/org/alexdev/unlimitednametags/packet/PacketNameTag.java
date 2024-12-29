@@ -318,7 +318,10 @@ public class PacketNameTag {
         if (user == null) {
             return;
         }
-        perPlayerEntity.removeViewer(user);
+        final WrapperEntity wrapperEntity = perPlayerEntity.getEntityOf(user);
+        if (wrapperEntity != null) {
+            wrapperEntity.removeViewer(user);
+        }
         if (!player.getUniqueId().equals(owner.getUniqueId())) {
             perPlayerEntity.getEntities().remove(user.getUUID());
         }
@@ -427,16 +430,6 @@ public class PacketNameTag {
         blocked.remove(owner.getUniqueId());
         modifyOwner(m -> m.setText(relationalCache.get(owner.getUniqueId())));
         refreshForPlayer(owner);
-    }
-
-    public void hideForOwner() {
-        hideFromPlayer(owner);
-        blocked.add(owner.getUniqueId());
-    }
-
-    public void showForOwner() {
-        blocked.remove(owner.getUniqueId());
-        showToPlayer(owner);
     }
 
     private void applyOwnerData(@NotNull WrapperEntity wrapper) {
