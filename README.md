@@ -70,6 +70,7 @@ Enhance your server's customization by tailoring player name tags, integrating d
 - **`/unt`**: Displays the plugin version and a list of available commands. *(Permission: none)*
 - **`/unt reload`**: Reloads the plugin configuration without restarting the server. *(Permission: `unt.reload`)*
 - **`/unt debug`**: Performs a debug operation for troubleshooting. *(Permission: `unt.debug`)*
+- **`/unt debugger <true/false>`**: Enable or disable the debugger. *(Permission: `unt.debug`)*
 
 #### Name Tag Management:
 - **`/unt show <player>`**: Displays the name tag for a specific player. *(Permission: `unt.show`)*
