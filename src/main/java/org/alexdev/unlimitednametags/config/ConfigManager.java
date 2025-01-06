@@ -6,11 +6,13 @@ import de.exlll.configlib.YamlConfigurationProperties;
 import de.exlll.configlib.YamlConfigurations;
 import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Getter
@@ -25,9 +27,21 @@ public class ConfigManager {
 
     private final UnlimitedNameTags plugin;
     private Settings settings;
+    private boolean compiled;
 
     public ConfigManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
+        this.loadUsage();
+    }
+
+    private void loadUsage() {
+        try (@NotNull final InputStream inputStream = Objects.requireNonNull(getClass().getResourceAsStream("/plugin.yml"));
+             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))
+        ) {
+            compiled = YamlConfiguration.loadConfiguration(reader).getBoolean("compiled", true);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @NotNull

@@ -430,6 +430,7 @@ public class NameTagManager {
     }
 
     public void debug(@NotNull CommandSender audience) {
+        audience.sendRichMessage("<red>UnlimitedNameTags v" + plugin.getPluginMeta().getVersion() + " . Compiled: " + plugin.getConfigManager().isCompiled());
         final AtomicReference<Component> component = new AtomicReference<>(Component.text("Nametags:").colorIfAbsent(TextColor.color(0xFF0000)));
         nameTags.forEach((uuid, display) -> {
             final Player player = Bukkit.getPlayer(uuid);
@@ -447,7 +448,6 @@ public class NameTagManager {
 
             final Component text = getComponent(display, viewers, player, lastUpdate);
             component.set(component.get().append(Component.text("\n")).append(text));
-
         });
 
         plugin.getKyoriManager().sendMessage(audience, component.get());

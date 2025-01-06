@@ -98,6 +98,9 @@ public class PacketNameTag {
     }
 
     public void modify(User user, Consumer<TextDisplayMeta> consumer) {
+        if (user == null) {
+            return;
+        }
         perPlayerEntity.modify(user, e -> {
             final TextDisplayMeta meta = (TextDisplayMeta) e.getEntityMeta();
             consumer.accept(meta);
@@ -105,7 +108,19 @@ public class PacketNameTag {
     }
 
     public void modifyOwner(Consumer<TextDisplayMeta> consumer) {
-        modify(PacketEvents.getAPI().getPlayerManager().getUser(owner), consumer);
+        final User owner = PacketEvents.getAPI().getPlayerManager().getUser(this.owner);
+        if (owner == null) {
+            return;
+        }
+        modify(owner, consumer);
+    }
+
+    public void modifyOwnerEntity(Consumer<WrapperEntity> consumer) {
+        final User owner = PacketEvents.getAPI().getPlayerManager().getUser(this.owner);
+        if (owner == null) {
+            return;
+        }
+        modifyEntity(owner, consumer);
     }
 
     public void modify(Consumer<TextDisplayMeta> consumer) {
@@ -252,8 +267,11 @@ public class PacketNameTag {
 
         spawn(player);
 
-        setPosition();
-
+        if(owner.getUniqueId().equals(player.getUniqueId()) && plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            setOwnerPosition();
+        } else {
+            setPosition();
+        }
 
         viewers.add(user.getUUID());
         perPlayerEntity.addViewer(user);
@@ -299,6 +317,11 @@ public class PacketNameTag {
     private void setPosition() {
         final Location location = getOffsetLocation();
         modifyEntity(meta -> meta.setLocation(SpigotConversionUtil.fromBukkitLocation(location)));
+    }
+
+    private void setOwnerPosition() {
+        final Location location = getOffsetLocation().add(0, 0.25, 0);
+        modifyOwnerEntity(meta -> meta.setLocation(SpigotConversionUtil.fromBukkitLocation(location)));
     }
 
     public Location getOffsetLocation() {
@@ -420,16 +443,14 @@ public class PacketNameTag {
         modify(meta -> meta.setTextOpacity(b));
     }
 
-    public void handleElytraOn() {
-        modifyOwner(m -> m.setText(Component.empty()));
-        refreshForPlayer(owner);
+    public void hideForOwner() {
+        hideFromPlayer(owner);
         blocked.add(owner.getUniqueId());
     }
 
-    public void handleELytraOff() {
+    public void showForOwner() {
         blocked.remove(owner.getUniqueId());
-        modifyOwner(m -> m.setText(relationalCache.get(owner.getUniqueId())));
-        refreshForPlayer(owner);
+        showToPlayer(owner);
     }
 
     private void applyOwnerData(@NotNull WrapperEntity wrapper) {

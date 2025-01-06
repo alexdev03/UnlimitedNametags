@@ -237,6 +237,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
             });
             return map;
         }));
+        metrics.addCustomChart(new Metrics.SimplePie("compiled", () -> String.valueOf(configManager.isCompiled())));
         metrics.addCustomChart(new Metrics.SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
         metrics.addCustomChart(new Metrics.SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
         metrics.addCustomChart(new Metrics.AdvancedPie("hooks", () -> {

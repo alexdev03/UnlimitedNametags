@@ -27,7 +27,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
 
     private final UnlimitedNameTags plugin;
-    public static long time = 0;
 
     public PacketEventsListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
