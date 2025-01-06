@@ -18,13 +18,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class PacketEventsListener extends PacketListenerAbstract {
-
 
     private final UnlimitedNameTags plugin;
 

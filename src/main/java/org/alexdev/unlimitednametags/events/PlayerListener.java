@@ -186,9 +186,7 @@ public class PlayerListener implements PackSendHandler {
         plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetDisplayText -> {
             packetDisplayText.hideForOwner();
 
-            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-                packetDisplayText.showForOwner();
-            }, 5);
+            plugin.getTaskScheduler().runTaskLaterAsynchronously(packetDisplayText::showForOwner, 5);
         });
     }
 
