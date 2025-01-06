@@ -129,8 +129,12 @@ public class PlaceholderManager {
 
     @NotNull
     private String formatPhases(@NotNull String value) {
-        return value.replaceAll("#phase-md#", Integer.toString(index)).replaceAll("#phase-mm#", Integer.toString(mmIndex))
-                .replaceAll("#phase-mm-g#", decimalFormat.format(mGIndex));
+        return value.replace("#phase-md#", Integer.toString(index))
+                .replace("#phase-mm#", Integer.toString(mmIndex))
+                .replace("#phase-mm-g#", decimalFormat.format(mGIndex))
+                .replace("#-phase-md#", Integer.toString(maxIndex - index))
+                .replace("#-phase-mm#", Integer.toString(maxMIndex - mmIndex))
+                .replace("#-phase-mm-g#", decimalFormat.format(mGIndex * -1));
     }
 
     @NotNull
