@@ -24,3 +24,4 @@ permissions:
     default: true
   unt.showownnametag:
     default: true
+compiled: ${compiled}

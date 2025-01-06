@@ -184,9 +184,11 @@ public class PlayerListener implements PackSendHandler {
         }
 
         plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetDisplayText -> {
-            packetDisplayText.handleElytraOn();
+            packetDisplayText.hideForOwner();
 
-            plugin.getTaskScheduler().runTaskLaterAsynchronously(packetDisplayText::handleELytraOff, 20);
+            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+                packetDisplayText.showForOwner();
+            }, 5);
         });
     }
 

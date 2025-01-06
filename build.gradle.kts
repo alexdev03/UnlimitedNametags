@@ -162,6 +162,11 @@ tasks {
 }
 
 tasks.processResources {
+    var compiled = true
+    if (file("license.txt").exists()) {
+        compiled = false
+    }
+
     from("src/main/resources") {
         include("plugin.yml")
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
@@ -169,7 +174,8 @@ tasks.processResources {
             "configlibVersion" to libs.versions.configlibVersion.get(),
             "expiringMapVersion" to libs.versions.expiringMapVersion.get(),
             "commonsJexl3Version" to libs.versions.commonsJexl3Version.get(),
-            "version" to version
+            "version" to version,
+            "compiled" to compiled
         )
     }
 
