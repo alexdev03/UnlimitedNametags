@@ -18,10 +18,11 @@ public class MainCommand {
     @SuppressWarnings("deprecation")
     public void onMain(@Sender CommandSender sender) {
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags v" + plugin.getDescription().getVersion()));
-        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&areload &7- Reloads the plugin"));
-        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&adebug &7- Debugs the plugin"));
-        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&ahide <player> &7- Hides the nametag"));
-        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&ashow <player> &7- Shows the nametag"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt reload &7- Reloads the plugin"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt debug &7- Debugs the plugin"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt hide <player> &7- Hides the nametag"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt show <player> &7- Shows the nametag"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt debugger <true/false> &7- Enable or disable the debugger"));
     }
 
     @Command(name = "reload", desc = "Reloads the plugin", usage = "reload")
