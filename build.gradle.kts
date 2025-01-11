@@ -65,7 +65,6 @@ dependencies {
 
     compileOnly(libs.gson)
 
-
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 }
