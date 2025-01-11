@@ -10,7 +10,6 @@ import com.nexomc.nexo.items.ItemBuilder;
 import com.nexomc.nexo.items.NexoMeta;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -46,23 +45,15 @@ public class NexoHook extends Hook implements Listener, HatHook {
         if (!helmet.hasItemMeta() || !helmet.getItemMeta().hasCustomModelData()) {
             return 0;
         }
-        final int customModelData = helmet.getItemMeta().getCustomModelData();
-        final Optional<ItemBuilder> optionalItemBuilder = findItem(customModelData, helmet.getType());
+        final Optional<ItemBuilder> optionalItemBuilder = findItem(helmet);
         return optionalItemBuilder.map(itemBuilder -> getHigh(getModelName(itemBuilder.getNexoMeta()) + ".json")).orElse(0.0);
     }
 
-    private Optional<ItemBuilder> findItem(int customModelData, @NotNull Material material) {
-        return NexoItems.items().stream()
-                .filter(item -> getCustomModelData(item.getNexoMeta()) == customModelData)
-                .filter(item -> item.getType() == material)
-                .findFirst();
+    private Optional<ItemBuilder> findItem(@NotNull ItemStack item) {
+        return Optional.ofNullable(NexoItems.builderFromItem(item));
     }
 
-    private int getCustomModelData(@NotNull NexoMeta meta) {
-        return meta.getCustomModelData();
-    }
-
-    private String getModelName(NexoMeta meta) {
+    private String getModelName(@NotNull NexoMeta meta) {
         return meta.getModelKey().value();
     }
 
