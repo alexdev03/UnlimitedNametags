@@ -1,17 +1,38 @@
 # Unlimited Name Tags Plugin License
 
-The Unlimited Name Tags plugin is licensed under the following terms:
+This plugin is licensed under the **GNU General Public License version 3 (GPLv3)**. By using, modifying, or distributing this plugin, you agree to the following terms:
 
-1. **Non-Commercial Use**: This plugin is provided for non-commercial use only. Non-commercial use refers to personal or community use without any form of direct or indirect monetization. You may not use the plugin, or any derivative works, for any commercial purposes without obtaining a commercial license from the author.
+---
 
-2. **Repository Cloning and Contributions**: You are permitted to clone the repository and make modifications for personal use. Contributions in the form of pull requests to the original repository are welcome and encouraged. Contributions must be submitted under the same licensing terms as the original project, granting the original author rights to use and modify the contributed code.
+### 1. Non-Commercial and Commercial Use
+   - You may use this plugin for personal, community, or commercial purposes, as permitted by the GPLv3.  
+   - Commercial use is allowed without restriction.  
 
-3. **Redistribution**: You may not redistribute the plugin, or any derivative works, in any form without prior written permission from the author. Forked versions of the software, even if they include attribution to the original creator, are not authorized for redistribution, either free or paid, without explicit written permission.
+---
 
-4. **Attribution**: Any derivative works must include an attribution to the original author. This includes any public sharing of modifications, which must comply with the terms of this license.
+### 2. Support Policy
+   - **Support is provided only to users who have purchased a license**.  
+   - Even for licensed users, support is **entirely at the developer's discretion**.
 
-5. **Disclaimer of Warranty**: This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software.
+---
 
-6. **Commercial License**: For commercial use, including use on servers or platforms that generate revenue through donations, subscriptions, or other forms of financial support, please contact the author at alexdev2k03@gmail.com to obtain a commercial license.
+### 3. Modification and Redistribution
+   - You are free to modify and redistribute the plugin or derivative works, provided you adhere to the following:
+     - The redistributed software must remain licensed under GPLv3.
+     - The source code of the modified software must be made available to recipients, as required by the GPLv3.
+     - Attribution to the original author must be included in all redistributed or derivative works.
 
-7. **License Updates**: The author reserves the right to modify the terms of this license at any time, with updated terms available at the plugin’s repository. Continued use of the plugin constitutes acceptance of the new terms.
+---
+
+### 4. Repository Contributions
+   - Contributions to the official repository (e.g., pull requests) are encouraged. By contributing, you agree to license your contributions under the GPLv3, granting the original author and all users the same rights.
+
+---
+
+### 5. Warranty Disclaimer
+   - This software is provided "as-is," without any express or implied warranty. The authors are not liable for any damages arising from the use, modification, or distribution of this software.
+
+---
+
+### 6. License Updates
+   - This plugin remains under GPLv3. Any changes or updates to the licensing terms will apply only to future releases of the plugin. Existing versions will remain governed by the GPLv3.
