@@ -207,78 +207,85 @@ public class PacketNameTag {
     }
 
     public void showToPlayer(@NotNull Player player) {
-        if (!visible) {
-            return;
-        }
-
-        if (plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
-            return;
-        }
-
-        if (blocked.contains(player.getUniqueId())) {
-            return;
-        }
-
-        if (!player.canSee(owner)) {
-            return;
-        }
-
-        if (PacketEvents.getAPI().getPlayerManager().getChannel(player) == null) {
-            return;
-        }
-
-        final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
-        if (user == null) {
-            return;
-        }
-
-        if (PacketEvents.getAPI().getPlayerManager().getChannel(owner) == null) {
-            return;
-        }
-
-        if (PacketEvents.getAPI().getPlayerManager().getUser(owner) == null) {
-            return;
-        }
-
-        final boolean same = player.getUniqueId().equals(owner.getUniqueId());
-        if (!same && !player.hasPermission("unt.shownametags")) {
-            return;
-        }
-
-        if (same && !player.hasPermission("unt.showownnametag")) {
-            return;
-        }
-
-        if (plugin.getNametagManager().isHiddenOtherNametags(player)) {
-            return;
-        }
-
-        if (plugin.getConfigManager().getSettings().isShowWhileLooking() && !plugin.getNametagManager().isPlayerPointingAt(player, owner)) {
-            return;
-        }
-
-        if (viewers.contains(player.getUniqueId())) {
+        if (!isEligibleToShow(player)) {
             return;
         }
 
         if (!player.getUniqueId().equals(owner.getUniqueId())) {
-            applyOwnerData(perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(player)));
+            applyOwnerData(perPlayerEntity.getEntityOf(getUser(player)));
         }
 
         spawn(player);
 
-        if(owner.getUniqueId().equals(player.getUniqueId()) && plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (isOwner(player) && plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             setOwnerPosition();
         } else {
             setPosition();
         }
 
-        viewers.add(user.getUUID());
-        perPlayerEntity.addViewer(user);
+        viewers.add(player.getUniqueId());
+        perPlayerEntity.addViewer(getUser(player));
 
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            sendPassengersPacket(player);
-        }, 1);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> sendPassengersPacket(player), 1);
+    }
+
+    private boolean isEligibleToShow(@NotNull Player player) {
+        if (!visible) {
+            return false;
+        }
+
+        if (plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
+            return false;
+        }
+
+        if (blocked.contains(player.getUniqueId())) {
+            return false;
+        }
+
+        if (!player.canSee(owner)) {
+            return false;
+        }
+
+        if (isPlayerChannelNotValid(player) || isPlayerChannelNotValid(owner)) {
+            return false;
+        }
+
+        if (!hasRequiredPermissions(player)) {
+            return false;
+        }
+
+        if (plugin.getNametagManager().isHiddenOtherNametags(player)) {
+            return false;
+        }
+
+        if (plugin.getConfigManager().getSettings().isShowWhileLooking() &&
+                !plugin.getNametagManager().isPlayerPointingAt(player, owner)) {
+            return false;
+        }
+
+        return !viewers.contains(player.getUniqueId());
+    }
+
+    private boolean isPlayerChannelNotValid(@NotNull Player player) {
+        return PacketEvents.getAPI().getPlayerManager().getChannel(player) == null ||
+                PacketEvents.getAPI().getPlayerManager().getUser(player) == null;
+    }
+
+    private User getUser(@NotNull Player player) {
+        return PacketEvents.getAPI().getPlayerManager().getUser(player);
+    }
+
+    private boolean isOwner(@NotNull Player player) {
+        return player.getUniqueId().equals(owner.getUniqueId());
+    }
+
+    private boolean hasRequiredPermissions(@NotNull Player player) {
+        boolean isOwner = isOwner(player);
+        if (!isOwner && !player.hasPermission("unt.shownametags")) {
+            return false;
+        }
+
+        return !isOwner || player.hasPermission("unt.showownnametag");
     }
 
     public void spawnForOwner() {
