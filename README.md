@@ -1,9 +1,16 @@
 # **Unlimited Name Tags Plugin** 🎮✨
 *A powerful tool to customize and manage player name tags like never before!*
 
-[![Discord](https://img.shields.io/discord/1263414013040263249?label=Discord&logo=discord&color=5865F2)](https://discord.gg/W4Fu8fqCKs)  
-[![CodeFactor](https://www.codefactor.io/repository/github/alexdev03/unlimitednametags/badge)](https://www.codefactor.io/repository/github/alexdev03/unlimitednametags)  
-[![API Version](https://img.shields.io/github/v/release/alexdev03/UnlimitedNametags?&color=blue)](https://github.com/alexdev03/UnlimitedNametags/releases/latest)
+<div align="center">
+  <h1>UnlimitedNameTags</h1>
+  <img alt="GitHub Release" src="https://img.shields.io/github/release/alexdev03/unlimitednametags.svg">
+  <a href="https://www.codefactor.io/repository/github/alexdev03/unlimitednametags"><img src="https://www.codefactor.io/repository/github/alexdev03/unlimitednametags/badge" alt="CodeFactor" /></a>
+  <br>
+  <a href="https://www.spigotmc.org/resources/unlimitednametags.117526/"><img alt="SpigotMC" src="https://img.shields.io/badge/-SpigotMC-blue?style=for-the-badge&logo=SpigotMC"></a>
+  <a href="https://builtbybit.com/resources/unlimitednametags.46172/"><img alt="BuiltByBit" src="https://img.shields.io/badge/-BuiltByBit-lightblue?style=for-the-badge&logo=BuiltByBit"></a>
+  <br>
+  <a href="https://discord.gg/W4Fu8fqCKs"><img alt="Discord" src="https://img.shields.io/badge/-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
+</div>
 
 ![Unlimited Name Tags in Action](https://i.imgur.com/w7zlGaO.gif)
 
@@ -109,7 +116,7 @@ Unlimited Name Tags works seamlessly with:
 
 ## 📜 **Supported Versions**
 - **Paper**: Fully supported from **1.20.1+** *(highly recommended)*.
-- **Spigot**: Supported from **1.20.2+**, but Paper is preferred for enhanced performance.
+- **Spigot**: Supported from **1.20.2+**, but Paper is preferred for enhanced performance. (Not all spigot versions can be supported)
 
 > **Note**: Versions below **1.19.4** do not support text displays because the required packet functionality does not exist. Additionally, clients connecting with **ViaBackwards** are not compatible and will not display name tags correctly. For the best experience, ensure both the server and clients are using compatible versions.
 > You may connect with 1.19.4 client using **ViaBackwards** and **ViaVersion** and a server on one of the supported versions.
