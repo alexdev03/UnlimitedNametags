@@ -2,7 +2,6 @@
 *A powerful tool to customize and manage player name tags like never before!*
 
 <div align="center">
-  <h1>UnlimitedNameTags</h1>
   <img alt="GitHub Release" src="https://img.shields.io/github/release/alexdev03/unlimitednametags.svg">
   <a href="https://www.codefactor.io/repository/github/alexdev03/unlimitednametags"><img src="https://www.codefactor.io/repository/github/alexdev03/unlimitednametags/badge" alt="CodeFactor" /></a>
   <br>
