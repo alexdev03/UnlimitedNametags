@@ -9,9 +9,11 @@
   <a href="https://builtbybit.com/resources/unlimitednametags.46172/"><img alt="BuiltByBit" src="https://img.shields.io/badge/-BuiltByBit-lightblue?style=for-the-badge&logo=BuiltByBit"></a>
   <br>
   <a href="https://discord.gg/W4Fu8fqCKs"><img alt="Discord" src="https://img.shields.io/badge/-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
-</div>
+  <br>
+  <br>
+  <img alt="Unlimited Name Tags in Action" src="https://i.imgur.com/w7zlGaO.gif">
 
-![Unlimited Name Tags in Action](https://i.imgur.com/w7zlGaO.gif)
+</div>
 
 ---
 
