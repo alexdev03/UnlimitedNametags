@@ -26,6 +26,7 @@ nexoVersion = "0.9.0-dev.19"
 oraxenVersion = "1.174.0"
 itemsAdderVersion = "3.6.1"
 gsonVersion = "2.11.0"
+hmccosmeticsVersion = "2.7.4"
 
 [libraries]
 paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApiVersion" }
@@ -53,3 +54,4 @@ nexo = { module = "com.nexomc:nexo", version.ref = "nexoVersion" }
 oraxen = { module = "io.th0rgal:oraxen", version.ref = "oraxenVersion" }
 itemsAdder = { module = "com.github.LoneDev6:API-ItemsAdder", version.ref = "itemsAdderVersion" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gsonVersion" }
+hmccosmetics = { module = "com.hibiscusmc:HMCCosmetics", version.ref = "hmccosmeticsVersion" }
