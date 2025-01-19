@@ -31,6 +31,7 @@ repositories {
     maven("https://repo.alessiodp.com/releases")
     maven("https://maven.typewritermc.com/beta")
     maven("https://repo.nexomc.com/snapshots/")
+    maven("https://repo.hibiscusmc.com/releases")
 }
 
 dependencies {
@@ -57,6 +58,7 @@ dependencies {
     compileOnly(libs.nexo)
     compileOnly(libs.oraxen)
     compileOnly(libs.itemsAdder)
+    compileOnly(libs.hmccosmetics)
 
     implementation(libs.minedownAdventure)
     implementation(libs.drink)
@@ -70,8 +72,7 @@ dependencies {
 }
 
 tasks.named<ShadowJar>("shadowJar") {
-    val relocation
-    = "org.alexdev.unlimitednametags.libraries."
+    val relocation = "org.alexdev.unlimitednametags.libraries."
     relocate("net.byteflux.libby", relocation + "libby.bukkit")
     relocate("org.jetbrains", relocation + "jetbrains")
     relocate("org.intellij", relocation + "intellij")
@@ -107,7 +108,7 @@ tasks.named<ShadowJar>("shadowJar") {
     destinationDirectory.set(file("$rootDir/target"))
     archiveFileName.set("${project.name}.jar")
 
-    minimize ()
+    minimize()
 }
 
 tasks.withType<JavaCompile> {

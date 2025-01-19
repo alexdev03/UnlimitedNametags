@@ -109,7 +109,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
                         .version("4.17.0")
                         .relocate("net{}]kyori{}adventure{}text{}serializer", "io{}github{}retrooper{}packetevents{}adventure{}serializer")
                         .build()
-
         );
 
         return CompletableFuture.runAsync(() -> {
