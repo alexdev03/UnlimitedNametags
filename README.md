@@ -1,6 +1,6 @@
 <div align="center">
 
-   <h1><b>Unlimited Name Tags Plugin</b> 🎮✨</h1>
+   <h1><b>UnlimitedNameTags</b></h1>
    <p><i>A powerful tool to customize and manage player name tags like never before!</i></p>
 
    <br>
