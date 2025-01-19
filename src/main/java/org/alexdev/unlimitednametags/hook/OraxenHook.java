@@ -1,14 +1,13 @@
 package org.alexdev.unlimitednametags.hook;
 
 import com.google.common.collect.Maps;
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import io.th0rgal.oraxen.api.OraxenItems;
 import io.th0rgal.oraxen.api.events.OraxenItemsLoadedEvent;
 import io.th0rgal.oraxen.items.ItemBuilder;
 import io.th0rgal.oraxen.items.OraxenMeta;
-import net.kyori.adventure.key.Key;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.Material;
@@ -21,58 +20,21 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Optional;
 
+@SuppressWarnings("DuplicatedCode")
 public class OraxenHook extends Hook implements Listener, HatHook {
 
-    private static Method getCustomModelData1 = null;
-    private static Method getCustomModelData2 = null;
-    private static Method getModelName1 = null;
-    private static Method getModelName2 = null;
-
-    static {
-//        try {
-//            getCustomModelData1 = OraxenMeta.class.getDeclaredMethod("getCustomModelData");
-//            getCustomModelData1.setAccessible(true);
-//        } catch (NoSuchMethodException e) {
-//        }
-
-        if(getCustomModelData1 == null) {
-            try {
-                getCustomModelData2 = OraxenMeta.class.getDeclaredMethod("customModelData");
-                getCustomModelData2.setAccessible(true);
-            } catch (NoSuchMethodException e) {
-            }
-        }
-
-//        try {
-//            getModelName1 = OraxenMeta.class.getDeclaredMethod("getModelName");
-//            getModelName1.setAccessible(true);
-//        } catch (NoSuchMethodException e) {
-//        }
-
-        if(getModelName1 == null) {
-            try {
-                getModelName2 = OraxenMeta.class.getDeclaredMethod("modelKey");
-                getModelName2.setAccessible(true);
-            } catch (NoSuchMethodException e) {
-            }
-        }
-    }
-
     private static final File ORAXEN_FOLDER = new File("plugins/Oraxen/pack/models");
-    private static final File ORAXEN_FOLDER2 = new File("plugins/Oraxen/pack/assets/minecraft/models");
 
     private final Map<String, Double> height;
-    private final JsonParser jsonParser;
+    private final Gson jsonParser;
 
     public OraxenHook(@NotNull UnlimitedNameTags plugin) {
         super(plugin);
         this.height = Maps.newConcurrentMap();
-        this.jsonParser = new JsonParser();
+        this.jsonParser = new Gson();
     }
 
     public double getHigh(@NotNull Player player) {
@@ -96,46 +58,19 @@ public class OraxenHook extends Hook implements Listener, HatHook {
                 .findFirst();
     }
 
-    private int getCustomModelData(OraxenMeta meta) {
-        if (getCustomModelData1 != null) {
-            try {
-                return (int) getCustomModelData1.invoke(meta);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-        }
-        else if (getCustomModelData2 != null) {
-            try {
-                return (int) getCustomModelData2.invoke(meta);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-        }
-        return 0;
+    private int getCustomModelData(@NotNull OraxenMeta meta) {
+        return meta.getCustomModelData();
     }
 
     private String getModelName(OraxenMeta meta) {
-        if (getModelName1 != null) {
-            try {
-                return (String) getModelName1.invoke(meta);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-        } else if (getModelName2 != null) {
-            try {
-                return ((Key) getModelName2.invoke(meta)).value();
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-        }
-        return "";
+        return meta.getModelName();
     }
 
     private double getHigh(@NotNull String model) {
         if (height.containsKey(model)) {
             return height.get(model);
         }
-        final File file = new File(getModelName1 != null ? ORAXEN_FOLDER : ORAXEN_FOLDER2, model);
+        final File file = new File(ORAXEN_FOLDER, model);
         if (!file.exists()) {
             return -1;
         }
@@ -174,7 +109,7 @@ public class OraxenHook extends Hook implements Listener, HatHook {
     @NotNull
     private JsonObject parseFile(@NotNull File file) {
         try (final FileReader reader = new FileReader(file)) {
-            return jsonParser.parse(reader).getAsJsonObject();
+            return jsonParser.fromJson(reader, JsonObject.class);
         } catch (IOException e) {
             throw new RuntimeException("Failed to parse file: " + file, e);
         }
