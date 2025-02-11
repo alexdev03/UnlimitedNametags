@@ -59,6 +59,8 @@ dependencies {
     compileOnly(libs.oraxen)
     compileOnly(libs.itemsAdder)
     compileOnly(libs.hmccosmetics)
+    compileOnly(libs.creative.rp)
+    compileOnly(libs.creative.serializer)
 
     implementation(libs.minedownAdventure)
     implementation(libs.drink)
@@ -83,6 +85,10 @@ tasks.named<ShadowJar>("shadowJar") {
     relocate("com.github.Anon8281.universalScheduler", relocation + "universalScheduler")
     relocate("net.kyori.adventure.text.serializer", "io.github.retrooper.packetevents.adventure.serializer")
     relocate("net.byteflux.libby", relocation + "libby.bukkit")
+
+    //Nexo
+    val nexoRelocation = "com.nexomc.libs"
+    relocate("team.unnamed", nexoRelocation)
 
     dependencies {
         exclude(dependency(":kotlin-stdlib"))
@@ -174,6 +180,7 @@ tasks.processResources {
             "configlibVersion" to libs.versions.configlibVersion.get(),
             "expiringMapVersion" to libs.versions.expiringMapVersion.get(),
             "commonsJexl3Version" to libs.versions.commonsJexl3Version.get(),
+
             "version" to version,
             "compiled" to compiled
         )

@@ -9,6 +9,7 @@ libraries:
   - de.exlll:configlib-paper:${configlibVersion}
   - net.jodah:expiringmap:${expiringMapVersion}
   - org.apache.commons:commons-jexl3:${commonsJexl3Version}
+
 depend:
   - packetevents
 softdepend:
@@ -19,6 +20,7 @@ softdepend:
   - ViaBackwards
   - ViaRewind
   - Oraxen
+  - Nexo
 permissions:
   unt.shownametags:
     default: true

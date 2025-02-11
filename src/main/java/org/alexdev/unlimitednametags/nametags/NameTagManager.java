@@ -16,9 +16,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
-import org.bukkit.Bukkit;
-import org.bukkit.Color;
-import org.bukkit.Location;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.CommandSender;
@@ -44,6 +42,7 @@ public class NameTagManager {
     private final List<MyScheduledTask> tasks;
     @Setter
     private boolean debug = false;
+    private final Attribute scaleAttribute;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -54,6 +53,7 @@ public class NameTagManager {
         this.blocked = Sets.newConcurrentHashSet();
         this.hiddenOtherNametags = Sets.newConcurrentHashSet();
         this.loadAll();
+        this.scaleAttribute = loadScaleAttribute();
     }
 
     private void loadAll() {
@@ -122,6 +122,17 @@ public class NameTagManager {
         tasks.add(passengers);
     }
 
+    private Attribute loadScaleAttribute() {
+        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_20_5)) {
+            return null;
+        }
+        if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThan(ServerVersion.V_1_21_1)) {
+            return Attribute.SCALE;
+        } else {
+            return Registry.ATTRIBUTE.get(NamespacedKey.minecraft("generic.scale"));
+        }
+    }
+
     public boolean isPlayerPointingAt(Player player1, Player player2) {
         if (player1.getWorld() != player2.getWorld()) {
             return false;
@@ -152,7 +163,7 @@ public class NameTagManager {
             return 1;
         }
 
-        final AttributeInstance attribute = player.getAttribute(Attribute.GENERIC_SCALE);
+        final AttributeInstance attribute = player.getAttribute(scaleAttribute);
 
         if (attribute == null) {
             return 1;
@@ -160,6 +171,8 @@ public class NameTagManager {
 
         return (int) attribute.getValue();
     }
+
+
 
     public void blockPlayer(@NotNull Player player) {
         blocked.add(player.getUniqueId());
@@ -429,6 +442,7 @@ public class NameTagManager {
         startTask();
     }
 
+    @SuppressWarnings("UnstableApiUsage")
     public void debug(@NotNull CommandSender audience) {
         audience.sendRichMessage("<red>UnlimitedNameTags v" + plugin.getPluginMeta().getVersion() + " . Compiled: " + plugin.getConfigManager().isCompiled());
         final AtomicReference<Component> component = new AtomicReference<>(Component.text("Nametags:").colorIfAbsent(TextColor.color(0xFF0000)));

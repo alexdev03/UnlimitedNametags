@@ -1,39 +1,44 @@
 package org.alexdev.unlimitednametags.hook;
 
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.google.common.collect.Maps;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.nexomc.nexo.api.NexoItems;
+import com.nexomc.nexo.api.NexoPack;
 import com.nexomc.nexo.api.events.NexoItemsLoadedEvent;
 import com.nexomc.nexo.items.ItemBuilder;
 import com.nexomc.nexo.items.NexoMeta;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import team.unnamed.creative.ResourcePack;
+import team.unnamed.creative.base.Vector3Float;
+import team.unnamed.creative.model.ItemOverride;
+import team.unnamed.creative.model.ItemTransform;
+import team.unnamed.creative.model.Model;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
 @SuppressWarnings("DuplicatedCode")
 public class NexoHook extends Hook implements Listener, HatHook {
 
-    private static final File NEXO_FOLDER = new File("plugins/Nexo/pack/assets/minecraft/models");
-
-    private final Map<String, Double> height;
-    private final Gson jsonParser;
+    private final Map<Integer, Model> cmdCache;
+    private ResourcePack pack;
 
     public NexoHook(@NotNull UnlimitedNameTags plugin) {
         super(plugin);
-        this.height = Maps.newConcurrentMap();
-        this.jsonParser = new Gson();
+        this.cmdCache = Maps.newConcurrentMap();
+        loadTexture();
+    }
+
+    private void loadTexture() {
+        pack = NexoPack.resourcePack();
     }
 
     public double getHigh(@NotNull Player player) {
@@ -42,73 +47,81 @@ public class NexoHook extends Hook implements Listener, HatHook {
             return 0;
         }
 
+
         if (!helmet.hasItemMeta() || !helmet.getItemMeta().hasCustomModelData()) {
             return 0;
         }
-        final Optional<ItemBuilder> optionalItemBuilder = findItem(helmet);
-        return optionalItemBuilder.map(itemBuilder -> getHigh(getModelName(itemBuilder.getNexoMeta()) + ".json")).orElse(0.0);
+
+        final Optional<Model> optionalModel = findModel(helmet);
+        return optionalModel.map(this::getHighFromModel).orElse(0.0);
     }
 
-    private Optional<ItemBuilder> findItem(@NotNull ItemStack item) {
-        return Optional.ofNullable(NexoItems.builderFromItem(item));
+    @SuppressWarnings("UnstableApiUsage")
+    private Optional<Model> findModel(@NotNull ItemStack item) {
+        final Optional<ItemBuilder> optionalItemBuilder = Optional.ofNullable(NexoItems.builderFromItem(item));
+        if (optionalItemBuilder.isPresent()) {
+            return optionalItemBuilder.map(ItemBuilder::getNexoMeta)
+                    .map(NexoMeta::getModelKey)
+                    .map(key -> pack.model(key));
+        }
+
+        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_3)) {
+            return Optional.empty();
+        }
+
+        if (item.getItemMeta().hasCustomModelData()) {
+            final int customModelData = item.getItemMeta().getCustomModelData();
+            if (cmdCache.containsKey(customModelData)) {
+                return Optional.of(cmdCache.get(customModelData));
+            }
+            final Optional<ItemOverride> optionalOverride = pack.models().stream()
+                    .flatMap(m -> m.overrides()
+                            .stream())
+                    .filter(e -> e.predicate().stream().anyMatch(p ->
+                            p.name().equalsIgnoreCase("custom_model_data") &&
+                                    p.value().equals(item.getItemMeta().getCustomModelData())))
+                    .findFirst();
+            return optionalOverride.map(override -> {
+                final Model model = pack.model(override.model());
+                cmdCache.put(customModelData, model);
+                return model;
+            });
+        }
+        if (item.getItemMeta().hasEquippable()) {
+            final NamespacedKey model = item.getItemMeta().getEquippable().getModel();
+            if (model == null) {
+                return Optional.empty();
+            }
+            return Optional.ofNullable(pack.model(model));
+        }
+        return Optional.empty();
     }
 
-    private String getModelName(@NotNull NexoMeta meta) {
-        return meta.getModelKey().value();
-    }
-
-    private double getHigh(@NotNull String model) {
-        if (height.containsKey(model)) {
-            return height.get(model);
-        }
-        final File file = new File(NEXO_FOLDER, model);
-        if (!file.exists()) {
-            return -1;
-        }
-
-        final JsonObject jsonObject = parseFile(file);
-        final JsonArray elements = jsonObject.getAsJsonArray("elements");
-        if (elements.size() == 0) {
-            return -1;
-        }
-
+    private double getHighFromModel(@NotNull Model model) {
         double highest = 0;
-        for (int i = 0; i < elements.size(); i++) {
-            final JsonObject element = elements.get(i).getAsJsonObject();
-            final double to = element.getAsJsonArray("to").get(1).getAsDouble();
+        for (int i = 0; i < model.elements().size(); i++) {
+            final double to = model.elements().get(i).to().y();
             if (to > highest) {
                 highest = to;
             }
         }
 
-        final JsonObject display = jsonObject.getAsJsonObject("display");
-        if (!display.has("head")) {
+        if (!model.display().containsKey(ItemTransform.Type.HEAD)) {
             return -1;
         }
 
-        final JsonObject head = display.getAsJsonObject("head");
-        final double scale = head.has("scale") ? head.getAsJsonArray("scale").get(1).getAsDouble() : 1;
-        highest *= scale;
-        final double translation = head.has("translation") ? head.getAsJsonArray("translation").get(1).getAsDouble() : 0;
+        final ItemTransform itemTransform = model.display().get(ItemTransform.Type.HEAD);
+        final Vector3Float scale = itemTransform.scale();
+        highest *= scale.y();
 
-
-        final double value = highest + translation;
-        height.put(model, value);
-        return value;
-    }
-
-    @NotNull
-    private JsonObject parseFile(@NotNull File file) {
-        try (final FileReader reader = new FileReader(file)) {
-            return jsonParser.fromJson(reader, JsonObject.class);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to parse file: " + file, e);
-        }
+        final double translation = itemTransform.translation().y();
+        return highest + translation;
     }
 
     @EventHandler
     public void onEnable(NexoItemsLoadedEvent event) {
-        height.clear();
+        cmdCache.clear();
+        pack = NexoPack.resourcePack();
         plugin.getLogger().info("Nexo items loaded, clearing cache");
     }
 

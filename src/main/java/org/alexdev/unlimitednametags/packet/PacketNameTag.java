@@ -25,7 +25,6 @@ import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
@@ -143,7 +142,7 @@ public class PacketNameTag {
     }
 
     public boolean checkScale() {
-        final AttributeInstance attribute = owner.getAttribute(Attribute.GENERIC_SCALE);
+        final AttributeInstance attribute = owner.getAttribute(plugin.getNametagManager().getScaleAttribute());
         if (attribute == null) {
             if (scale != getDefaultScale()) {
                 setScale(getDefaultScale());
