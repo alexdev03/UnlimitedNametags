@@ -12,7 +12,7 @@ import net.byteflux.libby.Library;
 import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
-import org.alexdev.unlimitednametags.events.*;
+import org.alexdev.unlimitednametags.listeners.*;
 import org.alexdev.unlimitednametags.hook.*;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.alexdev.unlimitednametags.metrics.Metrics;

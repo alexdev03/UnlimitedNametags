@@ -1,4 +1,4 @@
-package org.alexdev.unlimitednametags.events;
+package org.alexdev.unlimitednametags.listeners;
 
 import io.papermc.paper.event.player.PlayerTrackEntityEvent;
 import io.papermc.paper.event.player.PlayerUntrackEntityEvent;

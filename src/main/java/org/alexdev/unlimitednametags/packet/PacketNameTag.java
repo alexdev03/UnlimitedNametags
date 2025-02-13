@@ -326,7 +326,7 @@ public class PacketNameTag {
     }
 
     private void setOwnerPosition() {
-        final Location location = getOffsetLocation().add(0, 0.25, 0);
+        final Location location = getOffsetLocation(); //.add(0, 0.25, 0)
         modifyOwnerEntity(meta -> meta.setLocation(SpigotConversionUtil.fromBukkitLocation(location)));
     }
 

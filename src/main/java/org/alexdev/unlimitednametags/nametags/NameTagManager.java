@@ -38,7 +38,7 @@ public class NameTagManager {
     private final Map<Integer, PacketNameTag> entityIdToDisplay;
     private final Set<UUID> creating;
     private final Set<UUID> blocked;
-    private final Set<UUID> hiddenOtherNametags;
+    private final Set<UUID> hideNametags;
     private final List<MyScheduledTask> tasks;
     @Setter
     private boolean debug = false;
@@ -51,7 +51,7 @@ public class NameTagManager {
         this.tasks = Lists.newCopyOnWriteArrayList();
         this.creating = Sets.newConcurrentHashSet();
         this.blocked = Sets.newConcurrentHashSet();
-        this.hiddenOtherNametags = Sets.newConcurrentHashSet();
+        this.hideNametags = Sets.newConcurrentHashSet();
         this.loadAll();
         this.scaleAttribute = loadScaleAttribute();
     }
@@ -176,10 +176,22 @@ public class NameTagManager {
 
     public void blockPlayer(@NotNull Player player) {
         blocked.add(player.getUniqueId());
+        if (debug) {
+            plugin.getLogger().info("Blocked " + player.getName());
+        }
     }
 
     public void unblockPlayer(@NotNull Player player) {
         blocked.remove(player.getUniqueId());
+        if (debug) {
+            plugin.getLogger().info("Unblocked " + player.getName());
+        }
+    }
+
+    public void clearCache(@NotNull UUID uuid) {
+        blocked.remove(uuid);
+        creating.remove(uuid);
+        hideNametags.remove(uuid);
     }
 
     public void addPlayer(@NotNull Player player) {
@@ -200,6 +212,17 @@ public class NameTagManager {
         if (blocked.contains(player.getUniqueId())) {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " is blocked");
+            }
+            return;
+        } else {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is not blocked");
+            }
+        }
+
+        if (PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is not loaded");
             }
             return;
         }
@@ -223,6 +246,9 @@ public class NameTagManager {
         handleVanish(player, display);
 
         nameTags.put(player.getUniqueId(), display);
+        if (debug) {
+            plugin.getLogger().info("Added nametag for " + player.getName());
+        }
         entityIdToDisplay.put(display.getEntityId(), display);
 
         creating.add(player.getUniqueId());
@@ -610,7 +636,7 @@ public class NameTagManager {
     }
 
     public void hideOtherNametags(@NotNull Player player) {
-        hiddenOtherNametags.add(player.getUniqueId());
+        hideNametags.add(player.getUniqueId());
         nameTags.forEach((uuid, display) -> {
             if (display.canPlayerSee(player)) {
                 display.hideFromPlayer(player);
@@ -619,7 +645,7 @@ public class NameTagManager {
     }
 
     public void showOtherNametags(@NotNull Player player) {
-        hiddenOtherNametags.remove(player.getUniqueId());
+        hideNametags.remove(player.getUniqueId());
         plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()).forEach(uuid -> {
             final Player tracked = Bukkit.getPlayer(uuid);
             if (tracked == null) {
@@ -630,6 +656,6 @@ public class NameTagManager {
     }
 
     public boolean isHiddenOtherNametags(@NotNull Player player) {
-        return hiddenOtherNametags.contains(player.getUniqueId());
+        return hideNametags.contains(player.getUniqueId());
     }
 }

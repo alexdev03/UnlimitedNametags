@@ -1,4 +1,4 @@
-package org.alexdev.unlimitednametags.events;
+package org.alexdev.unlimitednametags.listeners;
 
 import com.github.Anon8281.universalScheduler.foliaScheduler.FoliaScheduler;
 import com.github.retrooper.packetevents.PacketEvents;
@@ -68,19 +68,25 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 2);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 5);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().removePlayer(event.getPlayer(), true), 1);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            plugin.getNametagManager().removePlayer(event.getPlayer(), true);
+            plugin.getNametagManager().clearCache(event.getPlayer().getUniqueId());
+        }, 1);
         playerEntityId.remove(event.getPlayer().getEntityId());
     }
 
     @EventHandler
     public void onPotion(@NotNull EntityPotionEffectEvent event) {
+        if (plugin.getNametagManager().isDebug()) {
+            plugin.getLogger().info("Potion event: " + event.getAction() + " " + event.getOldEffect() + " " + event.getNewEffect());
+        }
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
@@ -94,14 +100,19 @@ public class PlayerListener implements PackSendHandler {
                 return;
             }
             plugin.getNametagManager().removeAllViewers(player);
+            plugin.getNametagManager().blockPlayer(player);
         } else if (event.getAction() == EntityPotionEffectEvent.Action.REMOVED || event.getAction() == EntityPotionEffectEvent.Action.CLEARED) {
             if (event.getOldEffect() == null || event.getOldEffect().getType() != PotionEffectType.INVISIBILITY) {
                 return;
             }
             plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
                 plugin.getNametagManager().unblockPlayer(player);
+//                if (plugin.getNametagManager().getPacketDisplayText(player).isEmpty()) {
+//                    plugin.getNametagManager().addPlayer(player);
+//                    return;
+//                }
                 plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers().get(player.getUniqueId()));
-            }, 1);
+            }, 3);
 
         }
     }

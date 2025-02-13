@@ -1,4 +1,4 @@
-package org.alexdev.unlimitednametags.events;
+package org.alexdev.unlimitednametags.listeners;
 
 import com.google.common.collect.Sets;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;

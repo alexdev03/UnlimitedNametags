@@ -1,4 +1,4 @@
-package org.alexdev.unlimitednametags.events;
+package org.alexdev.unlimitednametags.listeners;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
