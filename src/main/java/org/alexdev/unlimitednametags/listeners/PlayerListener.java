@@ -92,19 +92,29 @@ public class PlayerListener implements PackSendHandler {
         }
 
         if (player.getGameMode() == GameMode.SPECTATOR) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player is in spectator mode, skipping potion event");
+            }
             return;
         }
 
         if (event.getAction() == EntityPotionEffectEvent.Action.ADDED) {
-            if (event.getNewEffect() == null || event.getNewEffect().getType() != PotionEffectType.INVISIBILITY) {
+            if (event.getNewEffect() == null || (!event.getNewEffect().getType().equals(PotionEffectType.INVISIBILITY))) {
+                if (plugin.getNametagManager().isDebug()) {
+                    plugin.getLogger().info("Potion effect is not invisibility, skipping potion event");
+                }
                 return;
             }
             plugin.getNametagManager().removeAllViewers(player);
             plugin.getNametagManager().blockPlayer(player);
         } else if (event.getAction() == EntityPotionEffectEvent.Action.REMOVED || event.getAction() == EntityPotionEffectEvent.Action.CLEARED) {
-            if (event.getOldEffect() == null || event.getOldEffect().getType() != PotionEffectType.INVISIBILITY) {
+            if (event.getOldEffect() == null || !event.getOldEffect().getType().equals(PotionEffectType.INVISIBILITY)) {
+                if (plugin.getNametagManager().isDebug()) {
+                    plugin.getLogger().info("Potion effect is not invisibility, skipping potion event: " + (event.getOldEffect() != null ? event.getOldEffect().getType() : null));
+                }
                 return;
             }
+
             plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
                 plugin.getNametagManager().unblockPlayer(player);
 //                if (plugin.getNametagManager().getPacketDisplayText(player).isEmpty()) {
@@ -112,7 +122,7 @@ public class PlayerListener implements PackSendHandler {
 //                    return;
 //                }
                 plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers().get(player.getUniqueId()));
-            }, 3);
+            }, 1);
 
         }
     }
