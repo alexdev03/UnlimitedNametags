@@ -151,7 +151,16 @@ public class PlaceholderManager {
                 continue;
             }
 
-            final String replaced = papiManager.setPlaceholders(player, entry.getKey());
+            final String replaced;
+            if (papiManager.isPAPIEnabled()) {
+                if (viewer == null) {
+                    replaced = papiManager.setPlaceholders(player, entry.getKey());
+                } else {
+                    replaced = papiManager.setRelationalPlaceholders(viewer, player, entry.getKey());
+                }
+            } else {
+                replaced = "";
+            }
             final Optional<Settings.PlaceholderReplacement> replacement = entry.getValue().stream()
                     .filter(r -> r.placeholder().equals(replaced))
                     .findFirst();
