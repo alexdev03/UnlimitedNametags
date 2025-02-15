@@ -7,6 +7,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
@@ -88,10 +89,10 @@ public class PlaceholderManager {
     @NotNull
     private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
         return CompletableFuture.supplyAsync(() -> lines.parallelStream()
-                        .filter(l -> l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
-                        .map(Settings.LinesGroup::lines)
-                        .flatMap(List::stream)
-                        .toList(), executorService);
+                .filter(l -> l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
+                .map(Settings.LinesGroup::lines)
+                .flatMap(List::stream)
+                .toList(), executorService);
     }
 
     @NotNull
@@ -112,12 +113,13 @@ public class PlaceholderManager {
 
         final List<String> stringsCopy = papiManager.isPAPIEnabled() ?
                 strings.stream()
-                        .map(s -> replacePlaceholders(s, player))
+                        .map(s -> replacePlaceholders(s, player, null))
                         .toList()
                 : strings;
         return relationalPlayers.stream()
                 .map(r -> Map.entry(r, Component.join(JoinConfiguration.separator(Component.newline()), stringsCopy.parallelStream()
-                                .map(t -> papiManager.isPAPIEnabled() ? papiManager.setRelationalPlaceholders(r, player, t) : t)
+//                                .map(t -> papiManager.isPAPIEnabled() ? papiManager.setRelationalPlaceholders(r, player, t) : t)
+                                .map(t -> replacePlaceholders(t, player, r))
                                 .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
                                 .map(this::formatPhases)
                                 .map(t -> format(t, player))
@@ -143,7 +145,7 @@ public class PlaceholderManager {
     }
 
     @NotNull
-    private String replacePlaceholders(@NotNull String string, @NotNull Player player) {
+    private String replacePlaceholders(@NotNull String string, @NotNull Player player, @Nullable Player viewer) {
         for (Map.Entry<String, List<Settings.PlaceholderReplacement>> entry : plugin.getConfigManager().getSettings().getPlaceholdersReplacements().entrySet()) {
             if (!string.contains(entry.getKey())) {
                 continue;
@@ -168,7 +170,10 @@ public class PlaceholderManager {
         }
 
         if (papiManager.isPAPIEnabled()) {
-            return papiManager.setPlaceholders(player, string);
+            if (viewer == null) {
+                return papiManager.setPlaceholders(player, string);
+            }
+            return papiManager.setRelationalPlaceholders(viewer, player, string);
         }
 
         return string;

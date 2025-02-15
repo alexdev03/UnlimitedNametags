@@ -122,7 +122,7 @@ public class PlayerListener implements PackSendHandler {
 //                    return;
 //                }
                 plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers().get(player.getUniqueId()));
-            }, 1);
+            }, 3);
 
         }
     }
