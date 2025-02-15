@@ -61,7 +61,7 @@ public class NexoHook extends Hook implements Listener, HatHook {
         final Optional<ItemBuilder> optionalItemBuilder = Optional.ofNullable(NexoItems.builderFromItem(item));
         if (optionalItemBuilder.isPresent()) {
             return optionalItemBuilder.map(ItemBuilder::getNexoMeta)
-                    .map(NexoMeta::getModelKey)
+                    .map(NexoMeta::getModel)
                     .map(key -> pack.model(key));
         }
 

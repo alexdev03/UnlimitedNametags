@@ -87,8 +87,8 @@ tasks.named<ShadowJar>("shadowJar") {
     relocate("net.byteflux.libby", relocation + "libby.bukkit")
 
     //Nexo
-    val nexoRelocation = "com.nexomc.libs"
-    relocate("team.unnamed", nexoRelocation)
+//    val nexoRelocation = "com.nexomc.libs"
+//    relocate("team.unnamed", nexoRelocation)
 
     dependencies {
         exclude(dependency(":kotlin-stdlib"))
