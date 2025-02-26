@@ -240,6 +240,15 @@ public class NameTagManager {
             blockPlayer(player);
             return;
         }
+
+        if (player.getGameMode() == GameMode.SPECTATOR) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is in spectator mode, skipping");
+            }
+            blockPlayer(player);
+            return;
+        }
+
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
         final PacketNameTag display = new PacketNameTag(plugin, player, nametag);
         display.text(player, Component.empty());
