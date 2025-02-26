@@ -23,7 +23,7 @@ public class TrackerManager {
 
     public TrackerManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.trackedPlayers = Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet);
+        this.trackedPlayers = Multimaps.synchronizedSetMultimap(Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet));
         loadTracker();
     }
 

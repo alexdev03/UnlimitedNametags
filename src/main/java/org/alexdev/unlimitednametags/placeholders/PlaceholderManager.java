@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -34,8 +35,12 @@ public class PlaceholderManager {
     private final PAPIManager papiManager;
     private int index = maxIndex;
     private int mmIndex = maxMIndex;
-    private double mGIndex = 1.0;
+    private double miniGradientIndex = 1.0;
     private DecimalFormat decimalFormat;
+
+    private BigDecimal miniGradientIndexBD = new BigDecimal("-1.0");
+    private BigDecimal stepBD = new BigDecimal("0.1");
+    private BigDecimal one = new BigDecimal("1.0");
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -68,11 +73,15 @@ public class PlaceholderManager {
             }
         }, 0, 2);
         plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
-            mGIndex += 0.1;
-            if (mGIndex >= 1d) {
-                mGIndex = minMGIndex;
+//            miniGradientIndex += 0.1;
+//            if (miniGradientIndex >= 1.0 - 0.000001) {
+//                miniGradientIndex = minMGIndex;
+//            }
+            miniGradientIndexBD = miniGradientIndexBD.add(stepBD);
+            if (miniGradientIndexBD.compareTo(one) >= 0) {
+                miniGradientIndexBD = new BigDecimal("-1.0");
             }
-        }, 0, 2);
+        }, 0, 1);
     }
 
     public void close() {
@@ -133,10 +142,10 @@ public class PlaceholderManager {
     private String formatPhases(@NotNull String value) {
         return value.replace("#phase-md#", Integer.toString(index))
                 .replace("#phase-mm#", Integer.toString(mmIndex))
-                .replace("#phase-mm-g#", decimalFormat.format(mGIndex))
+                .replace("#phase-mm-g#", decimalFormat.format(new BigDecimal(miniGradientIndexBD.toPlainString())))
                 .replace("#-phase-md#", Integer.toString(maxIndex - index))
                 .replace("#-phase-mm#", Integer.toString(maxMIndex - mmIndex))
-                .replace("#-phase-mm-g#", decimalFormat.format(mGIndex * -1));
+                .replace("#-phase-mm-g#", decimalFormat.format(miniGradientIndex * -1));
     }
 
     @NotNull

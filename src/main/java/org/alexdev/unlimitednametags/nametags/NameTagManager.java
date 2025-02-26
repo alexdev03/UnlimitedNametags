@@ -66,7 +66,12 @@ public class NameTagManager {
     private void startTask() {
         tasks.forEach(MyScheduledTask::cancel);
         final MyScheduledTask refresh = plugin.getTaskScheduler().runTaskTimerAsynchronously(
-                () -> Bukkit.getOnlinePlayers().forEach(p -> refresh(p, false)),
+                () -> {
+                    if (plugin.isPaper() && plugin.getServer().isStopping()) {
+                        return;
+                    }
+                    Bukkit.getOnlinePlayers().forEach(p -> refresh(p, false));
+                },
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
 
         // Refresh passengers
@@ -88,7 +93,6 @@ public class NameTagManager {
         }
 
         if (plugin.getConfigManager().getSettings().isShowWhileLooking()) {
-            final boolean current = plugin.getConfigManager().getSettings().isShowCurrentNameTag();
             final MyScheduledTask point = plugin.getTaskScheduler().runTaskTimerAsynchronously(() ->
                             Bukkit.getOnlinePlayers().forEach(player1 -> {
                                 final Optional<PacketNameTag> display = getPacketDisplayText(player1);
@@ -104,13 +108,16 @@ public class NameTagManager {
                                         return;
                                     }
 
-                                    final boolean isPointing = isPlayerPointingAt(player2, player1) || (current && player1 == player2);
+                                    if (player1.equals(player2)) {
+                                        return;
+                                    }
+
+                                    final boolean isPointing = isPlayerPointingAt(player2, player1);
                                     if (display.get().canPlayerSee(player2) && !isPointing) {
                                         display.get().hideFromPlayer(player2);
                                     } else if (!display.get().canPlayerSee(player2) && isPointing) {
                                         display.get().showToPlayer(player2);
                                     }
-
                                 });
                             })
 
@@ -159,7 +166,7 @@ public class NameTagManager {
             return 1;
         }
 
-        if(PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_20_5)) {
+        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_20_5)) {
             return 1;
         }
 
@@ -171,7 +178,6 @@ public class NameTagManager {
 
         return (int) attribute.getValue();
     }
-
 
 
     public void blockPlayer(@NotNull Player player) {
@@ -265,7 +271,7 @@ public class NameTagManager {
     public void refresh(@NotNull Player player, boolean force) {
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
-        if(PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
+        if (PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
             return;
         }
 
@@ -316,17 +322,17 @@ public class NameTagManager {
                 }
                 packetNameTag.modify(user, m -> {
 
-                    if(force) {
+                    if (force) {
                         m.setShadow(nameTag.background().shadowed());
                         m.setSeeThrough(nameTag.background().seeThrough());
                         m.setBackgroundColor(nameTag.background().getColor().asARGB());
                         update.set(true);
                     } else {
-                        if(m.isShadow() != nameTag.background().shadowed()) {
+                        if (m.isShadow() != nameTag.background().shadowed()) {
                             m.setShadow(nameTag.background().shadowed());
                             update.set(true);
                         }
-                        if(m.isSeeThrough() != nameTag.background().seeThrough()) {
+                        if (m.isSeeThrough() != nameTag.background().seeThrough()) {
                             m.setSeeThrough(nameTag.background().seeThrough());
                             update.set(true);
                         }
