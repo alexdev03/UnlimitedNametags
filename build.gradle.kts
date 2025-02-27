@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "org.alexdev"
-version = "1.6.6"
+version = "1.6.7"
 
 repositories {
     mavenCentral()
@@ -59,6 +59,8 @@ dependencies {
     compileOnly(libs.oraxen)
     compileOnly(libs.itemsAdder)
     compileOnly(libs.hmccosmetics)
+    compileOnly(libs.creative.rp)
+    compileOnly(libs.creative.serializer)
 
     implementation(libs.minedownAdventure)
     implementation(libs.drink)
@@ -83,6 +85,10 @@ tasks.named<ShadowJar>("shadowJar") {
     relocate("com.github.Anon8281.universalScheduler", relocation + "universalScheduler")
     relocate("net.kyori.adventure.text.serializer", "io.github.retrooper.packetevents.adventure.serializer")
     relocate("net.byteflux.libby", relocation + "libby.bukkit")
+
+    //Nexo
+//    val nexoRelocation = "com.nexomc.libs"
+//    relocate("team.unnamed", nexoRelocation)
 
     dependencies {
         exclude(dependency(":kotlin-stdlib"))
@@ -113,7 +119,7 @@ tasks.named<ShadowJar>("shadowJar") {
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
-    options.release.set(21)
+    options.release.set(17)
 
 }
 tasks.withType<Javadoc> {
@@ -122,6 +128,8 @@ tasks.withType<Javadoc> {
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+
+    disableAutoTargetJvm()
 }
 
 tasks.named<Jar>("jar").configure {
@@ -133,17 +141,17 @@ tasks.named<Delete>("clean").configure {
 
 tasks {
     runServer {
-        minecraftVersion("1.21.3")
+        minecraftVersion("1.21.4")
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
             modrinth("luckperms", "v5.4.145-bukkit")
             modrinth("multiverse-core", "4.3.14")
-            url("https://github.com/retrooper/packetevents/releases/download/v2.6.0/packetevents-spigot-2.6.0.jar")
+            url("https://github.com/retrooper/packetevents/releases/download/v2.7.0/packetevents-spigot-2.7.0.jar")
             github("ViaVersion", "ViaVersion", "5.1.1", "ViaVersion-5.1.1.jar")
             github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
-            github("gecolay", "GSit", "1.11.2", "GSit-1.11.2.jar")
+//            github("gecolay", "GSit", "1.11.2", "GSit-1.11.2.jar")
 //            url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
         }
     }
@@ -174,6 +182,7 @@ tasks.processResources {
             "configlibVersion" to libs.versions.configlibVersion.get(),
             "expiringMapVersion" to libs.versions.expiringMapVersion.get(),
             "commonsJexl3Version" to libs.versions.commonsJexl3Version.get(),
+
             "version" to version,
             "compiled" to compiled
         )

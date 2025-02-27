@@ -7,7 +7,9 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -33,8 +35,12 @@ public class PlaceholderManager {
     private final PAPIManager papiManager;
     private int index = maxIndex;
     private int mmIndex = maxMIndex;
-    private double mGIndex = 1.0;
+    private double miniGradientIndex = 1.0;
     private DecimalFormat decimalFormat;
+
+    private BigDecimal miniGradientIndexBD = new BigDecimal("-1.0");
+    private BigDecimal stepBD = new BigDecimal("0.1");
+    private BigDecimal one = new BigDecimal("1.0");
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -67,11 +73,15 @@ public class PlaceholderManager {
             }
         }, 0, 2);
         plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
-            mGIndex += 0.1;
-            if (mGIndex >= 1d) {
-                mGIndex = minMGIndex;
+//            miniGradientIndex += 0.1;
+//            if (miniGradientIndex >= 1.0 - 0.000001) {
+//                miniGradientIndex = minMGIndex;
+//            }
+            miniGradientIndexBD = miniGradientIndexBD.add(stepBD);
+            if (miniGradientIndexBD.compareTo(one) >= 0) {
+                miniGradientIndexBD = new BigDecimal("-1.0");
             }
-        }, 0, 2);
+        }, 0, 1);
     }
 
     public void close() {
@@ -88,10 +98,10 @@ public class PlaceholderManager {
     @NotNull
     private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
         return CompletableFuture.supplyAsync(() -> lines.parallelStream()
-                        .filter(l -> l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
-                        .map(Settings.LinesGroup::lines)
-                        .flatMap(List::stream)
-                        .toList(), executorService);
+                .filter(l -> l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
+                .map(Settings.LinesGroup::lines)
+                .flatMap(List::stream)
+                .toList(), executorService);
     }
 
     @NotNull
@@ -112,12 +122,13 @@ public class PlaceholderManager {
 
         final List<String> stringsCopy = papiManager.isPAPIEnabled() ?
                 strings.stream()
-                        .map(s -> replacePlaceholders(s, player))
+                        .map(s -> replacePlaceholders(s, player, null))
                         .toList()
                 : strings;
         return relationalPlayers.stream()
                 .map(r -> Map.entry(r, Component.join(JoinConfiguration.separator(Component.newline()), stringsCopy.parallelStream()
-                                .map(t -> papiManager.isPAPIEnabled() ? papiManager.setRelationalPlaceholders(r, player, t) : t)
+//                                .map(t -> papiManager.isPAPIEnabled() ? papiManager.setRelationalPlaceholders(r, player, t) : t)
+                                .map(t -> replacePlaceholders(t, player, r))
                                 .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
                                 .map(this::formatPhases)
                                 .map(t -> format(t, player))
@@ -131,10 +142,10 @@ public class PlaceholderManager {
     private String formatPhases(@NotNull String value) {
         return value.replace("#phase-md#", Integer.toString(index))
                 .replace("#phase-mm#", Integer.toString(mmIndex))
-                .replace("#phase-mm-g#", decimalFormat.format(mGIndex))
+                .replace("#phase-mm-g#", decimalFormat.format(new BigDecimal(miniGradientIndexBD.toPlainString())))
                 .replace("#-phase-md#", Integer.toString(maxIndex - index))
                 .replace("#-phase-mm#", Integer.toString(maxMIndex - mmIndex))
-                .replace("#-phase-mm-g#", decimalFormat.format(mGIndex * -1));
+                .replace("#-phase-mm-g#", decimalFormat.format(miniGradientIndex * -1));
     }
 
     @NotNull
@@ -143,13 +154,22 @@ public class PlaceholderManager {
     }
 
     @NotNull
-    private String replacePlaceholders(@NotNull String string, @NotNull Player player) {
+    private String replacePlaceholders(@NotNull String string, @NotNull Player player, @Nullable Player viewer) {
         for (Map.Entry<String, List<Settings.PlaceholderReplacement>> entry : plugin.getConfigManager().getSettings().getPlaceholdersReplacements().entrySet()) {
             if (!string.contains(entry.getKey())) {
                 continue;
             }
 
-            final String replaced = papiManager.setPlaceholders(player, entry.getKey());
+            final String replaced;
+            if (papiManager.isPAPIEnabled()) {
+                if (viewer == null) {
+                    replaced = papiManager.setPlaceholders(player, entry.getKey());
+                } else {
+                    replaced = papiManager.setRelationalPlaceholders(viewer, player, entry.getKey());
+                }
+            } else {
+                replaced = "";
+            }
             final Optional<Settings.PlaceholderReplacement> replacement = entry.getValue().stream()
                     .filter(r -> r.placeholder().equals(replaced))
                     .findFirst();
@@ -168,7 +188,10 @@ public class PlaceholderManager {
         }
 
         if (papiManager.isPAPIEnabled()) {
-            return papiManager.setPlaceholders(player, string);
+            if (viewer == null) {
+                return papiManager.setPlaceholders(player, string);
+            }
+            return papiManager.setRelationalPlaceholders(viewer, player, string);
         }
 
         return string;

@@ -1,5 +1,5 @@
 [versions]
-paperApiVersion = "1.21.1-R0.1-SNAPSHOT"
+paperApiVersion = "1.21.4-R0.1-SNAPSHOT"
 adventureApiVersion = "4.16.0"
 adventureTextMinimessageVersion = "4.17.0"
 adventureTextSerializerLegacyVersion = "4.17.0"
@@ -15,18 +15,20 @@ configlibVersion = "4.5.0"
 minedownAdventureVersion = "1.7.2-SNAPSHOT"
 drinkVersion = "1.5.3"
 entityLibVersion = "+39cce79-SNAPSHOT"
-packeteventsSpigotVersion = "2.6.0"
+packeteventsSpigotVersion = "2.7.0"
 universalSchedulerVersion = "0.1.6"
 viaVersionApiVersion = "5.0.1"
 libbyBukkitVersion = "1.3.1"
 bstatsBukkitVersion = "3.0.2"
 expiringMapVersion = "0.5.11"
 commonsJexl3Version = "3.4.0"
-nexoVersion = "0.9.0-dev.19"
+nexoVersion = "1.0.0-dev.25"
 oraxenVersion = "1.174.0"
 itemsAdderVersion = "3.6.1"
 gsonVersion = "2.11.0"
 hmccosmeticsVersion = "2.7.4"
+creative-rp = "1.7.3"
+creative-serializer = "1.7.3"
 
 [libraries]
 paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApiVersion" }
@@ -55,3 +57,5 @@ oraxen = { module = "io.th0rgal:oraxen", version.ref = "oraxenVersion" }
 itemsAdder = { module = "com.github.LoneDev6:API-ItemsAdder", version.ref = "itemsAdderVersion" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gsonVersion" }
 hmccosmetics = { module = "com.hibiscusmc:HMCCosmetics", version.ref = "hmccosmeticsVersion" }
+creative-rp = { module = "team.unnamed:creative-api", version.ref = "creative-rp" }
+creative-serializer = { module = "team.unnamed:creative-serializer-minecraft", version.ref = "creative-serializer" }

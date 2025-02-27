@@ -16,9 +16,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
-import org.bukkit.Bukkit;
-import org.bukkit.Color;
-import org.bukkit.Location;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.CommandSender;
@@ -40,10 +38,11 @@ public class NameTagManager {
     private final Map<Integer, PacketNameTag> entityIdToDisplay;
     private final Set<UUID> creating;
     private final Set<UUID> blocked;
-    private final Set<UUID> hiddenOtherNametags;
+    private final Set<UUID> hideNametags;
     private final List<MyScheduledTask> tasks;
     @Setter
     private boolean debug = false;
+    private final Attribute scaleAttribute;
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -52,8 +51,9 @@ public class NameTagManager {
         this.tasks = Lists.newCopyOnWriteArrayList();
         this.creating = Sets.newConcurrentHashSet();
         this.blocked = Sets.newConcurrentHashSet();
-        this.hiddenOtherNametags = Sets.newConcurrentHashSet();
+        this.hideNametags = Sets.newConcurrentHashSet();
         this.loadAll();
+        this.scaleAttribute = loadScaleAttribute();
     }
 
     private void loadAll() {
@@ -66,7 +66,12 @@ public class NameTagManager {
     private void startTask() {
         tasks.forEach(MyScheduledTask::cancel);
         final MyScheduledTask refresh = plugin.getTaskScheduler().runTaskTimerAsynchronously(
-                () -> Bukkit.getOnlinePlayers().forEach(p -> refresh(p, false)),
+                () -> {
+                    if (plugin.isPaper() && plugin.getServer().isStopping()) {
+                        return;
+                    }
+                    Bukkit.getOnlinePlayers().forEach(p -> refresh(p, false));
+                },
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
 
         // Refresh passengers
@@ -88,7 +93,6 @@ public class NameTagManager {
         }
 
         if (plugin.getConfigManager().getSettings().isShowWhileLooking()) {
-            final boolean current = plugin.getConfigManager().getSettings().isShowCurrentNameTag();
             final MyScheduledTask point = plugin.getTaskScheduler().runTaskTimerAsynchronously(() ->
                             Bukkit.getOnlinePlayers().forEach(player1 -> {
                                 final Optional<PacketNameTag> display = getPacketDisplayText(player1);
@@ -104,13 +108,16 @@ public class NameTagManager {
                                         return;
                                     }
 
-                                    final boolean isPointing = isPlayerPointingAt(player2, player1) || (current && player1 == player2);
+                                    if (player1.equals(player2)) {
+                                        return;
+                                    }
+
+                                    final boolean isPointing = isPlayerPointingAt(player2, player1);
                                     if (display.get().canPlayerSee(player2) && !isPointing) {
                                         display.get().hideFromPlayer(player2);
                                     } else if (!display.get().canPlayerSee(player2) && isPointing) {
                                         display.get().showToPlayer(player2);
                                     }
-
                                 });
                             })
 
@@ -120,6 +127,17 @@ public class NameTagManager {
 
         tasks.add(refresh);
         tasks.add(passengers);
+    }
+
+    private Attribute loadScaleAttribute() {
+        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_20_5)) {
+            return null;
+        }
+        if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThan(ServerVersion.V_1_21_1)) {
+            return Attribute.SCALE;
+        } else {
+            return Registry.ATTRIBUTE.get(NamespacedKey.minecraft("generic.scale"));
+        }
     }
 
     public boolean isPlayerPointingAt(Player player1, Player player2) {
@@ -148,11 +166,11 @@ public class NameTagManager {
             return 1;
         }
 
-        if(PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_20_5)) {
+        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_20_5)) {
             return 1;
         }
 
-        final AttributeInstance attribute = player.getAttribute(Attribute.GENERIC_SCALE);
+        final AttributeInstance attribute = player.getAttribute(scaleAttribute);
 
         if (attribute == null) {
             return 1;
@@ -161,12 +179,25 @@ public class NameTagManager {
         return (int) attribute.getValue();
     }
 
+
     public void blockPlayer(@NotNull Player player) {
         blocked.add(player.getUniqueId());
+        if (debug) {
+            plugin.getLogger().info("Blocked " + player.getName());
+        }
     }
 
     public void unblockPlayer(@NotNull Player player) {
         blocked.remove(player.getUniqueId());
+        if (debug) {
+            plugin.getLogger().info("Unblocked " + player.getName());
+        }
+    }
+
+    public void clearCache(@NotNull UUID uuid) {
+        blocked.remove(uuid);
+        creating.remove(uuid);
+        hideNametags.remove(uuid);
     }
 
     public void addPlayer(@NotNull Player player) {
@@ -189,6 +220,17 @@ public class NameTagManager {
                 plugin.getLogger().info("Player " + player.getName() + " is blocked");
             }
             return;
+        } else {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is not blocked");
+            }
+        }
+
+        if (PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is not loaded");
+            }
+            return;
         }
 
         if (player.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
@@ -198,6 +240,15 @@ public class NameTagManager {
             blockPlayer(player);
             return;
         }
+
+        if (player.getGameMode() == GameMode.SPECTATOR) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is in spectator mode, skipping");
+            }
+            blockPlayer(player);
+            return;
+        }
+
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
         final PacketNameTag display = new PacketNameTag(plugin, player, nametag);
         display.text(player, Component.empty());
@@ -210,6 +261,9 @@ public class NameTagManager {
         handleVanish(player, display);
 
         nameTags.put(player.getUniqueId(), display);
+        if (debug) {
+            plugin.getLogger().info("Added nametag for " + player.getName());
+        }
         entityIdToDisplay.put(display.getEntityId(), display);
 
         creating.add(player.getUniqueId());
@@ -226,7 +280,7 @@ public class NameTagManager {
     public void refresh(@NotNull Player player, boolean force) {
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
 
-        if(PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
+        if (PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
             return;
         }
 
@@ -277,17 +331,17 @@ public class NameTagManager {
                 }
                 packetNameTag.modify(user, m -> {
 
-                    if(force) {
+                    if (force) {
                         m.setShadow(nameTag.background().shadowed());
                         m.setSeeThrough(nameTag.background().seeThrough());
                         m.setBackgroundColor(nameTag.background().getColor().asARGB());
                         update.set(true);
                     } else {
-                        if(m.isShadow() != nameTag.background().shadowed()) {
+                        if (m.isShadow() != nameTag.background().shadowed()) {
                             m.setShadow(nameTag.background().shadowed());
                             update.set(true);
                         }
-                        if(m.isSeeThrough() != nameTag.background().seeThrough()) {
+                        if (m.isSeeThrough() != nameTag.background().seeThrough()) {
                             m.setSeeThrough(nameTag.background().seeThrough());
                             update.set(true);
                         }
@@ -429,6 +483,7 @@ public class NameTagManager {
         startTask();
     }
 
+    @SuppressWarnings("UnstableApiUsage")
     public void debug(@NotNull CommandSender audience) {
         audience.sendRichMessage("<red>UnlimitedNameTags v" + plugin.getPluginMeta().getVersion() + " . Compiled: " + plugin.getConfigManager().isCompiled());
         final AtomicReference<Component> component = new AtomicReference<>(Component.text("Nametags:").colorIfAbsent(TextColor.color(0xFF0000)));
@@ -596,7 +651,7 @@ public class NameTagManager {
     }
 
     public void hideOtherNametags(@NotNull Player player) {
-        hiddenOtherNametags.add(player.getUniqueId());
+        hideNametags.add(player.getUniqueId());
         nameTags.forEach((uuid, display) -> {
             if (display.canPlayerSee(player)) {
                 display.hideFromPlayer(player);
@@ -605,7 +660,7 @@ public class NameTagManager {
     }
 
     public void showOtherNametags(@NotNull Player player) {
-        hiddenOtherNametags.remove(player.getUniqueId());
+        hideNametags.remove(player.getUniqueId());
         plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()).forEach(uuid -> {
             final Player tracked = Bukkit.getPlayer(uuid);
             if (tracked == null) {
@@ -616,6 +671,6 @@ public class NameTagManager {
     }
 
     public boolean isHiddenOtherNametags(@NotNull Player player) {
-        return hiddenOtherNametags.contains(player.getUniqueId());
+        return hideNametags.contains(player.getUniqueId());
     }
 }
