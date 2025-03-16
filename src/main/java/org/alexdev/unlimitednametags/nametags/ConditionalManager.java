@@ -48,8 +48,9 @@ public class ConditionalManager {
                 PlaceholderAPI.setPlaceholders(player, modifier.getExpression()) :
                 modifier.getExpression();
 
-        if (cachedExpressions.containsKey(entireExpression)) {
-            return (boolean) cachedExpressions.get(entireExpression);
+        final Boolean cached = cachedExpressions.getOrDefault(entireExpression, null) instanceof Boolean b ? b : null;
+        if (cached != null) {
+            return cached;
         }
 
         JexlEngine jexlEngine = null;

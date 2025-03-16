@@ -145,7 +145,7 @@ public class PlaceholderManager {
                 .replace("#phase-mm-g#", decimalFormat.format(new BigDecimal(miniGradientIndexBD.toPlainString())))
                 .replace("#-phase-md#", Integer.toString(maxIndex - index))
                 .replace("#-phase-mm#", Integer.toString(maxMIndex - mmIndex))
-                .replace("#-phase-mm-g#", decimalFormat.format(miniGradientIndex * -1));
+                .replace("#-phase-mm-g#", decimalFormat.format(new BigDecimal(miniGradientIndexBD.multiply(BigDecimal.valueOf(-1)).toPlainString())));
     }
 
     @NotNull

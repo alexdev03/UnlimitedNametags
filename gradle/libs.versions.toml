@@ -1,9 +1,6 @@
 [versions]
 paperApiVersion = "1.21.4-R0.1-SNAPSHOT"
 adventureApiVersion = "4.16.0"
-adventureTextMinimessageVersion = "4.17.0"
-adventureTextSerializerLegacyVersion = "4.17.0"
-adventurePlatformBukkitVersion = "4.3.3"
 typeWriterVersion = "0.7.0"
 lombokVersion = "1.18.30"
 placeholderapiVersion = "2.11.6"
@@ -29,6 +26,7 @@ gsonVersion = "2.11.0"
 hmccosmeticsVersion = "2.7.4"
 creative-rp = "1.7.3"
 creative-serializer = "1.7.3"
+libs-disguises = "11.0.0"
 
 [libraries]
 paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApiVersion" }
@@ -59,3 +57,4 @@ gson = { module = "com.google.code.gson:gson", version.ref = "gsonVersion" }
 hmccosmetics = { module = "com.hibiscusmc:HMCCosmetics", version.ref = "hmccosmeticsVersion" }
 creative-rp = { module = "team.unnamed:creative-api", version.ref = "creative-rp" }
 creative-serializer = { module = "team.unnamed:creative-serializer-minecraft", version.ref = "creative-serializer" }
+libs-disguises = { module = "me.libraryaddict.disguises:libsdisguises", version.ref = "libs-disguises" }

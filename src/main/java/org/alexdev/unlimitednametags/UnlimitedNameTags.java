@@ -213,6 +213,12 @@ public final class UnlimitedNameTags extends JavaPlugin {
             getLogger().info("Floodgate found, hooking into it");
         }
 
+        if (Bukkit.getPluginManager().isPluginEnabled("LibsDisguises")) {
+            final LibsDisguisesHook hook = new LibsDisguisesHook(this);
+            hooks.put(LibsDisguisesHook.class, hook);
+            getLogger().info("LibsDisguises found, hooking into it");
+        }
+
         hooks.values().forEach(Hook::onEnable);
     }
 

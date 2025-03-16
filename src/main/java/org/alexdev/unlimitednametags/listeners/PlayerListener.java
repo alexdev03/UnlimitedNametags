@@ -84,9 +84,6 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler
     public void onPotion(@NotNull EntityPotionEffectEvent event) {
-        if (plugin.getNametagManager().isDebug()) {
-            plugin.getLogger().info("Potion event: " + event.getAction() + " " + event.getOldEffect() + " " + event.getNewEffect());
-        }
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
@@ -117,10 +114,6 @@ public class PlayerListener implements PackSendHandler {
 
             plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
                 plugin.getNametagManager().unblockPlayer(player);
-//                if (plugin.getNametagManager().getPacketDisplayText(player).isEmpty()) {
-//                    plugin.getNametagManager().addPlayer(player);
-//                    return;
-//                }
                 plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers().get(player.getUniqueId()));
             }, 3);
 

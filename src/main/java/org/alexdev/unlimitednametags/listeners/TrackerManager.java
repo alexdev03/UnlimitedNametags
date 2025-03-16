@@ -4,26 +4,24 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.google.common.collect.*;
 import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.data.ConcurrentSetMultimap;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class TrackerManager {
 
     private final UnlimitedNameTags plugin;
     @Getter
-    private final SetMultimap<UUID, UUID> trackedPlayers;
+    private final ConcurrentSetMultimap<UUID, UUID> trackedPlayers;
 
     public TrackerManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.trackedPlayers = Multimaps.synchronizedSetMultimap(Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet));
+        this.trackedPlayers = new ConcurrentSetMultimap<>();
         loadTracker();
     }
 
@@ -110,9 +108,6 @@ public class TrackerManager {
                     .map(Bukkit::getPlayer)
                     .filter(Objects::nonNull)
                     .forEach(p -> handleRemove(p, player));
-            Bukkit.getOnlinePlayers().stream()
-                    .filter(p -> trackedPlayers.get(player.getUniqueId()).contains(p.getUniqueId()))
-                    .forEach(p -> handleRemove(player, p));
         });
     }
 

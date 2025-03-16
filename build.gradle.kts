@@ -32,9 +32,11 @@ repositories {
     maven("https://maven.typewritermc.com/beta")
     maven("https://repo.nexomc.com/snapshots/")
     maven("https://repo.hibiscusmc.com/releases")
+    maven("https://repo.md-5.net/content/groups/public/")
 }
 
 dependencies {
+
     compileOnly(libs.paperApi)
     compileOnly(libs.adventureApi)
     implementation(libs.entityLib)
@@ -61,6 +63,7 @@ dependencies {
     compileOnly(libs.hmccosmetics)
     compileOnly(libs.creative.rp)
     compileOnly(libs.creative.serializer)
+    compileOnly(libs.libs.disguises)
 
     implementation(libs.minedownAdventure)
     implementation(libs.drink)
