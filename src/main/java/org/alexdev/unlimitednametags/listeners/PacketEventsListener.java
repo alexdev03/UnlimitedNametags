@@ -8,6 +8,7 @@ import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerCamera;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
@@ -40,6 +41,25 @@ public class PacketEventsListener extends PacketListenerAbstract {
             handlePassengers(event);
         } else if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
             handleMetaData(event);
+        } else if (event.getPacketType() == PacketType.Play.Server.CAMERA) {
+            handleCamera(event);
+        }
+    }
+
+    private void handleCamera(@NotNull PacketSendEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+
+        if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            return;
+        }
+
+        final WrapperPlayServerCamera camera = new WrapperPlayServerCamera(event);
+        if (camera.getCameraId() == player.getEntityId()) {
+            plugin.getNametagManager().getPacketDisplayText(player).ifPresent(PacketNameTag::showForOwner);
+        } else {
+            plugin.getNametagManager().getPacketDisplayText(player).ifPresent(PacketNameTag::hideForOwner);
         }
     }
 

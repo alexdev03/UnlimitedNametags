@@ -31,6 +31,7 @@ repositories {
     maven("https://repo.alessiodp.com/releases")
     maven("https://maven.typewritermc.com/beta")
     maven("https://repo.nexomc.com/snapshots/")
+    maven("https://repo.nexomc.com/releases")
     maven("https://repo.hibiscusmc.com/releases")
     maven("https://repo.md-5.net/content/groups/public/")
 }

@@ -37,6 +37,8 @@ import java.util.function.Function;
 @Getter
 public class PacketNameTag {
 
+    private static final double Y_OFFSET = -10;
+
     private final UnlimitedNameTags plugin;
     private final WrapperPerPlayerEntity perPlayerEntity;
     private final Set<UUID> viewers;
@@ -333,8 +335,8 @@ public class PacketNameTag {
     public Location getOffsetLocation() {
         final Location location = owner.getLocation().clone();
         location.setPitch(0);
-        location.setYaw(0);
-        location.setY(location.getY() + (1.8) * scale);
+        location.setYaw(-180);
+        location.setY(location.getY() + (1.8) * scale );
         return location;
     }
 

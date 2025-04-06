@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.base.Vector3Float;
@@ -69,8 +70,9 @@ public class NexoHook extends Hook implements Listener, HatHook {
             return Optional.empty();
         }
 
-        if (item.getItemMeta().hasCustomModelData()) {
-            final int customModelData = item.getItemMeta().getCustomModelData();
+        final ItemMeta itemMeta = item.getItemMeta();
+        if (itemMeta.hasCustomModelData()) {
+            final int customModelData = itemMeta.getCustomModelData();
             if (cmdCache.containsKey(customModelData)) {
                 return Optional.of(cmdCache.get(customModelData));
             }
@@ -79,7 +81,7 @@ public class NexoHook extends Hook implements Listener, HatHook {
                             .stream())
                     .filter(e -> e.predicate().stream().anyMatch(p ->
                             p.name().equalsIgnoreCase("custom_model_data") &&
-                                    p.value().equals(item.getItemMeta().getCustomModelData())))
+                                    p.value().equals(itemMeta.getCustomModelData())))
                     .findFirst();
             return optionalOverride.map(override -> {
                 final Model model = pack.model(override.model());
@@ -87,8 +89,8 @@ public class NexoHook extends Hook implements Listener, HatHook {
                 return model;
             });
         }
-        if (item.getItemMeta().hasEquippable()) {
-            final NamespacedKey model = item.getItemMeta().getEquippable().getModel();
+        if (itemMeta.hasEquippable()) {
+            final NamespacedKey model = itemMeta.getEquippable().getModel();
             if (model == null) {
                 return Optional.empty();
             }

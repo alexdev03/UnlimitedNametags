@@ -68,7 +68,7 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 5);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 10);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
@@ -123,10 +123,11 @@ public class PlayerListener implements PackSendHandler {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
-            plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-                plugin.getNametagManager().unblockPlayer(e.getPlayer());
-                plugin.getNametagManager().showToTrackedPlayers(e.getPlayer(), plugin.getTrackerManager().getTrackedPlayers().get(e.getPlayer().getUniqueId()));
-            });
+//            plugin.getTaskScheduler().runTaskAsynchronously(() -> {
+//
+//            });
+            plugin.getNametagManager().unblockPlayer(e.getPlayer());
+            plugin.getNametagManager().showToTrackedPlayers(e.getPlayer(), plugin.getTrackerManager().getTrackedPlayers().get(e.getPlayer().getUniqueId()));
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
             plugin.getNametagManager().removeAllViewers(e.getPlayer());
         }

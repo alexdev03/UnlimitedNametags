@@ -1,9 +1,9 @@
 package org.alexdev.unlimitednametags.packet;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import io.github.retrooper.packetevents.adventure.serializer.legacy.LegacyComponentSerializer;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
