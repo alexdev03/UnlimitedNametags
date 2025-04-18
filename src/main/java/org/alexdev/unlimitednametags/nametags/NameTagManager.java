@@ -248,6 +248,7 @@ public class NameTagManager {
             blockPlayer(player);
             return;
         }
+        creating.add(player.getUniqueId());
 
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
         final PacketNameTag display = new PacketNameTag(plugin, player, nametag);
@@ -265,8 +266,6 @@ public class NameTagManager {
             plugin.getLogger().info("Added nametag for " + player.getName());
         }
         entityIdToDisplay.put(display.getEntityId(), display);
-
-        creating.add(player.getUniqueId());
 
         plugin.getPlaceholderManager().applyPlaceholders(player, nametag.linesGroups(), List.of(player))
                 .thenAccept(lines -> loadDisplay(player, lines.get(player), nametag, display))
@@ -298,6 +297,14 @@ public class NameTagManager {
             display.showToPlayer(player);
         } else if (!show && display.canPlayerSee(player)) {
             display.hideFromPlayer(player);
+        }
+
+        if (force) {
+            if (show) {
+                display.showToPlayer(display.getOwner());
+            } else {
+                display.hideFromPlayer(display.getOwner());
+            }
         }
 
         final List<Player> relationalPlayers = display.getViewers().stream()
@@ -404,7 +411,7 @@ public class NameTagManager {
     }
 
 
-    public void removePlayer(@NotNull Player player, boolean quit) {
+    public void removePlayer(@NotNull Player player) {
         final PacketNameTag packetNameTag = nameTags.remove(player.getUniqueId());
         if (packetNameTag != null) {
             packetNameTag.remove();
@@ -413,11 +420,7 @@ public class NameTagManager {
         entityIdToDisplay.remove(player.getEntityId());
 
         nameTags.forEach((uuid, display) -> {
-            if (quit) {
-                display.handleQuit(player);
-            } else {
-                display.hideFromPlayerSilently(player);
-            }
+            display.handleQuit(player);
             display.getBlocked().remove(player.getUniqueId());
         });
     }
@@ -434,10 +437,12 @@ public class NameTagManager {
         final PacketNameTag packetNameTag = nameTags.get(player.getUniqueId());
         if (packetNameTag != null) {
             packetNameTag.setVisible(true);
-            packetNameTag.showToPlayers(tracked.stream()
+            final Set<Player> players = tracked.stream()
                     .map(Bukkit::getPlayer)
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toSet()));
+                    .collect(Collectors.toSet());
+            players.add(packetNameTag.getOwner());
+            packetNameTag.showToPlayers(players);
             return;
         }
 

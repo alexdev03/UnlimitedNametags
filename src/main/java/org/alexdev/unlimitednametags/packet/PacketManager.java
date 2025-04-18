@@ -1,6 +1,7 @@
 package org.alexdev.unlimitednametags.packet;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -55,15 +56,19 @@ public class PacketManager {
         });
     }
 
-    public void sendPassengersPacket(@NotNull Player player, @NotNull PacketNameTag packetNameTag) {
+    public void sendPassengersPacket(@NotNull User player, @NotNull PacketNameTag packetNameTag) {
         final int entityId = packetNameTag.getEntityId();
         final int ownerId = packetNameTag.getOwner().getEntityId();
         executorService.submit(() -> {
+            if (player.getChannel() == null) {
+                return;
+            }
+
             final Set<Integer> passengers = Sets.newHashSet(this.passengers.get(packetNameTag.getOwner().getUniqueId()));
             passengers.add(entityId);
             final int[] passengersArray = passengers.stream().mapToInt(i -> i).toArray();
             final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(ownerId, passengersArray);
-            PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
+            player.sendPacket(packet);
         });
     }
 

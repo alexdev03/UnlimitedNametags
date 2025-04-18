@@ -29,6 +29,8 @@ import java.util.Optional;
 @SuppressWarnings("DuplicatedCode")
 public class NexoHook extends Hook implements Listener, HatHook {
 
+    private final double MULTIPLIER = 1.1;
+
     private final Map<Integer, Model> cmdCache;
     private ResourcePack pack;
 
@@ -48,7 +50,6 @@ public class NexoHook extends Hook implements Listener, HatHook {
             return 0;
         }
 
-
         if (!helmet.hasItemMeta() || !helmet.getItemMeta().hasCustomModelData()) {
             return 0;
         }
@@ -61,13 +62,12 @@ public class NexoHook extends Hook implements Listener, HatHook {
     private Optional<Model> findModel(@NotNull ItemStack item) {
         final Optional<ItemBuilder> optionalItemBuilder = Optional.ofNullable(NexoItems.builderFromItem(item));
         if (optionalItemBuilder.isPresent()) {
-            return optionalItemBuilder.map(ItemBuilder::getNexoMeta)
+            final Optional<Model> optionalModel = optionalItemBuilder.map(ItemBuilder::getNexoMeta)
                     .map(NexoMeta::getModel)
                     .map(key -> pack.model(key));
-        }
-
-        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_3)) {
-            return Optional.empty();
+            if (optionalModel.isPresent()) {
+                return optionalModel;
+            }
         }
 
         final ItemMeta itemMeta = item.getItemMeta();
@@ -76,6 +76,7 @@ public class NexoHook extends Hook implements Listener, HatHook {
             if (cmdCache.containsKey(customModelData)) {
                 return Optional.of(cmdCache.get(customModelData));
             }
+
             final Optional<ItemOverride> optionalOverride = pack.models().stream()
                     .flatMap(m -> m.overrides()
                             .stream())
@@ -89,6 +90,11 @@ public class NexoHook extends Hook implements Listener, HatHook {
                 return model;
             });
         }
+
+        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_3)) {
+            return Optional.empty();
+        }
+
         if (itemMeta.hasEquippable()) {
             final NamespacedKey model = itemMeta.getEquippable().getModel();
             if (model == null) {
@@ -115,6 +121,7 @@ public class NexoHook extends Hook implements Listener, HatHook {
         final ItemTransform itemTransform = model.display().get(ItemTransform.Type.HEAD);
         final Vector3Float scale = itemTransform.scale();
         highest *= scale.y();
+        highest *= MULTIPLIER;
 
         final double translation = itemTransform.translation().y();
         return highest + translation;
