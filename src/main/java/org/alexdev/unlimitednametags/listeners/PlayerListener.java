@@ -74,6 +74,7 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
+        plugin.getPacketEventsListener().removePlayerData(event.getPlayer());
         diedPlayers.remove(event.getPlayer().getUniqueId());
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             plugin.getNametagManager().removePlayer(event.getPlayer());

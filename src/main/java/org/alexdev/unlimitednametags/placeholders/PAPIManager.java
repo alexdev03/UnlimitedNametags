@@ -1,5 +1,6 @@
 package org.alexdev.unlimitednametags.placeholders;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -10,9 +11,12 @@ import org.jetbrains.annotations.NotNull;
 public class PAPIManager {
 
     private final UnlimitedNameTags plugin;
+    @Getter
+    private final boolean papiEnabled;
 
-    public boolean isPAPIEnabled() {
-        return plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
+    public PAPIManager(UnlimitedNameTags plugin) {
+        this.plugin = plugin;
+        this.papiEnabled = plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
     }
 
     @NotNull

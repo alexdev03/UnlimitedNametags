@@ -7,6 +7,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
 import me.tofaa.entitylib.APIConfig;
 import me.tofaa.entitylib.EntityLib;
@@ -20,6 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 public class PacketManager {
 
@@ -30,12 +32,14 @@ public class PacketManager {
     public PacketManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.initialize();
-        this.passengers = (Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet)); //Multimaps.synchronizedMultimap
-        this.executorService = Executors.newFixedThreadPool(2, r -> {
-            final Thread thread = new Thread(r);
-            thread.setName("UnlimitedNameTags-PacketManager");
-            return thread;
-        });
+        this.passengers = (Multimaps.newSetMultimap(Maps.newConcurrentMap(), Sets::newConcurrentHashSet));
+        final ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("UnlimitedNameTags-PacketManager-%d")
+                .build();
+        this.executorService = Executors.newFixedThreadPool(
+                Math.max(2, Runtime.getRuntime().availableProcessors() / 2),
+                namedThreadFactory
+        );
     }
 
     private void initialize() {
@@ -51,9 +55,7 @@ public class PacketManager {
 
     public void setPassengers(@NotNull Player player, @NotNull List<Integer> passengers) {
         final List<Integer> clone = List.copyOf(passengers);
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-            executorService.submit(() -> this.passengers.replaceValues(player.getUniqueId(), clone));
-        });
+        executorService.submit(() -> this.passengers.replaceValues(player.getUniqueId(), clone));
     }
 
     public void sendPassengersPacket(@NotNull User player, @NotNull PacketNameTag packetNameTag) {
@@ -76,7 +78,7 @@ public class PacketManager {
         executorService.submit(() -> this.passengers.remove(player.getUniqueId(), passenger));
     }
 
-    public synchronized int getEntityIndex() {
+    public int getEntityIndex() {
         return SpigotReflectionUtil.generateEntityId();
     }
 

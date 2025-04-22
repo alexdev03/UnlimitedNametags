@@ -52,7 +52,6 @@ public class PacketNameTag {
     private float offset;
     private float increasedOffset;
     private boolean removed;
-    private Metadata lastOwnerMetadata;
 
     public PacketNameTag(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
         this.plugin = plugin;

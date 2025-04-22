@@ -4,7 +4,6 @@ import com.google.common.collect.Maps;
 import lombok.Getter;
 import net.jodah.expiringmap.ExpiringMap;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.bukkit.Bukkit;
@@ -16,7 +15,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,24 +28,32 @@ import java.util.stream.Collectors;
 @Getter
 public class PlaceholderManager {
 
+    public static final String PHASE_MD_KEY = "phase-md";
+    public static final String PHASE_MM_KEY = "phase-mm";
+    public static final String PHASE_MM_G_KEY = "phase-mm-g";
+    public static final String NEG_PHASE_MD_KEY = "-phase-md";
+    public static final String NEG_PHASE_MM_KEY = "-phase-mm";
+    public static final String NEG_PHASE_MM_G_KEY = "-phase-mm-g";
+
     private static final String ELSE_PLACEHOLDER = "ELSE";
     private static final int maxIndex = 16777215;
     private static final int maxMIndex = 10;
-    private static final double minMGIndex = -1.0;
     private static final int MORE_LINES = 14;
     private final UnlimitedNameTags plugin;
     private final ExecutorService executorService;
     private final PAPIManager papiManager;
     private int index = maxIndex;
     private int mmIndex = maxMIndex;
-    private final double miniGradientIndex = 1.0;
     private DecimalFormat decimalFormat;
+    private final UntPapiExpansion untPapiExpansion;
 
     private BigDecimal miniGradientIndexBD = new BigDecimal("-1.0");
     private final BigDecimal stepBD = new BigDecimal("0.1");
     private final BigDecimal one = new BigDecimal("1.0");
+    private final BigDecimal minusOne = new BigDecimal("-1.0");
     private final Map<String, Component> cachedComponents;
     private Map<UUID, Map<String, String>> cachedPlaceholders;
+    private final Map<String, String> formattedPhaseValues;
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -54,9 +64,12 @@ public class PlaceholderManager {
         this.cachedComponents = ExpiringMap.builder()
                 .expiration(2, TimeUnit.MINUTES)
                 .build();
+        this.formattedPhaseValues = Maps.newConcurrentMap();
+        this.untPapiExpansion = new UntPapiExpansion(plugin);
+        this.untPapiExpansion.register();
+        createDecimalFormat();
         reload();
         startIndexTask();
-        createDecimalFormat();
     }
 
     public void reload() {
@@ -94,19 +107,38 @@ public class PlaceholderManager {
             }
         }, 0, 2);
         plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
-//            miniGradientIndex += 0.1;
-//            if (miniGradientIndex >= 1.0 - 0.000001) {
-//                miniGradientIndex = minMGIndex;
-//            }
             miniGradientIndexBD = miniGradientIndexBD.add(stepBD);
             if (miniGradientIndexBD.compareTo(one) >= 0) {
                 miniGradientIndexBD = new BigDecimal("-1.0");
             }
+
+            updateFormattedPhaseValues();
         }, 0, 1);
+    }
+
+    private void updateFormattedPhaseValues() {
+        final int currentIndex = this.index;
+        final int currentMmIndex = this.mmIndex;
+        final BigDecimal currentMiniGradientIndexBD = this.miniGradientIndexBD;
+
+        final String indexStr = Integer.toString(currentIndex);
+        final String mmIndexStr = Integer.toString(currentMmIndex);
+        final String phaseMmGStr = decimalFormat.format(currentMiniGradientIndexBD);
+        final String negIndexStr = Integer.toString(maxIndex - currentIndex);
+        final String negMmIndexStr = Integer.toString(maxMIndex - currentMmIndex);
+        final String negPhaseMmGStr = decimalFormat.format(currentMiniGradientIndexBD.multiply(minusOne));
+
+        formattedPhaseValues.put(PHASE_MD_KEY, indexStr);
+        formattedPhaseValues.put(PHASE_MM_KEY, mmIndexStr);
+        formattedPhaseValues.put(PHASE_MM_G_KEY, phaseMmGStr);
+        formattedPhaseValues.put(NEG_PHASE_MD_KEY, negIndexStr);
+        formattedPhaseValues.put(NEG_PHASE_MM_KEY, negMmIndexStr);
+        formattedPhaseValues.put(NEG_PHASE_MM_G_KEY, negPhaseMmGStr);
     }
 
     public void close() {
         this.executorService.shutdown();
+        this.untPapiExpansion.unregister();
     }
 
 
@@ -119,7 +151,7 @@ public class PlaceholderManager {
     @NotNull
     private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
         return CompletableFuture.supplyAsync(() -> lines.stream()
-                .filter(l -> l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
+                .filter(l -> l.modifiers() == null || l.modifiers().isEmpty() || l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
                 .map(Settings.LinesGroup::lines)
                 .flatMap(List::stream)
                 .toList(), executorService);
@@ -133,42 +165,52 @@ public class PlaceholderManager {
                 .findFirst()
                 .orElse(0d);
 
-        //integer just greater
         final int moreLinesInt = (int) Math.ceil(moreLines);
-
+        Component emptyLines = Component.empty();
         if (moreLinesInt > 0) {
-            strings = new ArrayList<>(strings);
             int lines = moreLinesInt / MORE_LINES;
             for (int i = 0; i < lines; i++) {
-                strings.add(" ");
+                emptyLines = emptyLines.append(Component.newline());
             }
         }
 
-        final List<String> stringsCopy = papiManager.isPAPIEnabled() ?
+        final Component hatLines = emptyLines;
+        final List<String> stringsCopy = papiManager.isPapiEnabled() ?
                 strings.stream()
                         .map(s -> replacePlaceholders(s, player, null))
                         .toList()
                 : strings;
         return relationalPlayers.stream()
-                .map(r -> Map.entry(r, Component.join(JoinConfiguration.separator(Component.newline()), stringsCopy.stream()
-                                .map(t -> replacePlaceholders(t, player, r))
-                                .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
-                                .map(this::formatPhases)
-                                .map(t -> format(t, player))
-                                .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(Component.empty()))
-                                .toList())
-                        .compact()))
+                .map(r -> Map.entry(r, joinLines(stringsCopy.stream()
+                        .map(t -> replacePlaceholders(t, player, r))
+                        .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
+                        .map(this::formatPhases)
+                        .map(t -> format(t, player))
+                        .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(Component.empty()))
+                        .toList()
+                )))
+                .map(e -> Map.entry(e.getKey(), e.getValue().append(hatLines)))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    private Component joinLines(List<Component> lines) {
+        return lines.stream()
+                .reduce(Component.empty(), (a, b) -> a.appendNewline().append(b));
     }
 
     @NotNull
     private String formatPhases(@NotNull String value) {
-        return value.replace("#phase-md#", Integer.toString(index))
-                .replace("#phase-mm#", Integer.toString(mmIndex))
-                .replace("#phase-mm-g#", decimalFormat.format(new BigDecimal(miniGradientIndexBD.toPlainString())))
-                .replace("#-phase-md#", Integer.toString(maxIndex - index))
-                .replace("#-phase-mm#", Integer.toString(maxMIndex - mmIndex))
-                .replace("#-phase-mm-g#", decimalFormat.format(new BigDecimal(miniGradientIndexBD.multiply(BigDecimal.valueOf(-1)).toPlainString())));
+        return value.replace("#phase-mm-g#", formattedPhaseValues.getOrDefault(PHASE_MM_G_KEY, ""))
+                .replace("#-phase-mm-g#", formattedPhaseValues.getOrDefault(NEG_PHASE_MM_G_KEY, ""))
+                .replace("#phase-md#", formattedPhaseValues.getOrDefault(PHASE_MD_KEY, ""))
+                .replace("#phase-mm#", formattedPhaseValues.getOrDefault(PHASE_MM_KEY, ""))
+                .replace("#-phase-md#", formattedPhaseValues.getOrDefault(NEG_PHASE_MD_KEY, ""))
+                .replace("#-phase-mm#", formattedPhaseValues.getOrDefault(NEG_PHASE_MM_KEY, ""));
+    }
+
+    @NotNull
+    public String getFormattedPhases(@NotNull String text) {
+        return formattedPhaseValues.getOrDefault(text, "");
     }
 
     private boolean containsAnyPlaceholders(String text) {
@@ -204,7 +246,7 @@ public class PlaceholderManager {
             }
 
             final String replaced;
-            if (papiManager.isPAPIEnabled()) {
+            if (papiManager.isPapiEnabled()) {
                 if (viewer == null) {
                     replaced = getCachedPlaceholder(player, entry.getKey());
                 } else {
@@ -230,10 +272,11 @@ public class PlaceholderManager {
 
         }
 
-        if (papiManager.isPAPIEnabled()) {
+        if (papiManager.isPapiEnabled()) {
             if (viewer == null) {
                 return papiManager.setPlaceholders(player, string);
             }
+
             return papiManager.setRelationalPlaceholders(viewer, player, string);
         }
 

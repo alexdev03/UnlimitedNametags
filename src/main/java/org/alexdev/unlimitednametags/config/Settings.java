@@ -65,6 +65,10 @@ public class Settings {
     @Comment("Whether to disable the default name tag or not.")
     private boolean disableDefaultNameTag = true;
 
+    @Comment("This option works if disableDefaultNameTag is enabled. This will skip the team internal cache and will make all default nametags invisible. " +
+            "The use case is when there is a npc from a plugin that doesn't use display entities / armorstands for nametags, and there is an online player with the name of the npc.")
+    private boolean forceDisableDefaultNameTag = false;
+
     private boolean removeEmptyLines = true;
 
     @Comment("Whether to see the NameTag of a user only while pointing at them")
