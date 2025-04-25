@@ -1,9 +1,11 @@
 package org.alexdev.unlimitednametags.placeholders;
 
 import com.google.common.collect.Maps;
+import it.unimi.dsi.fastutil.Pair;
 import lombok.Getter;
 import net.jodah.expiringmap.ExpiringMap;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.bukkit.Bukkit;
@@ -16,13 +18,15 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Getter
@@ -34,6 +38,9 @@ public class PlaceholderManager {
     public static final String NEG_PHASE_MD_KEY = "-phase-md";
     public static final String NEG_PHASE_MM_KEY = "-phase-mm";
     public static final String NEG_PHASE_MM_G_KEY = "-phase-mm-g";
+
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("%.*?%", Pattern.DOTALL);
+    private static final JoinConfiguration JOIN_CONFIGURATION = JoinConfiguration.separator(Component.newline());
 
     private static final String ELSE_PLACEHOLDER = "ELSE";
     private static final int maxIndex = 16777215;
@@ -54,6 +61,7 @@ public class PlaceholderManager {
     private final Map<String, Component> cachedComponents;
     private Map<UUID, Map<String, String>> cachedPlaceholders;
     private final Map<String, String> formattedPhaseValues;
+    private final Map<String, Pair<Pattern, Map<String, String>>> placeholdersReplacements;
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -67,6 +75,8 @@ public class PlaceholderManager {
         this.formattedPhaseValues = Maps.newConcurrentMap();
         this.untPapiExpansion = new UntPapiExpansion(plugin);
         this.untPapiExpansion.register();
+        this.placeholdersReplacements = Maps.newConcurrentMap();
+        reloadPlaceholdersReplacements();
         createDecimalFormat();
         reload();
         startIndexTask();
@@ -76,8 +86,19 @@ public class PlaceholderManager {
         cachedComponents.clear();
         this.cachedPlaceholders = Maps.newConcurrentMap();
         Bukkit.getOnlinePlayers().forEach(p -> cachedPlaceholders.put(p.getUniqueId(), ExpiringMap.builder()
-                .expiration(plugin.getConfigManager().getSettings().getPlaceholderCacheTime() * 50L, TimeUnit.MINUTES)
+                .expiration(plugin.getConfigManager().getSettings().getPlaceholderCacheTime() * 50L, TimeUnit.MILLISECONDS) // Adjusted unit based on previous code
                 .build()));
+        reloadPlaceholdersReplacements();
+    }
+
+    private void reloadPlaceholdersReplacements() {
+        placeholdersReplacements.clear();
+        plugin.getConfigManager().getSettings().getPlaceholdersReplacements().forEach((key, value) -> {
+            final Map<String, String> replacements = Maps.newHashMap();
+            final Pattern pattern = Pattern.compile(key, Pattern.CASE_INSENSITIVE);
+            value.forEach((pr) -> replacements.put(pr.placeholder().toLowerCase(Locale.ROOT), pr.replacement()));
+            placeholdersReplacements.put(key.toLowerCase(Locale.ROOT), Pair.of(pattern, replacements));
+        });
     }
 
     public void removePlayer(@NotNull Player player) {
@@ -108,7 +129,7 @@ public class PlaceholderManager {
         }, 0, 2);
         plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
             miniGradientIndexBD = miniGradientIndexBD.add(stepBD);
-            if (miniGradientIndexBD.compareTo(one) >= 0) {
+            if (miniGradientIndexBD.compareTo(one) > 0) {
                 miniGradientIndexBD = new BigDecimal("-1.0");
             }
 
@@ -168,35 +189,53 @@ public class PlaceholderManager {
         final int moreLinesInt = (int) Math.ceil(moreLines);
         Component emptyLines = Component.empty();
         if (moreLinesInt > 0) {
-            int lines = moreLinesInt / MORE_LINES;
-            for (int i = 0; i < lines; i++) {
+            int linesCount = moreLinesInt / MORE_LINES;
+            for (int i = 0; i < linesCount; i++) {
                 emptyLines = emptyLines.append(Component.newline());
             }
         }
 
         final Component hatLines = emptyLines;
-        final List<String> stringsCopy = papiManager.isPapiEnabled() ?
+        final List<String> baseStrings = papiManager.isPapiEnabled() ?
                 strings.stream()
                         .map(s -> replacePlaceholders(s, player, null))
                         .toList()
                 : strings;
-        return relationalPlayers.stream()
-                .map(r -> Map.entry(r, joinLines(stringsCopy.stream()
-                        .map(t -> replacePlaceholders(t, player, r))
-                        .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
-                        .map(this::formatPhases)
-                        .map(t -> format(t, player))
-                        .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(Component.empty()))
-                        .toList()
-                )))
-                .map(e -> Map.entry(e.getKey(), e.getValue().append(hatLines)))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        if (plugin.getConfigManager().getSettings().isEnableRelationalPlaceholders()) {
+            return relationalPlayers.stream()
+                    .map(viewer -> {
+                        List<Component> processedLines = baseStrings.stream()
+                                .map(line -> replacePlaceholders(line, player, viewer))
+                                .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
+                                .map(this::formatPhases)
+                                .map(line -> format(line, player))
+                                .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(Component.empty()))
+                                .toList();
+                        Component finalComponent = joinLines(processedLines).append(hatLines);
+                        return Map.entry(viewer, finalComponent);
+                    })
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        } else {
+            List<Component> processedLines = baseStrings.stream()
+                    .map(line -> replacePlaceholders(line, player, null))
+                    .filter(s -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !s.isEmpty())
+                    .map(this::formatPhases)
+                    .map(line -> format(line, player))
+                    .filter(c -> !plugin.getConfigManager().getSettings().isRemoveEmptyLines() || !c.equals(Component.empty()))
+                    .toList();
+
+            Component finalComponent = joinLines(processedLines).append(hatLines);
+            return relationalPlayers.stream()
+                    .map(viewer -> Map.entry(viewer, finalComponent))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        }
     }
 
     private Component joinLines(List<Component> lines) {
-        return lines.stream()
-                .reduce(Component.empty(), (a, b) -> a.appendNewline().append(b));
+        return Component.join(JOIN_CONFIGURATION, lines);
     }
+
 
     @NotNull
     private String formatPhases(@NotNull String value) {
@@ -214,24 +253,18 @@ public class PlaceholderManager {
     }
 
     private boolean containsAnyPlaceholders(String text) {
-        return text.contains("%");
+        return text != null && text.indexOf('%') != -1;
     }
 
     @NotNull
     private Component format(@NotNull String value, @NotNull Player player) {
         if (plugin.getConfigManager().getSettings().isComponentCaching()) {
-            final Component cached = cachedComponents.get(value);
-            if (cached != null) {
-                return cached;
-            }
+            return cachedComponents.computeIfAbsent(value, v ->
+                    plugin.getConfigManager().getSettings().getFormat().format(plugin, player, v)
+            );
         }
 
-        final Component component = plugin.getConfigManager().getSettings().getFormat().format(plugin, player, value);
-        if (plugin.getConfigManager().getSettings().isComponentCaching()) {
-            cachedComponents.put(value, component);
-        }
-
-        return component;
+        return plugin.getConfigManager().getSettings().getFormat().format(plugin, player, value);
     }
 
     @NotNull
@@ -240,65 +273,63 @@ public class PlaceholderManager {
             return string;
         }
 
-        for (Map.Entry<String, List<Settings.PlaceholderReplacement>> entry : plugin.getConfigManager().getSettings().getPlaceholdersReplacements().entrySet()) {
-            if (!string.contains(entry.getKey())) {
-                continue;
-            }
+        final StringBuilder builder = new StringBuilder(string.length());
+        final Matcher matcher = PLACEHOLDER_PATTERN.matcher(string);
+        int lastAppendPosition = 0;
 
-            final String replaced;
-            if (papiManager.isPapiEnabled()) {
-                if (viewer == null) {
-                    replaced = getCachedPlaceholder(player, entry.getKey());
-                } else {
-                    replaced = papiManager.setRelationalPlaceholders(viewer, player, entry.getKey());
-                }
-            } else {
-                replaced = "";
-            }
-            final Optional<Settings.PlaceholderReplacement> replacement = entry.getValue().stream()
-                    .filter(r -> r.placeholder().equals(replaced))
-                    .findFirst();
-
-            if (replacement.isPresent()) {
-                string = string.replace(entry.getKey(), replacement.get().replacement());
-            } else {
-                final Optional<Settings.PlaceholderReplacement> elseReplacement = entry.getValue().stream()
-                        .filter(r -> r.placeholder().equalsIgnoreCase(ELSE_PLACEHOLDER))
-                        .findFirst();
-                if (elseReplacement.isPresent()) {
-                    string = string.replace(entry.getKey(), elseReplacement.get().replacement());
-                }
-            }
-
+        while (matcher.find()) {
+            builder.append(string, lastAppendPosition, matcher.start());
+            final String placeholder = matcher.group();
+            final String value = viewer == null ? getCachedPlaceholder(player, placeholder)
+                    : papiManager.setRelationalPlaceholders(viewer, player, placeholder);
+            final String customReplacement = getReplacement(placeholder, value);
+            builder.append(customReplacement != null ? customReplacement : value);
+            lastAppendPosition = matcher.end();
         }
+
+        builder.append(string.substring(lastAppendPosition));
+
+        final String intermediateResult = builder.toString();
 
         if (papiManager.isPapiEnabled()) {
-            if (viewer == null) {
-                return papiManager.setPlaceholders(player, string);
-            }
-
-            return papiManager.setRelationalPlaceholders(viewer, player, string);
+            return viewer == null ? papiManager.setPlaceholders(player, intermediateResult)
+                    : papiManager.setRelationalPlaceholders(viewer, player, intermediateResult);
         }
 
-        return string;
+        return intermediateResult;
     }
+
+    @Nullable
+    private String getReplacement(@NotNull String placeholder, @NotNull String value) {
+        var mapPair = placeholdersReplacements.get(placeholder.toLowerCase(Locale.ROOT));
+        if (mapPair == null) {
+            return null;
+        }
+
+        final Map<String, String> replacementMap = mapPair.right();
+        if (replacementMap == null) {
+            return null;
+        }
+
+        final String replacement = replacementMap.get(value.toLowerCase(Locale.ROOT));
+        if (replacement != null) {
+            return replacement;
+        }
+
+        return replacementMap.get(ELSE_PLACEHOLDER.toLowerCase(Locale.ROOT));
+    }
+
 
     private Map<String, String> getCachedPlaceholders(@NotNull Player player) {
         return cachedPlaceholders.computeIfAbsent(player.getUniqueId(), u -> ExpiringMap.builder()
-                .expiration(plugin.getConfigManager().getSettings().getPlaceholderCacheTime() * 50L, TimeUnit.MINUTES)
+                .expiration(plugin.getConfigManager().getSettings().getPlaceholderCacheTime() * 50L, TimeUnit.MILLISECONDS)
                 .build());
     }
 
     @NotNull
     public String getCachedPlaceholder(@NotNull Player player, @NotNull String placeholder) {
-        final Map<String, String> cachedPlaceholders = getCachedPlaceholders(player);
-        if (cachedPlaceholders.containsKey(placeholder)) {
-            return cachedPlaceholders.get(placeholder);
-        }
-
-        final String replaced = papiManager.setPlaceholders(player, placeholder);
-        cachedPlaceholders.put(placeholder, replaced);
-        return replaced;
+        final Map<String, String> playerCache = getCachedPlaceholders(player);
+        return playerCache.computeIfAbsent(placeholder, p -> papiManager.setPlaceholders(player, p));
     }
 
 }

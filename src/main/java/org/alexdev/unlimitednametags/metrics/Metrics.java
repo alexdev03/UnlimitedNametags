@@ -22,6 +22,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
+@SuppressWarnings("all")
 public class Metrics {
 
     private final Plugin plugin;

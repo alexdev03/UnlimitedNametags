@@ -30,6 +30,7 @@ public class MainCommand {
     public void onReload(@Sender CommandSender sender) {
         plugin.getConfigManager().reload();
         plugin.getNametagManager().reload();
+        plugin.getPlaceholderManager().reload();
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&aUnlimitedNameTags has been reloaded!"));
     }
 

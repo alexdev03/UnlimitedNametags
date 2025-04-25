@@ -15,18 +15,19 @@ public class UntPapiExpansion extends PlaceholderExpansion {
     }
 
     @Override
-    public String getIdentifier() {
+    public @NotNull String getIdentifier() {
         return "unt";
     }
 
     @Override
-    public String getAuthor() {
+    public @NotNull String getAuthor() {
         return "AlexDev";
     }
 
     @Override
-    public String getVersion() {
-        return plugin.getDescription().getVersion();
+    @SuppressWarnings("UnstableApiUsage")
+    public @NotNull String getVersion() {
+        return plugin.getPluginMeta().getVersion();
     }
 
     @Override

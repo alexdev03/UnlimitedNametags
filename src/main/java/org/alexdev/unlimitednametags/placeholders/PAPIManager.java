@@ -24,6 +24,9 @@ public class PAPIManager {
         if (text.isEmpty()) {
             return text;
         }
+        if (!papiEnabled) {
+            return text;
+        }
         try {
             final String firstReplacement = PlaceholderAPI.setPlaceholders(player, text);
             return PlaceholderAPI.setPlaceholders(player, firstReplacement);
@@ -36,6 +39,9 @@ public class PAPIManager {
     @NotNull
     public String setRelationalPlaceholders(@NotNull Player whoSees, @NotNull Player target, @NotNull String text) {
         if (text.isEmpty()) {
+            return text;
+        }
+        if (!papiEnabled) {
             return text;
         }
         try {
