@@ -117,22 +117,25 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
     }
 
-    private void handleTeams(@NotNull PacketSendEvent event) {
+    private boolean preTeamsChecks(@NotNull PacketSendEvent event) {
         if (!plugin.getConfigManager().getSettings().isDisableDefaultNameTag()) {
-            return;
+            return false;
         }
 
         final Player player = Bukkit.getPlayer(event.getUser().getUUID());
-        if(player == null) {
-            return;
+        if (player == null) {
+            return false;
         }
 
-        if(plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
+        return !plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false);
+    }
+
+    private void handleTeams(@NotNull PacketSendEvent event) {
+        if (!preTeamsChecks(event)) {
             return;
         }
 
         final WrapperPlayServerTeams packet = new WrapperPlayServerTeams(event);
-
         if (plugin.getConfigManager().getSettings().isForceDisableDefaultNameTag()) {
             if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
                 packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
@@ -142,9 +145,8 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
-        final Map<String, TeamData> teams = getTeams(player.getUniqueId());
+        final Map<String, TeamData> teams = getTeams(event.getUser().getUUID());
         final String teamName = packet.getTeamName();
-
         switch (packet.getTeamMode()) {
             case ADD_ENTITIES -> {
                 final Optional<TeamData> teamData = Optional.ofNullable(teams.get(teamName));
@@ -190,7 +192,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
                 }
 
                 final WrapperPlayServerTeams.ScoreBoardTeamInfo teamInfo = packet.getTeamInfo().orElseThrow();
-
                 if (teamData.get().isChangedVisibility() && teamInfo.getTagVisibility() != WrapperPlayServerTeams.NameTagVisibility.NEVER) {
                     teamInfo.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER);
                     event.markForReEncode(true);
@@ -200,8 +201,6 @@ public class PacketEventsListener extends PacketListenerAbstract {
             }
             case REMOVE -> teams.remove(teamName);
         }
-
-
     }
 
     public void removePlayerData(@NotNull Player player) {

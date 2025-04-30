@@ -200,26 +200,26 @@ public class NameTagManager {
         hideNametags.remove(uuid);
     }
 
-    public void addPlayer(@NotNull Player player) {
+    private boolean preAddChecks(@NotNull Player player) {
         if (nameTags.containsKey(player.getUniqueId())) {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " already has a nametag");
             }
-            return;
+            return false;
         }
 
         if (creating.contains(player.getUniqueId())) {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " is already creating a nametag");
             }
-            return;
+            return false;
         }
 
         if (blocked.contains(player.getUniqueId())) {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " is blocked");
             }
-            return;
+            return false;
         } else {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " is not blocked");
@@ -230,7 +230,7 @@ public class NameTagManager {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " is not loaded");
             }
-            return;
+            return false;
         }
 
         if (player.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
@@ -238,7 +238,7 @@ public class NameTagManager {
                 plugin.getLogger().info("Player " + player.getName() + " has invisibility potion effect, blocking");
             }
             blockPlayer(player);
-            return;
+            return false;
         }
 
         if (player.getGameMode() == GameMode.SPECTATOR) {
@@ -246,8 +246,17 @@ public class NameTagManager {
                 plugin.getLogger().info("Player " + player.getName() + " is in spectator mode, skipping");
             }
             blockPlayer(player);
+            return false;
+        }
+
+        return true;
+    }
+
+    public void addPlayer(@NotNull Player player) {
+        if (!preAddChecks(player)) {
             return;
         }
+
         creating.add(player.getUniqueId());
 
         final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
