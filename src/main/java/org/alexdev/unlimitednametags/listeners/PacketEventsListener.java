@@ -136,71 +136,94 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
 
         final WrapperPlayServerTeams packet = new WrapperPlayServerTeams(event);
-        if (plugin.getConfigManager().getSettings().isForceDisableDefaultNameTag()) {
-            if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
-                packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
-                event.markForReEncode(true);
-            }
-
+        if (handleForceDisableDefaultNameTag(event, packet)) {
             return;
         }
 
         final Map<String, TeamData> teams = getTeams(event.getUser().getUUID());
         final String teamName = packet.getTeamName();
+
         switch (packet.getTeamMode()) {
-            case ADD_ENTITIES -> {
-                final Optional<TeamData> teamData = Optional.ofNullable(teams.get(teamName));
-                if (teamData.isEmpty()) {
-                    return;
-                }
+            case ADD_ENTITIES -> handleAddEntities(event, packet, teams, teamName);
+            case REMOVE_ENTITIES -> handleRemoveEntities(packet, teams, teamName);
+            case CREATE -> handleCreateTeam(event, packet, teams, teamName);
+            case UPDATE -> handleUpdateTeam(event, packet, teams, teamName);
+            case REMOVE -> teams.remove(teamName);
+        }
+    }
 
-                teamData.get().getMembers().addAll(packet.getPlayers());
-                // If the team was visible and now contains online players, update the visibility
-                if (!teamData.get().isChangedVisibility() && packet.getPlayers().stream().anyMatch(p -> Bukkit.getPlayer(p) != null)) {
-                    teamData.get().setChangedVisibility(true);
-                    final WrapperPlayServerTeams.ScoreBoardTeamInfo teamInfo = teamData.get().getTeamInfo();
-                    teamInfo.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER);
-                    event.getUser().sendPacket(new WrapperPlayServerTeams(teamName, WrapperPlayServerTeams.TeamMode.UPDATE, teamData.get().getTeamInfo(), teamData.get().getMembers()));
-                }
+    private boolean handleForceDisableDefaultNameTag(@NotNull PacketSendEvent event, @NotNull WrapperPlayServerTeams packet) {
+        if (plugin.getConfigManager().getSettings().isForceDisableDefaultNameTag()) {
+            if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
+                packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
+                event.markForReEncode(true);
             }
-            case REMOVE_ENTITIES -> {
-                final Optional<TeamData> teamData = Optional.ofNullable(teams.get(teamName));
-                if (teamData.isEmpty()) {
-                    return;
-                }
+            return true;
+        }
+        return false;
+    }
 
-                teamData.get().getMembers().removeAll(packet.getPlayers());
+
+    private void handleAddEntities(@NotNull PacketSendEvent event, @NotNull WrapperPlayServerTeams packet,
+                                   @NotNull Map<String, TeamData> teams, @NotNull String teamName) {
+        final Optional<TeamData> teamDataOpt = Optional.ofNullable(teams.get(teamName));
+        if (teamDataOpt.isEmpty()) {
+            return;
+        }
+
+        final TeamData teamData = teamDataOpt.get();
+        teamData.getMembers().addAll(packet.getPlayers());
+
+        if (!teamData.isChangedVisibility() && packet.getPlayers().stream().anyMatch(p -> Bukkit.getPlayer(p) != null)) {
+            teamData.setChangedVisibility(true);
+            final WrapperPlayServerTeams.ScoreBoardTeamInfo teamInfo = teamData.getTeamInfo();
+            teamInfo.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER);
+            if (teamData.getTeamInfo() != null) {
+                event.getUser().sendPacket(new WrapperPlayServerTeams(teamName, WrapperPlayServerTeams.TeamMode.UPDATE, teamData.getTeamInfo(), teamData.getMembers()));
             }
-            case CREATE -> {
-                if (teams.containsKey(teamName)) {
-                    return;
-                }
+        }
+    }
 
-                final TeamData teamData = new TeamData(teamName, packet.getTeamInfo().orElseThrow(), Set.copyOf(packet.getPlayers()));
-                teams.put(teamName, teamData);
+    private void handleRemoveEntities(@NotNull WrapperPlayServerTeams packet, @NotNull Map<String, TeamData> teams, @NotNull String teamName) {
+        final Optional<TeamData> teamDataOpt = Optional.ofNullable(teams.get(teamName));
+        teamDataOpt.ifPresent(teamData -> teamData.getMembers().removeAll(packet.getPlayers()));
+    }
 
-                if (teamData.getMembers().stream().anyMatch(p -> Bukkit.getPlayer(p) != null)) {
-                    teamData.setChangedVisibility(true);
+    private void handleCreateTeam(@NotNull PacketSendEvent event, @NotNull WrapperPlayServerTeams packet,
+                                  @NotNull Map<String, TeamData> teams, @NotNull String teamName) {
+        if (teams.containsKey(teamName)) {
+            return;
+        }
+
+        packet.getTeamInfo().ifPresent(teamInfo -> {
+            final TeamData teamData = new TeamData(teamName, teamInfo, Set.copyOf(packet.getPlayers()));
+            teams.put(teamName, teamData);
+
+            if (teamData.getMembers().stream().anyMatch(p -> Bukkit.getPlayer(p) != null)) {
+                teamData.setChangedVisibility(true);
+                // Ensure teamInfo is not null before setting visibility
+                if (teamData.getTeamInfo() != null) {
                     teamData.getTeamInfo().setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER);
                     event.markForReEncode(true);
                 }
             }
-            case UPDATE -> {
-                final Optional<TeamData> teamData = Optional.ofNullable(teams.get(teamName));
-                if (teamData.isEmpty()) {
-                    return;
-                }
+        });
+    }
 
-                final WrapperPlayServerTeams.ScoreBoardTeamInfo teamInfo = packet.getTeamInfo().orElseThrow();
-                if (teamData.get().isChangedVisibility() && teamInfo.getTagVisibility() != WrapperPlayServerTeams.NameTagVisibility.NEVER) {
-                    teamInfo.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER);
-                    event.markForReEncode(true);
-                }
-
-                teamData.get().setTeamInfo(teamInfo);
-            }
-            case REMOVE -> teams.remove(teamName);
+    private void handleUpdateTeam(@NotNull PacketSendEvent event, @NotNull WrapperPlayServerTeams packet, @NotNull Map<String, TeamData> teams, @NotNull String teamName) {
+        final Optional<TeamData> teamDataOpt = Optional.ofNullable(teams.get(teamName));
+        if (teamDataOpt.isEmpty()) {
+            return;
         }
+
+        final TeamData teamData = teamDataOpt.get();
+        packet.getTeamInfo().ifPresent(teamInfoFromPacket -> {
+            if (teamData.isChangedVisibility() && teamInfoFromPacket.getTagVisibility() != WrapperPlayServerTeams.NameTagVisibility.NEVER) {
+                teamInfoFromPacket.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER);
+                event.markForReEncode(true);
+            }
+            teamData.setTeamInfo(teamInfoFromPacket);
+        });
     }
 
     public void removePlayerData(@NotNull Player player) {
