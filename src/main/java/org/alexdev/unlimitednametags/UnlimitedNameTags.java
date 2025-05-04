@@ -96,20 +96,40 @@ public final class UnlimitedNameTags extends JavaPlugin {
     }
 
     private CompletableFuture<Void> loadLibraries() {
-        if (isPaper) {
-            return CompletableFuture.completedFuture(null);
-        }
+
         final BukkitLibraryManager bukkitLibraryManager = new BukkitLibraryManager(this);
         bukkitLibraryManager.addMavenCentral();
 
         final List<Library> libraries = Lists.newArrayList(
-                Library.builder()
-                        .groupId("net{}kyori")
-                        .artifactId("adventure-text-minimessage")
-                        .version("4.17.0")
-                        .relocate("net{}]kyori{}adventure{}text{}serializer", "io{}github{}retrooper{}packetevents{}adventure{}serializer")
-                        .build()
+
         );
+
+        if (!isPaper) {
+            libraries.add(Library.builder()
+                    .groupId("net{}kyori")
+                    .artifactId("adventure-text-minimessage")
+                    .version("4.17.0")
+                    .relocate("net{}]kyori{}adventure{}text{}serializer", "io{}github{}retrooper{}packetevents{}adventure{}serializer")
+                    .build());
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
+            libraries.add(Library.builder()
+                    .groupId("team.unnamed")
+                    .artifactId("creative-server")
+                    .version("1.7.3")
+                    .build());
+            libraries.add(Library.builder()
+                    .groupId("team.unnamed")
+                    .artifactId("creative-serializer-minecraft")
+                    .version("1.7.3")
+                    .build());
+            libraries.add(Library.builder()
+                    .groupId("team.unnamed")
+                    .artifactId("creative-api")
+                    .version("1.7.3")
+                    .build());
+        }
 
         return CompletableFuture.runAsync(() -> {
             libraries.forEach(bukkitLibraryManager::loadLibrary);
@@ -174,24 +194,31 @@ public final class UnlimitedNameTags extends JavaPlugin {
         }
 
         if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
+            getLogger().info("Nexo found, hooking into it");
             final NexoHook hook = new NexoHook(this);
             hatHooks.add(hook);
             hooks.put(NexoHook.class, hook);
-            getLogger().info("Nexo found, hooking into it");
         }
 
         if (Bukkit.getPluginManager().isPluginEnabled("Oraxen")) {
+            getLogger().info("Oraxen found, hooking into it");
             final OraxenHook hook = new OraxenHook(this);
             hatHooks.add(hook);
             hooks.put(OraxenHook.class, hook);
-            getLogger().info("Oraxen found, hooking into it");
         }
 
         if (Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
+            getLogger().info("ItemsAdder found, hooking into it");
             final ItemsAdderHook hook = new ItemsAdderHook(this);
             hatHooks.add(hook);
             hooks.put(ItemsAdderHook.class, hook);
-            getLogger().info("ItemsAdder found, hooking into it");
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("HMCCosmetics")) {
+            getLogger().info("HMCCosmetics found, hooking into it");
+            final HMCCosmeticsHook hook = new HMCCosmeticsHook(this);
+            hatHooks.add(hook);
+            hooks.put(HMCCosmeticsHook.class, hook);
         }
 
 

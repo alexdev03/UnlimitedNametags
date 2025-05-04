@@ -442,6 +442,10 @@ public class NameTagManager {
         }
     }
 
+    public void showToTrackedPlayers(@NotNull Player player) {
+        showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()));
+    }
+
     public void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<UUID> tracked) {
         final PacketNameTag packetNameTag = nameTags.get(player.getUniqueId());
         if (packetNameTag != null) {

@@ -145,8 +145,8 @@ public class PlayerListener implements PackSendHandler {
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            plugin.getNametagManager().getPacketDisplayText(event.getPlayer()).ifPresent(d -> d.setVisible(true));
-        }, 1);
+            plugin.getNametagManager().showToTrackedPlayers(event.getPlayer());
+        }, 2);
     }
 
     @EventHandler
