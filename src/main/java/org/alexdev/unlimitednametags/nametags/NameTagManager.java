@@ -58,7 +58,7 @@ public class NameTagManager {
 
     private void loadAll() {
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            Bukkit.getOnlinePlayers().forEach(this::addPlayer);
+            Bukkit.getOnlinePlayers().forEach(p -> addPlayer(p, true));
             this.startTask();
         }, 5);
     }
@@ -200,7 +200,7 @@ public class NameTagManager {
         hideNametags.remove(uuid);
     }
 
-    private boolean preAddChecks(@NotNull Player player) {
+    private boolean preAddChecks(@NotNull Player player, boolean canBlock) {
         if (nameTags.containsKey(player.getUniqueId())) {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " already has a nametag");
@@ -237,7 +237,9 @@ public class NameTagManager {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " has invisibility potion effect, blocking");
             }
-            blockPlayer(player);
+            if (canBlock) {
+                blockPlayer(player);
+            }
             return false;
         }
 
@@ -245,15 +247,17 @@ public class NameTagManager {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " is in spectator mode, skipping");
             }
-            blockPlayer(player);
+            if (canBlock) {
+                blockPlayer(player);
+            }
             return false;
         }
 
         return true;
     }
 
-    public void addPlayer(@NotNull Player player) {
-        if (!preAddChecks(player)) {
+    public void addPlayer(@NotNull Player player, boolean canBlock) {
+        if (!preAddChecks(player, canBlock)) {
             return;
         }
 
@@ -459,7 +463,7 @@ public class NameTagManager {
             return;
         }
 
-        addPlayer(player);
+        addPlayer(player, false);
     }
 
     public void hideAllDisplays(@NotNull Player player) {

@@ -53,7 +53,7 @@ public class PlayerListener implements PackSendHandler {
             if (p == null || p.isDead()) {
                 return;
             }
-            plugin.getNametagManager().addPlayer(p);
+            plugin.getNametagManager().addPlayer(p, true);
             diedPlayers.remove(player);
         }), 1, 1);
     }
@@ -68,7 +68,7 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer()), 6);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), true), 6);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
