@@ -8,71 +8,55 @@ import org.apache.commons.jexl3.*;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class ConditionalManager {
 
     private final UnlimitedNameTags plugin;
-    private final BlockingQueue<JexlEngine> jexlEnginePool;
+    private final JexlEngine jexlEngine;
     private final JexlContext jexlContext;
-    private final Map<String, Object> cachedExpressions;
+    private final ExpiringMap<String, JexlExpression> expressionCache;
 
     public ConditionalManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.jexlEnginePool = createJexlEnginePool();
-        this.jexlContext = createJexlContext();
-        this.cachedExpressions = ExpiringMap.builder()
-                .expiration(5, TimeUnit.MINUTES)
+        // Create a single reusable JexlEngine instance
+        this.jexlEngine = new JexlBuilder().debug(false).create();
+        // Shared evaluation context
+        this.jexlContext = new MapContext();
+        // Cache for parsed expressions with size and time limits
+        this.expressionCache = ExpiringMap.builder()
+                .maxSize(1000)
+                .expiration(30, TimeUnit.MINUTES)
                 .build();
     }
 
-    @NotNull
-    private BlockingQueue<JexlEngine> createJexlEnginePool() {
-        final BlockingQueue<JexlEngine> pool = new LinkedBlockingQueue<>(10);
-        for (int i = 0; i < 10; i++) {
-            pool.add(new JexlBuilder().debug(false).create());
-        }
-        return pool;
-    }
-
-    @NotNull
-    private JexlContext createJexlContext() {
-        return new MapContext();
-    }
-
     public boolean evaluateExpression(@NotNull Settings.ConditionalModifier modifier, @NotNull Player player) {
-        final String entireExpression = plugin.getPlaceholderManager().getPapiManager().isPapiEnabled() ?
-                PlaceholderAPI.setPlaceholders(player, modifier.getExpression()) :
-                modifier.getExpression();
+        // Resolve placeholders if PlaceholderAPI is enabled
+        final String expressionString = plugin.getPlaceholderManager().getPapiManager().isPapiEnabled()
+                ? PlaceholderAPI.setPlaceholders(player, modifier.getExpression())
+                : modifier.getExpression();
 
-        final Boolean cached = cachedExpressions.getOrDefault(entireExpression, null) instanceof Boolean b ? b : null;
-        if (cached != null) {
-            return cached;
+        // Try to get pre-parsed expression from cache
+        JexlExpression expression = expressionCache.get(expressionString);
+        
+        // Parse and cache new expressions
+        if (expression == null) {
+            try {
+                expression = jexlEngine.createExpression(expressionString);
+                expressionCache.put(expressionString, expression);
+            } catch (JexlException e) {
+                plugin.getLogger().warning("Parse error in expression: " + expressionString + ": " + e.getMessage());
+                return false;
+            }
         }
 
-        JexlEngine jexlEngine = null;
+        // Evaluate the expression
         try {
-            jexlEngine = jexlEnginePool.poll(1, TimeUnit.SECONDS);
-            if (jexlEngine == null) {
-                jexlEngine = new JexlBuilder().debug(false).create();
-            }
-
-            final Object result = jexlEngine.createExpression(entireExpression).evaluate(jexlContext);
-            final boolean boolResult = result instanceof Boolean bb && bb;
-
-            cachedExpressions.put(entireExpression, boolResult);
-
-            return boolResult;
-        } catch (Exception e) {
-            plugin.getLogger().warning("Failed to evaluate expression: " + entireExpression);
+            Object result = expression.evaluate(jexlContext);
+            return result instanceof Boolean b && b;
+        } catch (JexlException e) {
+            plugin.getLogger().warning("Evaluation error for: " + expressionString + ": " + e.getMessage());
             return false;
-        } finally {
-            if (jexlEngine != null && !jexlEnginePool.offer(jexlEngine)) {
-                plugin.getLogger().warning("JexlEngine pool is full. Discarding engine.");
-            }
         }
     }
 }
