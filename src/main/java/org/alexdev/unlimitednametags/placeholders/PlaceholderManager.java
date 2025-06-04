@@ -52,7 +52,7 @@ public class PlaceholderManager {
     private int index = maxIndex;
     private int mmIndex = maxMIndex;
     private DecimalFormat decimalFormat;
-    private final UntPapiExpansion untPapiExpansion;
+    private UntPapiExpansion untPapiExpansion;
 
     private BigDecimal miniGradientIndexBD = new BigDecimal("-1.0");
     private final BigDecimal stepBD = new BigDecimal("0.1");
@@ -73,8 +73,10 @@ public class PlaceholderManager {
                 .expiration(2, TimeUnit.MINUTES)
                 .build();
         this.formattedPhaseValues = Maps.newConcurrentMap();
-        this.untPapiExpansion = new UntPapiExpansion(plugin);
-        this.untPapiExpansion.register();
+        if (this.papiManager.isPapiEnabled()) {
+            this.untPapiExpansion = new UntPapiExpansion(plugin);
+            this.untPapiExpansion.register();
+        }
         this.placeholdersReplacements = Maps.newConcurrentMap();
         reloadPlaceholdersReplacements();
         createDecimalFormat();
@@ -159,7 +161,9 @@ public class PlaceholderManager {
 
     public void close() {
         this.executorService.shutdown();
-        this.untPapiExpansion.unregister();
+        if (this.papiManager.isPapiEnabled()) {
+            this.untPapiExpansion.unregister();
+        }
     }
 
 
