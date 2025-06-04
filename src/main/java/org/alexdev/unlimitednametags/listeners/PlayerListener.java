@@ -135,7 +135,7 @@ public class PlayerListener implements PackSendHandler {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
         diedPlayers.add(event.getEntity().getUniqueId());
         plugin.getNametagManager().removeAllViewers(event.getEntity());
