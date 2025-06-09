@@ -51,6 +51,9 @@ public interface CreativeHook {
     @SuppressWarnings("UnstableApiUsage")
     default Optional<Model> findModel(@NotNull ItemStack item) {
         final ResourcePack pack = getResourcePack();
+
+        if (pack == null) return Optional.empty();
+
         final Map<Integer, Model> cmdCache = getCmdCache().computeIfAbsent(item.getType().getKey(), k -> Maps.newConcurrentMap());
 
         final ItemMeta itemMeta = item.getItemMeta();
