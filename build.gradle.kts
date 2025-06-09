@@ -143,6 +143,12 @@ tasks.named<Delete>("clean").configure {
     delete(tasks.named<ShadowJar>("shadowJar").get().archiveFile)
 }
 
+tasks.jar {
+    manifest {
+        attributes["paperweight-mappings-namespace"] = "mojang"
+    }
+}
+
 tasks {
     runServer {
         minecraftVersion("1.21.4")
@@ -151,7 +157,7 @@ tasks {
             hangar("PlaceholderAPI", "2.11.6")
             modrinth("luckperms", "v5.4.145-bukkit")
             modrinth("multiverse-core", "4.3.14")
-            url("https://github.com/retrooper/packetevents/releases/download/v2.7.0/packetevents-spigot-2.7.0.jar")
+            url("https://github.com/retrooper/packetevents/releases/download/v2.8.0/packetevents-spigot-2.8.0.jar")
             github("ViaVersion", "ViaVersion", "5.1.1", "ViaVersion-5.1.1.jar")
             github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")

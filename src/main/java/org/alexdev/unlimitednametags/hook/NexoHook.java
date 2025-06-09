@@ -58,7 +58,7 @@ public class NexoHook extends Hook implements Listener, CreativeHook, HatHook {
     }
 
     @EventHandler
-    public void onEnable(NexoItemsLoadedEvent event) {
+    public void onLoad(NexoItemsLoadedEvent event) {
         cmdCache.clear();
         loadTexture();
         plugin.getLogger().info("Nexo items loaded, clearing cache");

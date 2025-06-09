@@ -11,6 +11,7 @@ import org.alexdev.unlimitednametags.hook.MiniPlaceholdersHook;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -25,7 +26,7 @@ public enum Formatter {
     ),
     MINIMESSAGE(
             (plugin, player, text) -> plugin.getHook(MiniPlaceholdersHook.class)
-                    .map(hook -> hook.format(text, player))
+                    .map(hook -> hook.format(text, player, List.of()))
                     .orElse(MiniMessage.miniMessage().deserialize(text)),
             "MiniMessage"
     ),

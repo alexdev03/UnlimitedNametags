@@ -24,8 +24,8 @@ oraxenVersion = "1.174.0"
 itemsAdderVersion = "3.6.1"
 gsonVersion = "2.11.0"
 hmccosmeticsVersion = "2.7.4"
-creative-rp = "1.7.3"
-creative-serializer = "1.7.3"
+creative-rp = "1.8.2-SNAPSHOT"
+creative-serializer = "1.8.2-SNAPSHOT"
 libs-disguises = "11.0.0"
 
 [libraries]

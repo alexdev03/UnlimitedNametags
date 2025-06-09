@@ -6,6 +6,7 @@ import lombok.Getter;
 import net.kyori.adventure.key.Key;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.creative.CreativeHook;
+import org.alexdev.unlimitednametags.hook.creative.CustomMinecraftResourcePackReaderImpl;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -14,7 +15,6 @@ import org.bukkit.event.Listener;
 import org.jetbrains.annotations.NotNull;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.model.Model;
-import team.unnamed.creative.serialize.minecraft.MinecraftResourcePackReader;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -39,8 +39,7 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
     }
 
     @EventHandler
-    public void onEnable(ItemsAdderPackCompressedEvent event) {
-        plugin.getLogger().info("Load event");
+    public void onLoad(ItemsAdderPackCompressedEvent event) {
         cmdCache.clear();
         loadTexture();
         plugin.getLogger().info("ItemsAdder items loaded, clearing cache");
@@ -65,9 +64,12 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
         }
 
         try {
-            resourcePack = MinecraftResourcePackReader.builder().lenient(true).build().readFromZipFile(generated);
+//            resourcePack = MinecraftResourcePackReader.builder().lenient(true).build().readFromZipFile(generated);
+            resourcePack = CustomMinecraftResourcePackReaderImpl.INSTANCE.readFromZipFile(generated);
+            plugin.getLogger().info("ItemsAdder's resource pack loaded from " + generated.getAbsolutePath());
         } catch (Throwable e) {
-            plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to load ItemsAdder resource pack", e);
+            resourcePack = null;
+            plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to load ItemsAdder resource pack for file at " + generated.getAbsolutePath(), e);
         }
     }
 }

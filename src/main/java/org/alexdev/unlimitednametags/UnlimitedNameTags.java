@@ -12,9 +12,9 @@ import net.byteflux.libby.Library;
 import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
-import org.alexdev.unlimitednametags.listeners.*;
 import org.alexdev.unlimitednametags.hook.*;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.alexdev.unlimitednametags.listeners.*;
 import org.alexdev.unlimitednametags.metrics.Metrics;
 import org.alexdev.unlimitednametags.nametags.ConditionalManager;
 import org.alexdev.unlimitednametags.nametags.NameTagManager;
@@ -99,6 +99,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
         final BukkitLibraryManager bukkitLibraryManager = new BukkitLibraryManager(this);
         bukkitLibraryManager.addMavenCentral();
+        bukkitLibraryManager.addRepository("https://s01.oss.sonatype.org/content/repositories/snapshots/");
 
         final List<Library> libraries = Lists.newArrayList(
 
@@ -117,17 +118,17 @@ public final class UnlimitedNameTags extends JavaPlugin {
             libraries.add(Library.builder()
                     .groupId("team.unnamed")
                     .artifactId("creative-server")
-                    .version("1.7.3")
+                    .version("1.8.2-SNAPSHOT")
                     .build());
             libraries.add(Library.builder()
                     .groupId("team.unnamed")
                     .artifactId("creative-serializer-minecraft")
-                    .version("1.7.3")
+                    .version("1.8.2-SNAPSHOT")
                     .build());
             libraries.add(Library.builder()
                     .groupId("team.unnamed")
                     .artifactId("creative-api")
-                    .version("1.7.3")
+                    .version("1.8.2-SNAPSHOT")
                     .build());
         }
 
@@ -149,6 +150,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
                 getServer().getPluginManager().disablePlugin(this);
                 return;
             }
+
             getLogger().info("Paper not found, using Spigot's tracker");
             Bukkit.getPluginManager().registerEvents(new SpigotTrackerListener(this), this);
         }

@@ -13,10 +13,21 @@ public class PAPIManager {
     private final UnlimitedNameTags plugin;
     @Getter
     private final boolean papiEnabled;
+    private UntPapiExpansion untPapiExpansion;
 
     public PAPIManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.papiEnabled = plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
+        if (papiEnabled) {
+            try {
+                this.untPapiExpansion = new UntPapiExpansion(plugin);
+                this.untPapiExpansion.register();
+            } catch (Throwable e) {
+                plugin.getLogger().warning("Failed to register PlaceholderAPI expansion: " + e.getMessage());
+            }
+        } else {
+            plugin.getLogger().info("PlaceholderAPI is not enabled, some features may not work.");
+        }
     }
 
     @NotNull
@@ -50,6 +61,12 @@ public class PAPIManager {
         } catch (Throwable e) {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to set relational placeholders for text: " + text, e);
             return text;
+        }
+    }
+
+    public void close() {
+        if (papiEnabled && untPapiExpansion != null) {
+            untPapiExpansion.unregister();
         }
     }
 

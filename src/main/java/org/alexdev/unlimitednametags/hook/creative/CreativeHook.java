@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.base.Vector3Float;
 import team.unnamed.creative.model.ItemOverride;
@@ -24,7 +25,7 @@ public interface CreativeHook {
 
     void loadTexture();
 
-    @NotNull
+    @Nullable
     ResourcePack getResourcePack();
 
     @NotNull
@@ -51,6 +52,9 @@ public interface CreativeHook {
     @SuppressWarnings("UnstableApiUsage")
     default Optional<Model> findModel(@NotNull ItemStack item) {
         final ResourcePack pack = getResourcePack();
+        if (pack == null) {
+            return Optional.empty();
+        }
         final Map<Integer, Model> cmdCache = getCmdCache().computeIfAbsent(item.getType().getKey(), k -> Maps.newConcurrentMap());
 
         final ItemMeta itemMeta = item.getItemMeta();

@@ -1,7 +1,6 @@
 package org.alexdev.unlimitednametags.placeholders;
 
 import com.google.common.collect.Maps;
-import it.unimi.dsi.fastutil.Pair;
 import lombok.Getter;
 import net.jodah.expiringmap.ExpiringMap;
 import net.kyori.adventure.text.Component;
@@ -61,7 +60,7 @@ public class PlaceholderManager {
     private final Map<String, Component> cachedComponents;
     private Map<UUID, Map<String, String>> cachedPlaceholders;
     private final Map<String, String> formattedPhaseValues;
-    private final Map<String, Pair<Pattern, Map<String, String>>> placeholdersReplacements;
+    private final Map<String, Map<String, String>> placeholdersReplacements;
 
     public PlaceholderManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -97,9 +96,8 @@ public class PlaceholderManager {
         placeholdersReplacements.clear();
         plugin.getConfigManager().getSettings().getPlaceholdersReplacements().forEach((key, value) -> {
             final Map<String, String> replacements = Maps.newHashMap();
-            final Pattern pattern = Pattern.compile(key, Pattern.CASE_INSENSITIVE);
             value.forEach((pr) -> replacements.put(pr.placeholder().toLowerCase(Locale.ROOT), pr.replacement()));
-            placeholdersReplacements.put(key.toLowerCase(Locale.ROOT), Pair.of(pattern, replacements));
+            placeholdersReplacements.put(key.toLowerCase(Locale.ROOT), replacements);
         });
     }
 
@@ -108,10 +106,10 @@ public class PlaceholderManager {
     }
 
     private void createDecimalFormat() {
-        decimalFormat = new DecimalFormat("#.#");
+        decimalFormat = new DecimalFormat("#.#", DecimalFormatSymbols.getInstance(Locale.US));
         decimalFormat.setRoundingMode(RoundingMode.DOWN);
 
-        final DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+        final DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);
         symbols.setDecimalSeparator('.');
         decimalFormat.setDecimalFormatSymbols(symbols);
     }
@@ -305,22 +303,17 @@ public class PlaceholderManager {
 
     @Nullable
     private String getReplacement(@NotNull String placeholder, @NotNull String value) {
-        var mapPair = placeholdersReplacements.get(placeholder.toLowerCase(Locale.ROOT));
-        if (mapPair == null) {
+        var replacements = placeholdersReplacements.get(placeholder.toLowerCase(Locale.ROOT));
+        if (replacements == null) {
             return null;
         }
 
-        final Map<String, String> replacementMap = mapPair.right();
-        if (replacementMap == null) {
-            return null;
-        }
-
-        final String replacement = replacementMap.get(value.toLowerCase(Locale.ROOT));
+        final String replacement = replacements.get(value.toLowerCase(Locale.ROOT));
         if (replacement != null) {
             return replacement;
         }
 
-        return replacementMap.get(ELSE_PLACEHOLDER.toLowerCase(Locale.ROOT));
+        return replacements.get(ELSE_PLACEHOLDER.toLowerCase(Locale.ROOT));
     }
 
 
