@@ -428,9 +428,9 @@ public class NameTagManager {
         final PacketNameTag packetNameTag = nameTags.remove(player.getUniqueId());
         if (packetNameTag != null) {
             packetNameTag.remove();
+            entityIdToDisplay.remove(packetNameTag.getEntityId());
         }
 
-        entityIdToDisplay.remove(player.getEntityId());
 
         nameTags.forEach((uuid, display) -> {
             display.handleQuit(player);
