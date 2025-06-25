@@ -1,5 +1,7 @@
 package org.alexdev.unlimitednametags;
 
+import com.alessiodp.libby.BukkitLibraryManager;
+import com.alessiodp.libby.Library;
 import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import com.google.common.collect.Lists;
@@ -7,8 +9,6 @@ import com.google.common.collect.Maps;
 import com.jonahseguin.drink.CommandService;
 import com.jonahseguin.drink.Drink;
 import lombok.Getter;
-import net.byteflux.libby.BukkitLibraryManager;
-import net.byteflux.libby.Library;
 import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
@@ -98,12 +98,43 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private CompletableFuture<Void> loadLibraries() {
 
         final BukkitLibraryManager bukkitLibraryManager = new BukkitLibraryManager(this);
+        bukkitLibraryManager.addRepository("https://maven-central.storage-download.googleapis.com/maven2");
         bukkitLibraryManager.addMavenCentral();
         bukkitLibraryManager.addRepository("https://s01.oss.sonatype.org/content/repositories/snapshots/");
 
         final List<Library> libraries = Lists.newArrayList(
 
         );
+
+        //  - de.exlll:configlib-yaml:${configlibVersion}
+        //  - de.exlll:configlib-paper:${configlibVersion}
+
+//        libraries.add(Library.builder()
+//                .groupId("de.exlll")
+//                .artifactId("configlib-yaml")
+//                .version(LibVersions.CONFIG_LIB_VERSION)
+//                .isolatedLoad(false)
+//                .build());
+//        libraries.add(Library.builder()
+//                .groupId("de.exlll")
+//                .artifactId("configlib-paper")
+//                .version(LibVersions.CONFIG_LIB_VERSION)
+//                .isolatedLoad(false)
+//                .build());
+//        //core
+//        libraries.add(Library.builder()
+//                .groupId("de.exlll")
+//                .artifactId("configlib-core")
+//                .version(LibVersions.CONFIG_LIB_VERSION)
+//                .isolatedLoad(false)
+//                .build());
+//        //snake yaml implementation("org.yaml:snakeyaml:2.4")
+//        libraries.add(Library.builder()
+//                .groupId("org.yaml")
+//                .artifactId("snakeyaml")
+//                .version("2.4")
+//                .isolatedLoad(false)
+//                .build());
 
         if (!isPaper) {
             libraries.add(Library.builder()
@@ -132,9 +163,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
                     .build());
         }
 
-        return CompletableFuture.runAsync(() -> {
-            libraries.forEach(bukkitLibraryManager::loadLibrary);
-        });
+        return CompletableFuture.runAsync(() -> libraries.forEach(bukkitLibraryManager::loadLibrary));
     }
 
     private void loadListeners() {

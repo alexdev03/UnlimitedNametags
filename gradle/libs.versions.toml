@@ -8,14 +8,14 @@ miniplaceholdersApiVersion = "2.2.3"
 floodgateApiVersion = "2.2.3-SNAPSHOT"
 geyserApiVersion = "2.4.2-SNAPSHOT"
 commonsLangVersion = "3.14.0"
-configlibVersion = "4.5.0"
+configlibVersion = "4.6.1"
 minedownAdventureVersion = "1.7.2-SNAPSHOT"
 drinkVersion = "1.5.3"
 entityLibVersion = "+39cce79-SNAPSHOT"
 packeteventsSpigotVersion = "2.7.0"
 universalSchedulerVersion = "0.1.6"
 viaVersionApiVersion = "5.0.1"
-libbyBukkitVersion = "1.3.1"
+libbyBukkitVersion = "2.0.0-SNAPSHOT"
 bstatsBukkitVersion = "3.0.2"
 expiringMapVersion = "0.5.11"
 commonsJexl3Version = "3.4.0"
@@ -46,7 +46,7 @@ entityLib = { module = "me.tofaa.entitylib:spigot", version.ref = "entityLibVers
 packeteventsSpigot = { module = "com.github.retrooper:packetevents-spigot", version.ref = "packeteventsSpigotVersion" }
 universalScheduler = { module = "com.github.Anon8281:UniversalScheduler", version.ref = "universalSchedulerVersion" }
 viaVersionApi = { module = "com.viaversion:viaversion-api", version.ref = "viaVersionApiVersion" }
-libbyBukkit = { module = "net.byteflux:libby-bukkit", version.ref = "libbyBukkitVersion" }
+libbyBukkit = { module = "com.alessiodp.libby:libby-bukkit", version.ref = "libbyBukkitVersion" }
 bstatsBukkit = { module = "org.bstats:bstats-bukkit", version.ref = "bstatsBukkitVersion" }
 expiringMap = { module = "net.jodah:expiringmap", version.ref = "expiringMapVersion" }
 commonsJexl3 = { module = "org.apache.commons:commons-jexl3", version.ref = "commonsJexl3Version" }

@@ -5,10 +5,11 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.0.0"
     id("xyz.jpenilla.run-paper") version "2.3.1"
+//    id("com.github.gmazzo.buildconfig") version "5.6.7"
 }
 
 group = "org.alexdev"
-version = "1.6.8"
+version = property("version") as String
 
 repositories {
     mavenCentral()
@@ -52,7 +53,7 @@ dependencies {
     compileOnly(libs.geyserApi)
     compileOnly(libs.commonsLang)
     compileOnly(libs.configlib)
-    compileOnly(libs.configlibPaper)
+    implementation(libs.configlibPaper)
     compileOnly(libs.packeteventsSpigot)
     compileOnly(libs.viaVersionApi)
     compileOnly(libs.bstatsBukkit)
@@ -90,9 +91,7 @@ tasks.named<ShadowJar>("shadowJar") {
     relocate("net.kyori.adventure.text.serializer", "io.github.retrooper.packetevents.adventure.serializer")
     relocate("net.byteflux.libby", relocation + "libby.bukkit")
 
-    //Nexo
-//    val nexoRelocation = "com.nexomc.libs"
-//    relocate("team.unnamed", nexoRelocation)
+    relocate("de.exlll.configlib", "org.alexdev.unlimitednametags.configlib")
 
     dependencies {
         exclude(dependency(":kotlin-stdlib"))
@@ -136,6 +135,10 @@ java {
     disableAutoTargetJvm()
 }
 
+kotlin {
+    jvmToolchain(21)
+}
+
 tasks.named<Jar>("jar").configure {
     dependsOn("shadowJar")
 }
@@ -151,28 +154,28 @@ tasks.jar {
 
 tasks {
     runServer {
-        minecraftVersion("1.21.4")
+        minecraftVersion("1.21.6")
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
             modrinth("luckperms", "v5.4.145-bukkit")
             modrinth("multiverse-core", "4.3.14")
-            url("https://github.com/retrooper/packetevents/releases/download/v2.8.0/packetevents-spigot-2.8.0.jar")
-            github("ViaVersion", "ViaVersion", "5.1.1", "ViaVersion-5.1.1.jar")
-            github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
+            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.9.0-SNAPSHOT.jar")
+//            github("ViaVersion", "ViaVersion", "5.1.1", "ViaVersion-5.1.1.jar")
+//            github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
 //            github("gecolay", "GSit", "1.11.2", "GSit-1.11.2.jar")
 //            url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
         }
     }
     runPaper.folia.registerTask {
-        minecraftVersion("1.21.1")
+        minecraftVersion("1.20.1")
 
         downloadPlugins {
             github("Anon8281", "PlaceholderAPI", "2.11.7", "PlaceholderAPI-2.11.7-DEV-Folia.jar")
 
             url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
-            url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.141.jar")
+//            url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.141.jar")
             url("https://github.com/retrooper/packetevents/releases/download/v2.4.0/packetevents-spigot-2.4.0.jar")
             github("ViaVersion", "ViaVersion", "5.0.1", "ViaVersion-5.0.1.jar")
         }
@@ -183,6 +186,12 @@ tasks.processResources {
     var compiled = true
     if (file("license.txt").exists()) {
         compiled = false
+    }
+
+    filesMatching("**/UnlimitedNameTags.java") {
+        expand(
+            "configlibVersion" to libs.versions.configlibVersion.get(),
+        )
     }
 
     from("src/main/resources") {
@@ -199,3 +208,19 @@ tasks.processResources {
     }
 
 }
+
+//buildConfig {
+//    className.set("LibVersions")
+//
+//    packageName.set("org.alexdev.unlimitednametags.config")
+//
+//    buildConfigField(
+//        "String",
+//        "CONFIG_LIB_VERSION",
+//        "\"${libs.versions.configlibVersion.get()}\""
+//    )
+//
+//    buildConfigField("String", "APP_VERSION", "\"$version\"")
+//
+//    buildConfigField("int", "MAX_RETRIES", "5")
+//}

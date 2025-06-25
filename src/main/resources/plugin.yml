@@ -5,8 +5,8 @@ api-version: '1.19'
 author: AlexDev_
 folia-supported: true
 libraries:
-  - de.exlll:configlib-yaml:${configlibVersion}
-  - de.exlll:configlib-paper:${configlibVersion}
+#  - de.exlll:configlib-yaml:${configlibVersion}
+#  - de.exlll:configlib-paper:${configlibVersion}
   - net.jodah:expiringmap:${expiringMapVersion}
   - org.apache.commons:commons-jexl3:${commonsJexl3Version}
 
