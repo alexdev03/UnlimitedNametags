@@ -277,6 +277,10 @@ public class PacketNameTag {
             return false;
         }
 
+        if (player.getWorld() != owner.getWorld()) {
+            return false;
+        }
+
         if (isPlayerChannelNotValid(player) || isPlayerChannelNotValid(owner)) {
             return false;
         }
