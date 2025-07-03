@@ -72,10 +72,6 @@ public class PlaceholderManager {
                 .expiration(2, TimeUnit.MINUTES)
                 .build();
         this.formattedPhaseValues = Maps.newConcurrentMap();
-        if (this.papiManager.isPapiEnabled()) {
-            this.untPapiExpansion = new UntPapiExpansion(plugin);
-            this.untPapiExpansion.register();
-        }
         this.placeholdersReplacements = Maps.newConcurrentMap();
         reloadPlaceholdersReplacements();
         createDecimalFormat();

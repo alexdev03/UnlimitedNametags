@@ -48,13 +48,14 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> diedPlayers.forEach(player -> {
-            final Player p = plugin.getServer().getPlayer(player);
-            if (p == null || p.isDead()) {
+        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> diedPlayers.forEach(died -> {
+            final Player player = plugin.getServer().getPlayer(died);
+            if (player == null || player.isDead()) {
                 return;
             }
-            plugin.getNametagManager().addPlayer(p, true);
-            diedPlayers.remove(player);
+
+            plugin.getNametagManager().showToTrackedPlayers(player);
+            diedPlayers.remove(died);
         }), 1, 1);
     }
 
@@ -80,6 +81,7 @@ public class PlayerListener implements PackSendHandler {
             plugin.getNametagManager().removePlayer(event.getPlayer());
             plugin.getNametagManager().clearCache(event.getPlayer().getUniqueId());
             plugin.getPlaceholderManager().removePlayer(event.getPlayer());
+            diedPlayers.remove(event.getPlayer().getUniqueId());
         }, 1);
         playerEntityId.remove(event.getPlayer().getEntityId());
     }

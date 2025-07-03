@@ -154,7 +154,7 @@ tasks.jar {
 
 tasks {
     runServer {
-        minecraftVersion("1.21.6")
+        minecraftVersion("1.21.7")
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
@@ -169,15 +169,15 @@ tasks {
         }
     }
     runPaper.folia.registerTask {
-        minecraftVersion("1.20.1")
+        minecraftVersion("1.21.6")
 
         downloadPlugins {
             github("Anon8281", "PlaceholderAPI", "2.11.7", "PlaceholderAPI-2.11.7-DEV-Folia.jar")
 
-            url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
+//            url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
 //            url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.141.jar")
-            url("https://github.com/retrooper/packetevents/releases/download/v2.4.0/packetevents-spigot-2.4.0.jar")
-            github("ViaVersion", "ViaVersion", "5.0.1", "ViaVersion-5.0.1.jar")
+            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.9.0-SNAPSHOT.jar")
+            github("ViaVersion", "ViaVersion", "5.4.1", "ViaVersion-5.4.1.jar")
         }
     }
 }
