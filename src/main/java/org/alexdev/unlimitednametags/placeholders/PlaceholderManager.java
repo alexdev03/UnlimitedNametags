@@ -155,7 +155,7 @@ public class PlaceholderManager {
 
     public void close() {
         this.executorService.shutdown();
-        if (this.papiManager.isPapiEnabled()) {
+        if (this.papiManager.isPapiEnabled() && this.untPapiExpansion != null) {
             this.untPapiExpansion.unregister();
         }
     }
