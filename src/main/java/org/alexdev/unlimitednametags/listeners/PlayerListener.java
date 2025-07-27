@@ -127,9 +127,6 @@ public class PlayerListener implements PackSendHandler {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
-//            plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-//
-//            });
             plugin.getNametagManager().unblockPlayer(e.getPlayer());
             plugin.getNametagManager().showToTrackedPlayers(e.getPlayer(), plugin.getTrackerManager().getTrackedPlayers().get(e.getPlayer().getUniqueId()));
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
@@ -137,7 +134,7 @@ public class PlayerListener implements PackSendHandler {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
         diedPlayers.add(event.getEntity().getUniqueId());
         plugin.getNametagManager().removeAllViewers(event.getEntity());

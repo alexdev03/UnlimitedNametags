@@ -100,41 +100,10 @@ public final class UnlimitedNameTags extends JavaPlugin {
         final BukkitLibraryManager bukkitLibraryManager = new BukkitLibraryManager(this);
         bukkitLibraryManager.addRepository("https://maven-central.storage-download.googleapis.com/maven2");
         bukkitLibraryManager.addMavenCentral();
-        bukkitLibraryManager.addRepository("https://s01.oss.sonatype.org/content/repositories/snapshots/");
 
         final List<Library> libraries = Lists.newArrayList(
 
         );
-
-        //  - de.exlll:configlib-yaml:${configlibVersion}
-        //  - de.exlll:configlib-paper:${configlibVersion}
-
-//        libraries.add(Library.builder()
-//                .groupId("de.exlll")
-//                .artifactId("configlib-yaml")
-//                .version(LibVersions.CONFIG_LIB_VERSION)
-//                .isolatedLoad(false)
-//                .build());
-//        libraries.add(Library.builder()
-//                .groupId("de.exlll")
-//                .artifactId("configlib-paper")
-//                .version(LibVersions.CONFIG_LIB_VERSION)
-//                .isolatedLoad(false)
-//                .build());
-//        //core
-//        libraries.add(Library.builder()
-//                .groupId("de.exlll")
-//                .artifactId("configlib-core")
-//                .version(LibVersions.CONFIG_LIB_VERSION)
-//                .isolatedLoad(false)
-//                .build());
-//        //snake yaml implementation("org.yaml:snakeyaml:2.4")
-//        libraries.add(Library.builder()
-//                .groupId("org.yaml")
-//                .artifactId("snakeyaml")
-//                .version("2.4")
-//                .isolatedLoad(false)
-//                .build());
 
         if (!isPaper) {
             libraries.add(Library.builder()
@@ -145,21 +114,21 @@ public final class UnlimitedNameTags extends JavaPlugin {
                     .build());
         }
 
-        if (Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
+        if (false && Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
             libraries.add(Library.builder()
                     .groupId("team.unnamed")
                     .artifactId("creative-server")
-                    .version("1.8.2-SNAPSHOT")
+                    .version("1.8.3-SNAPSHOT")
                     .build());
             libraries.add(Library.builder()
                     .groupId("team.unnamed")
                     .artifactId("creative-serializer-minecraft")
-                    .version("1.8.2-SNAPSHOT")
+                    .version("1.8.3-SNAPSHOT")
                     .build());
             libraries.add(Library.builder()
                     .groupId("team.unnamed")
                     .artifactId("creative-api")
-                    .version("1.8.2-SNAPSHOT")
+                    .version("1.8.3-SNAPSHOT")
                     .build());
         }
 
@@ -238,7 +207,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
             hooks.put(OraxenHook.class, hook);
         }
 
-        if (Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
+        if (false && Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
             getLogger().info("ItemsAdder found, hooking into it");
             final ItemsAdderHook hook = new ItemsAdderHook(this);
             hatHooks.add(hook);

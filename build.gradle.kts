@@ -14,6 +14,7 @@ version = property("version") as String
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://repo.nexomc.com/snapshots/")
     maven("https://oss.sonatype.org/content/groups/public/")
     maven("https://repo.extendedclip.com/releases")
     maven("https://repo.minebench.de/")
@@ -160,7 +161,7 @@ tasks {
             hangar("PlaceholderAPI", "2.11.6")
             modrinth("luckperms", "v5.4.145-bukkit")
             modrinth("multiverse-core", "4.3.14")
-            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.9.0-SNAPSHOT.jar")
+            github("retrooper", "packetevents", "v2.9.4", "packetevents-spigot-2.9.4.jar")
 //            github("ViaVersion", "ViaVersion", "5.1.1", "ViaVersion-5.1.1.jar")
 //            github("ViaVersion", "ViaBackwards", "5.1.1", "ViaBackwards-5.1.1.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
@@ -176,7 +177,7 @@ tasks {
 
 //            url("https://cdn.modrinth.com/data/HQyibRsN/versions/J2guR3GH/MiniPlaceholders-Paper-2.2.4.jar")
 //            url("https://ci.lucko.me/job/LuckPerms-Folia/lastSuccessfulBuild/artifact/bukkit/loader/build/libs/LuckPerms-Bukkit-5.4.141.jar")
-            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.9.0-SNAPSHOT.jar")
+            url("https://ci.codemc.io/job/retrooper/job/packetevents/lastSuccessfulBuild/artifact/spigot/build/libs/packetevents-spigot-2.9.4-SNAPSHOT.jar")
             github("ViaVersion", "ViaVersion", "5.4.1", "ViaVersion-5.4.1.jar")
         }
     }

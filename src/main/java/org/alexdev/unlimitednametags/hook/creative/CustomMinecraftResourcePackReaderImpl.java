@@ -63,6 +63,7 @@ import static team.unnamed.creative.serialize.minecraft.MinecraftResourcePackStr
 
 public final class CustomMinecraftResourcePackReaderImpl implements MinecraftResourcePackReader {
     public static final CustomMinecraftResourcePackReaderImpl INSTANCE = new CustomMinecraftResourcePackReaderImpl(false);
+    public static final String OVERLAYS_FOLDER = "overlays";
 
     private final boolean lenient;
 
