@@ -38,6 +38,7 @@ public class NameTagManager {
     private final Map<Integer, PacketNameTag> entityIdToDisplay;
     private final Set<UUID> creating;
     private final Set<UUID> blocked;
+    private final Set<UUID> sneaking;
     private final Set<UUID> hideNametags;
     private final List<MyScheduledTask> tasks;
     @Setter
@@ -51,6 +52,7 @@ public class NameTagManager {
         this.tasks = Lists.newCopyOnWriteArrayList();
         this.creating = Sets.newConcurrentHashSet();
         this.blocked = Sets.newConcurrentHashSet();
+        this.sneaking = Sets.newConcurrentHashSet();
         this.hideNametags = Sets.newConcurrentHashSet();
         this.loadAll();
         this.scaleAttribute = loadScaleAttribute();
@@ -361,7 +363,7 @@ public class NameTagManager {
                             m.setShadow(nameTag.background().shadowed());
                             update.set(true);
                         }
-                        if (m.isSeeThrough() != nameTag.background().seeThrough()) {
+                        if (!sneaking.contains(player.getUniqueId()) && m.isSeeThrough() != nameTag.background().seeThrough()) {
                             m.setSeeThrough(nameTag.background().seeThrough());
                             update.set(true);
                         }
@@ -481,12 +483,17 @@ public class NameTagManager {
         nameTags.clear();
     }
 
-    public void updateSneaking(@NotNull Player player, boolean sneaking) {
+    public void updateSneaking(@NotNull Player player, boolean isSneaking) {
+        if (isSneaking) {
+            sneaking.add(player.getUniqueId());
+        } else {
+            sneaking.remove(player.getUniqueId());
+        }
         getPacketDisplayText(player).ifPresent(packetNameTag -> {
             if (packetNameTag.getNameTag().background().seeThrough()) {
-                packetNameTag.setSeeThrough(!sneaking);
+                packetNameTag.setSeeThrough(!isSneaking);
             }
-            packetNameTag.setTextOpacity((byte) (sneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
+            packetNameTag.setTextOpacity((byte) (isSneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
             packetNameTag.refresh();
         });
     }
