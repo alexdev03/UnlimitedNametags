@@ -36,7 +36,7 @@ public class Settings {
 
     public NameTag getNametag(Player player) {
         return nameTags.entrySet().stream()
-                .filter(entry -> player.hasPermission(entry.getValue().permission))
+                .filter(entry -> entry.getValue().permission == null || player.hasPermission(entry.getValue().permission))
                 .findFirst()
                 .map(Map.Entry::getValue)
                 .orElse(nameTags.get("default"));
