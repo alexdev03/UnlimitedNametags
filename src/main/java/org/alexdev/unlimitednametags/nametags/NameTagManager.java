@@ -14,6 +14,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.alexdev.unlimitednametags.hook.HMCCosmeticsHook;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.bukkit.*;
@@ -75,9 +76,12 @@ public class NameTagManager {
 
         // Refresh passengers
         final MyScheduledTask passengers = plugin.getTaskScheduler().runTaskTimerAsynchronously(() ->
-                        Bukkit.getOnlinePlayers().forEach(player ->
-                                getPacketDisplayText(player)
-                                        .ifPresent(PacketNameTag::sendPassengerPacketToViewers))
+                        Bukkit.getOnlinePlayers()
+                                .stream()
+                                .filter(p -> plugin.getHook(HMCCosmeticsHook.class).map(h -> !h.hasBackpack(p)).orElse(true))
+                                .forEach(player ->
+                                        getPacketDisplayText(player)
+                                                .ifPresent(PacketNameTag::sendPassengerPacketToViewers))
                 , 20, 20 * 5L);
 
         // Scale task

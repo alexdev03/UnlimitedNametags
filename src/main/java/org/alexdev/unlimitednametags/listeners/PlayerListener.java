@@ -67,6 +67,7 @@ public class PlayerListener implements PackSendHandler {
         if (player == null) {
             return Optional.empty();
         }
+
         return Optional.ofNullable(plugin.getServer().getPlayer(player));
     }
 

@@ -23,7 +23,6 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class PacketEventsListener extends PacketListenerAbstract {
 
@@ -124,18 +123,31 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
+        final List<Integer> passengers = collectPassengers(packet.getPassengers());
         final Optional<PacketNameTag> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player.get());
         if (optionalPacketDisplayText.isEmpty()) {
+            plugin.getPacketManager().setPassengers(player.get(), passengers);
             return;
         }
 
-        final List<Integer> passengers = Arrays.stream(packet.getPassengers()).boxed().collect(Collectors.toList());
-
-        plugin.getPacketManager().setPassengers(player.get(), passengers);
         if(!passengers.contains(optionalPacketDisplayText.get().getEntityId())) {
             passengers.add(optionalPacketDisplayText.get().getEntityId());
+            passengers.sort(Comparator.naturalOrder());
             packet.setPassengers(passengers.stream().mapToInt(i -> i).toArray());
+            event.markForReEncode(true);
         }
+
+        plugin.getPacketManager().setPassengers(player.get(), passengers);
+    }
+
+    @NotNull
+    private List<Integer> collectPassengers(int[] passengers) {
+        final  List<Integer> passengerList = new ArrayList<>(passengers.length);
+        for (int passenger : passengers) {
+            passengerList.add(passenger);
+        }
+
+        return passengerList;
     }
 
     private boolean preTeamsChecks(@NotNull PacketSendEvent event) {

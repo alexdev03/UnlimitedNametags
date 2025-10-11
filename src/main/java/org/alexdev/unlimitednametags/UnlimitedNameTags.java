@@ -247,6 +247,12 @@ public final class UnlimitedNameTags extends JavaPlugin {
             getLogger().info("FeatherServerAPI found, hooking into it");
         }
 
+        if (Bukkit.getPluginManager().isPluginEnabled("HMCCosmetics")) {
+            final HMCCosmeticsHook hook = new HMCCosmeticsHook(this);
+            hooks.put(HMCCosmeticsHook.class, hook);
+            getLogger().info("HMCCosmetics found, hooking into it");
+        }
+
 //        if (Bukkit.getPluginManager().isPluginEnabled("LabyModServerAPI")) {
 //            final LabyModHook hook = new LabyModHook(this);
 //            hooks.put(LabyModHook.class, hook);

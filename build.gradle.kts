@@ -44,6 +44,7 @@ repositories {
         name = "labymod"
         url = uri("https://dist.labymod.net/api/v1/maven/release/")
     }
+    maven("https://repo.hibiscusmc.com/releases")
 }
 
 dependencies {
@@ -74,6 +75,7 @@ dependencies {
     compileOnly(libs.creative.rp)
     compileOnly(libs.creative.serializer)
     compileOnly(libs.libs.disguises)
+    compileOnly(libs.hmcCosmetics)
 
     implementation(libs.minedownAdventure)
     implementation(libs.drink)
@@ -164,7 +166,7 @@ tasks.jar {
 
 tasks {
     runServer {
-        minecraftVersion("1.21.10")
+        minecraftVersion("1.21.8")
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")

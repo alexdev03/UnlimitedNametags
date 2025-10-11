@@ -28,6 +28,7 @@ creative-serializer = "1.9.2-SNAPSHOT"
 libs-disguises = "11.0.0"
 featherVersion = "0.0.5"
 labymodVersion = "1.0.6"
+hmcCosmetics = "2.8.2-fed13b8e"
 
 [libraries]
 paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApiVersion" }
@@ -60,3 +61,4 @@ creative-serializer = { module = "team.unnamed:creative-serializer-minecraft", v
 libs-disguises = { module = "me.libraryaddict.disguises:libsdisguises", version.ref = "libs-disguises" }
 feather = { module = "net.digitalingot.feather-server-api:api", version.ref = "featherVersion" }
 labymod = { module = "net.labymod.serverapi:server-bukkit", version.ref = "labymodVersion" }
+hmcCosmetics = { module = "com.hibiscusmc:HMCCosmetics", version.ref = "hmcCosmetics" }
