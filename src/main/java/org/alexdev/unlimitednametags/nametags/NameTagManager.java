@@ -26,7 +26,6 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -342,9 +341,13 @@ public class NameTagManager {
             if (force && isScalePresent()) {
                 packetNameTag.checkScale();
             }
+
+            final boolean shadowed = nameTag.background().shadowed();
+            final boolean seeThrough = nameTag.background().seeThrough();
+            final int backgroundColor = nameTag.background().getColor().asARGB();
+
             components.forEach((p, c) -> {
-                final AtomicBoolean update = new AtomicBoolean(false);
-                update.set(packetNameTag.text(p, c) || force);
+                final boolean[] updateRef = {packetNameTag.text(p, c) || force};
                 final User user = PacketEvents.getAPI().getPlayerManager().getUser(p);
                 if (user == null) {
                     return;
@@ -352,25 +355,24 @@ public class NameTagManager {
                 packetNameTag.modify(user, m -> {
 
                     if (force) {
-                        m.setShadow(nameTag.background().shadowed());
-                        m.setSeeThrough(nameTag.background().seeThrough());
-                        m.setBackgroundColor(nameTag.background().getColor().asARGB());
-                        update.set(true);
+                        m.setShadow(shadowed);
+                        m.setSeeThrough(seeThrough);
+                        m.setBackgroundColor(backgroundColor);
                     } else {
-                        if (m.isShadow() != nameTag.background().shadowed()) {
-                            m.setShadow(nameTag.background().shadowed());
-                            update.set(true);
+                        if (m.isShadow() != shadowed) {
+                            m.setShadow(shadowed);
+                            updateRef[0] = true;
                         }
-                        if (m.isSeeThrough() != nameTag.background().seeThrough()) {
-                            m.setSeeThrough(nameTag.background().seeThrough());
-                            update.set(true);
+                        if (m.isSeeThrough() != seeThrough) {
+                            m.setSeeThrough(seeThrough);
+                            updateRef[0] = true;
                         }
                     }
 
 
                 });
 
-                if (update.get()) {
+                if (updateRef[0]) {
                     packetNameTag.refreshForPlayer(p);
                 }
             });

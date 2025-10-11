@@ -16,6 +16,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -66,7 +67,9 @@ public class PacketManager {
                 return;
             }
 
-            final Set<Integer> passengers = Sets.newHashSet(this.passengers.get(packetNameTag.getOwner().getUniqueId()));
+            final Collection<Integer> ownerPassengers = this.passengers.get(packetNameTag.getOwner().getUniqueId());
+            final Set<Integer> passengers = Sets.newHashSetWithExpectedSize(ownerPassengers.size() + 1);
+            passengers.addAll(ownerPassengers);
             passengers.add(entityId);
             final int[] passengersArray = passengers.stream().mapToInt(i -> i).toArray();
             final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(ownerId, passengersArray);
