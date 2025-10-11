@@ -486,6 +486,8 @@ public class NameTagManager {
             if (packetNameTag.getNameTag().background().seeThrough()) {
                 packetNameTag.setSeeThrough(!sneaking);
             }
+
+            packetNameTag.setSneaking(sneaking);
             packetNameTag.setTextOpacity((byte) (sneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
             packetNameTag.refresh();
         });

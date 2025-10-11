@@ -51,7 +51,6 @@ public class PlaceholderManager {
     private int index = maxIndex;
     private int mmIndex = maxMIndex;
     private DecimalFormat decimalFormat;
-    private UntPapiExpansion untPapiExpansion;
 
     private BigDecimal miniGradientIndexBD = new BigDecimal("-1.0");
     private final BigDecimal stepBD = new BigDecimal("0.1");
@@ -155,9 +154,7 @@ public class PlaceholderManager {
 
     public void close() {
         this.executorService.shutdown();
-        if (this.papiManager.isPapiEnabled() && this.untPapiExpansion != null) {
-            this.untPapiExpansion.unregister();
-        }
+        papiManager.close();
     }
 
 

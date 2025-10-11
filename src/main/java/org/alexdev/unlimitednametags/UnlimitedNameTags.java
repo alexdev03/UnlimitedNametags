@@ -138,6 +138,8 @@ public final class UnlimitedNameTags extends JavaPlugin {
     private void loadListeners() {
         playerListener = new PlayerListener(this);
         Bukkit.getPluginManager().registerEvents(playerListener, this);
+        Bukkit.getPluginManager().registerEvents(new OtherListener(this), this);
+
 
         if (isPaper) {
             getLogger().info("Paper found, using Paper's tracker");
@@ -214,13 +216,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
             hooks.put(ItemsAdderHook.class, hook);
         }
 
-        if (Bukkit.getPluginManager().isPluginEnabled("HMCCosmetics")) {
-            getLogger().info("HMCCosmetics found, hooking into it");
-            final HMCCosmeticsHook hook = new HMCCosmeticsHook(this);
-            hatHooks.add(hook);
-            hooks.put(HMCCosmeticsHook.class, hook);
-        }
-
 
         if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
             final ViaVersionHook hook = new ViaVersionHook(this);
@@ -245,6 +240,18 @@ public final class UnlimitedNameTags extends JavaPlugin {
             hooks.put(LibsDisguisesHook.class, hook);
             getLogger().info("LibsDisguises found, hooking into it");
         }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("FeatherServerAPI")) {
+            final FeatherClientHook hook = new FeatherClientHook(this);
+            hooks.put(FeatherClientHook.class, hook);
+            getLogger().info("FeatherServerAPI found, hooking into it");
+        }
+
+//        if (Bukkit.getPluginManager().isPluginEnabled("LabyModServerAPI")) {
+//            final LabyModHook hook = new LabyModHook(this);
+//            hooks.put(LabyModHook.class, hook);
+//            getLogger().info("LabyModServerAPI found, hooking into it");
+//        }
 
         hooks.values().forEach(Hook::onEnable);
     }

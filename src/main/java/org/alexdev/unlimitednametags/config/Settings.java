@@ -86,7 +86,7 @@ public class Settings {
     @Comment("How long to cache placeholders for (in ticks)")
     private int placeholderCacheTime = 1;
 
-    private boolean enableRelationalPlaceholders = true;
+    private boolean enableRelationalPlaceholders = false;
 
     public float getViewDistance() {
         return viewDistance / 160;

@@ -52,6 +52,8 @@ public class PacketNameTag {
     private float offset;
     private float increasedOffset;
     private boolean removed;
+    @Setter
+    private boolean sneaking;
 
     public PacketNameTag(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
         this.plugin = plugin;
@@ -508,7 +510,7 @@ public class PacketNameTag {
     private void applyOwnerData(@NotNull WrapperEntity wrapper) {
         final User ownerUser = PacketEvents.getAPI().getPlayerManager().getUser(owner);
         final Metadata metadata = wrapper.getEntityMeta().getMetadata();
-        final Optional<EntityData> component = wrapper.getEntityMeta().entityData()
+        final Optional<EntityData<?>> component = wrapper.getEntityMeta().entityData()
                 .stream()
                 .filter(e -> e.getType() == EntityDataTypes.ADV_COMPONENT)
                 .findFirst();

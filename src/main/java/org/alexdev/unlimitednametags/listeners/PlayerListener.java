@@ -30,11 +30,14 @@ public class PlayerListener implements PackSendHandler {
     private final UnlimitedNameTags plugin;
     private final Set<UUID> diedPlayers;
     private final Map<Integer, UUID> playerEntityId;
+    @Getter
+    private final Map<String, UUID> playerNameId;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.diedPlayers = Sets.newConcurrentHashSet();
         this.playerEntityId = Maps.newConcurrentMap();
+        this.playerNameId = Maps.newConcurrentMap();
         this.loadFoliaRespawnTask();
         this.loadEntityIds();
     }
@@ -67,6 +70,17 @@ public class PlayerListener implements PackSendHandler {
         return Optional.ofNullable(plugin.getServer().getPlayer(player));
     }
 
+    @EventHandler
+    public void onPlayerLogin(PlayerLoginEvent event) {
+        final String name = event.getPlayer().getName();
+        playerNameId.put(name, event.getPlayer().getUniqueId());
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            if (Bukkit.getPlayer(name) == null) {
+                playerNameId.remove(name);
+            }
+        }, 40);
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), true), 6);
@@ -76,6 +90,7 @@ public class PlayerListener implements PackSendHandler {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
         plugin.getPacketEventsListener().removePlayerData(event.getPlayer());
+        playerNameId.remove(event.getPlayer().getName());
         diedPlayers.remove(event.getPlayer().getUniqueId());
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             plugin.getNametagManager().removePlayer(event.getPlayer());

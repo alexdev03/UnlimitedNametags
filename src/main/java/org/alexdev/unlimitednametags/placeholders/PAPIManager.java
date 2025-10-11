@@ -1,22 +1,28 @@
 package org.alexdev.unlimitednametags.placeholders;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-@RequiredArgsConstructor
 public class PAPIManager {
 
     private final UnlimitedNameTags plugin;
     @Getter
-    private final boolean papiEnabled;
+    private boolean papiEnabled;
     private UntPapiExpansion untPapiExpansion;
 
-    public PAPIManager(UnlimitedNameTags plugin) {
+    public PAPIManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
+        this.checkPapiEnabled();
+    }
+
+    public void checkPapiEnabled() {
+        if (papiEnabled) {
+            return;
+        }
+
         this.papiEnabled = plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
         if (papiEnabled) {
             try {
