@@ -51,7 +51,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        hooks = Maps.newConcurrentMap();
+        hooks = Maps.newHashMap();
         hatHooks = Lists.newCopyOnWriteArrayList();
     }
 
@@ -249,6 +249,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
         if (Bukkit.getPluginManager().isPluginEnabled("HMCCosmetics")) {
             final HMCCosmeticsHook hook = new HMCCosmeticsHook(this);
+            hatHooks.add(hook);
             hooks.put(HMCCosmeticsHook.class, hook);
             getLogger().info("HMCCosmetics found, hooking into it");
         }
