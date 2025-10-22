@@ -5,7 +5,6 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.0.0"
     id("xyz.jpenilla.run-paper") version "2.3.1"
-//    id("com.github.gmazzo.buildconfig") version "5.6.7"
 }
 
 group = "org.alexdev"
@@ -30,7 +29,7 @@ repositories {
     maven("https://repo.oraxen.com/snapshots")
     maven("https://jitpack.io")
     maven("https://repo.viaversion.com")
-    maven("https://maven.evokegames.gg/snapshots")
+    //maven("https://maven.evokegames.gg/snapshots")
     maven("https://repo.alessiodp.com/releases")
     maven("https://maven.typewritermc.com/beta")
     maven("https://repo.nexomc.com/snapshots/")
@@ -217,19 +216,3 @@ tasks.processResources {
     }
 
 }
-
-//buildConfig {
-//    className.set("LibVersions")
-//
-//    packageName.set("org.alexdev.unlimitednametags.config")
-//
-//    buildConfigField(
-//        "String",
-//        "CONFIG_LIB_VERSION",
-//        "\"${libs.versions.configlibVersion.get()}\""
-//    )
-//
-//    buildConfigField("String", "APP_VERSION", "\"$version\"")
-//
-//    buildConfigField("int", "MAX_RETRIES", "5")
-//}
