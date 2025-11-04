@@ -1,6 +1,5 @@
 package org.alexdev.unlimitednametags.config;
 
-import de.themoep.minedown.adventure.MineDown;
 import lombok.AccessLevel;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
@@ -19,10 +18,6 @@ import java.util.regex.Pattern;
 @SuppressWarnings("unused")
 public enum Formatter {
 
-    MINEDOWN(
-            (plugin, player, text) -> new MineDown(text).toComponent(),
-            "MineDown"
-    ),
     MINIMESSAGE(
             (plugin, player, text) -> plugin.getHook(MiniPlaceholdersHook.class)
                     .map(hook -> hook.format(text, player))

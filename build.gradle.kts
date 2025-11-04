@@ -76,7 +76,6 @@ dependencies {
     compileOnly(libs.libs.disguises)
     compileOnly(libs.hmcCosmetics)
 
-    implementation(libs.minedownAdventure)
     implementation(libs.drink)
     implementation(libs.universalScheduler)
     implementation(libs.libbyBukkit)
@@ -163,9 +162,11 @@ tasks.jar {
     }
 }
 
+
+
 tasks {
     runServer {
-        minecraftVersion("1.21.8")
+        minecraftVersion("1.21.10")
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
