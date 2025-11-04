@@ -264,46 +264,79 @@ public class PacketNameTag {
 
     private boolean isEligibleToShow(@NotNull Player player) {
         if (!visible) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Nametag is not visible for " + owner.getName());
+            }
             return false;
         }
 
         if (plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " is on a version that does not support text displays.");
+            }
             return false;
         }
 
         if (blocked.contains(player.getUniqueId())) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " is blocked from seeing nametag of " + owner.getName());
+            }
             return false;
         }
 
         if (!player.canSee(owner)) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " cannot see owner " + owner.getName());
+            }
             return false;
         }
 
         if (player.getWorld() != owner.getWorld()) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " is in a different world than owner " + owner.getName());
+            }
             return false;
         }
 
         if (isPlayerChannelNotValid(player) || isPlayerChannelNotValid(owner)) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " or owner " + owner.getName() + " has an invalid channel/user.");
+            }
             return false;
         }
 
         if (!hasRequiredPermissions(player)) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " does not have required permissions to see nametag of " + owner.getName());
+            }
             return false;
         }
 
         if (plugin.getNametagManager().isHiddenOtherNametags(player)) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " has other nametags hidden.");
+            }
             return false;
         }
 
         if (plugin.getConfigManager().getSettings().isShowWhileLooking() &&
                 !plugin.getNametagManager().isPlayerPointingAt(player, owner)) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " is not looking at owner " + owner.getName());
+            }
             return false;
         }
 
         if (plugin.getConfigManager().getSettings().isShowCurrentNameTag() && player.getUniqueId() == owner.getUniqueId()) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Player " + player.getName() + " is the owner and show current nametag is enabled.");
+            }
             return true;
         }
 
+        if (plugin.getNametagManager().isDebug() && !getViewers().contains(player.getUniqueId())) {
+            plugin.getLogger().info("Player " + player.getName() + " is eligible to see nametag of " + owner.getName());
+        }
         return !getViewers().contains(player.getUniqueId());
     }
 
@@ -384,7 +417,7 @@ public class PacketNameTag {
         final Location location = owner.getLocation().clone();
         location.setPitch(0);
         location.setYaw(-180);
-        location.setY(location.getY() + (1.8) * scale );
+        location.setY(location.getY() + (1.8) * scale);
         return location;
     }
 
@@ -448,7 +481,7 @@ public class PacketNameTag {
 
     public void refresh() {
         perPlayerEntity.getEntities().forEach((u, e) -> {
-            if(blocked.contains(u)) {
+            if (blocked.contains(u)) {
                 return;
             }
 
@@ -462,7 +495,7 @@ public class PacketNameTag {
             return;
         }
 
-        if(blocked.contains(player.getUniqueId())) {
+        if (blocked.contains(player.getUniqueId())) {
             return;
         }
 

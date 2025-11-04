@@ -19,10 +19,7 @@ import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class PlayerListener implements PackSendHandler {
 
@@ -144,9 +141,9 @@ public class PlayerListener implements PackSendHandler {
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
         if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
             plugin.getNametagManager().unblockPlayer(e.getPlayer());
-            plugin.getNametagManager().showToTrackedPlayers(e.getPlayer(), plugin.getTrackerManager().getTrackedPlayers().get(e.getPlayer().getUniqueId()));
+            plugin.getNametagManager().showToTrackedPlayers(e.getPlayer());
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().removeAllViewers(e.getPlayer());
+            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().removeAllViewers(e.getPlayer()), 2);
         }
     }
 
@@ -159,9 +156,17 @@ public class PlayerListener implements PackSendHandler {
     @EventHandler
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
+        if (event.getPlayer().getGameMode() == GameMode.SPECTATOR) {
+            return;
+        }
+
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            plugin.getNametagManager().showToTrackedPlayers(event.getPlayer());
-        }, 2);
+            final List<UUID> nearbyPlayers = Bukkit.getOnlinePlayers().stream()
+                    .filter(p -> p.getWorld().equals(event.getPlayer().getWorld()) && p.getLocation().distanceSquared(event.getPlayer().getLocation()) <= 6400)
+                    .map(Player::getUniqueId)
+                    .toList();
+            plugin.getNametagManager().showToTrackedPlayers(event.getPlayer(), nearbyPlayers);
+        }, 4);
     }
 
     @EventHandler

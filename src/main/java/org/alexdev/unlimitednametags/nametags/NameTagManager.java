@@ -400,7 +400,6 @@ public class NameTagManager {
             //background color, if disabled, set to transparent
             display.setBackgroundColor(nameTag.background().getColor());
 
-//            display.setTransformation(new Vector3f(0, plugin.getConfigManager().getSettings().getYOffset(), 0));
             display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
@@ -528,7 +527,12 @@ public class NameTagManager {
                     .map(Bukkit::getPlayer)
                     .filter(Objects::nonNull)
                     .map(Player::getName)
-                    .toList();
+                    .collect(Collectors.toList());
+
+            if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+                viewers.remove(player.getName());
+            }
+
             final long lastUpdate = display.getLastUpdate();
 
             final Component text = getComponent(display, viewers, player, lastUpdate);
