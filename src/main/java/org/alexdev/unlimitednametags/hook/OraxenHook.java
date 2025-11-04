@@ -59,7 +59,16 @@ public class OraxenHook extends Hook implements Listener, HatHook {
     }
 
     private int getCustomModelData(@NotNull OraxenMeta meta) {
-        return meta.getCustomModelData();
+        try {
+            if (meta.getCustomModelData() == null) {
+                return 0;
+            }
+
+            return meta.getCustomModelData();
+        } catch (NoSuchMethodError | NullPointerException e) {
+            // Compatibility with older Oraxen versions
+            return 0;
+        }
     }
 
     private String getModelName(OraxenMeta meta) {
