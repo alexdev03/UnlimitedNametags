@@ -39,6 +39,8 @@ public class NameTagManager {
     private final Set<UUID> creating;
     private final Set<UUID> blocked;
     private final Set<UUID> hideNametags;
+    private final Map<UUID, Settings.NameTag> nameTagOverrides;
+    private final Map<UUID, Boolean> shiftSystemBlocked;
     private final List<MyScheduledTask> tasks;
     @Setter
     private boolean debug = false;
@@ -52,6 +54,8 @@ public class NameTagManager {
         this.creating = Sets.newConcurrentHashSet();
         this.blocked = Sets.newConcurrentHashSet();
         this.hideNametags = Sets.newConcurrentHashSet();
+        this.nameTagOverrides = Maps.newConcurrentMap();
+        this.shiftSystemBlocked = Maps.newConcurrentMap();
         this.loadAll();
         this.scaleAttribute = loadScaleAttribute();
     }
@@ -201,6 +205,27 @@ public class NameTagManager {
         blocked.remove(uuid);
         creating.remove(uuid);
         hideNametags.remove(uuid);
+        nameTagOverrides.remove(uuid);
+        shiftSystemBlocked.remove(uuid);
+    }
+
+    public boolean hasNametagOverride(@NotNull Player player) {
+        return nameTagOverrides.containsKey(player.getUniqueId());
+    }
+
+    @NotNull
+    public Optional<Settings.NameTag> getNametagOverride(@NotNull Player player) {
+        return Optional.ofNullable(nameTagOverrides.get(player.getUniqueId()));
+    }
+
+    @NotNull
+    public Settings.NameTag getEffectiveNametag(@NotNull Player player) {
+        return nameTagOverrides.getOrDefault(player.getUniqueId(), plugin.getConfigManager().getSettings().getNametag(player));
+    }
+
+    @NotNull
+    public Settings.NameTag getConfigNametag(@NotNull Player player) {
+        return plugin.getConfigManager().getSettings().getNametag(player);
     }
 
     private boolean preAddChecks(@NotNull Player player, boolean canBlock) {
@@ -266,7 +291,7 @@ public class NameTagManager {
 
         creating.add(player.getUniqueId());
 
-        final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
+        final Settings.NameTag nametag = getEffectiveNametag(player);
         final PacketNameTag display = new PacketNameTag(plugin, player, nametag);
         display.text(player, Component.empty());
         display.spawn(player);
@@ -293,7 +318,7 @@ public class NameTagManager {
     }
 
     public void refresh(@NotNull Player player, boolean force) {
-        final Settings.NameTag nametag = plugin.getConfigManager().getSettings().getNametag(player);
+        final Settings.NameTag nametag = getEffectiveNametag(player);
 
         if (PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
             return;
@@ -487,6 +512,10 @@ public class NameTagManager {
     }
 
     public void updateSneaking(@NotNull Player player, boolean sneaking) {
+        if (shiftSystemBlocked.getOrDefault(player.getUniqueId(), false)) {
+            return;
+        }
+
         getPacketDisplayText(player).ifPresent(packetNameTag -> {
             if (packetNameTag.getNameTag().background().seeThrough()) {
                 packetNameTag.setSeeThrough(!sneaking);
@@ -706,5 +735,76 @@ public class NameTagManager {
 
     public boolean isHiddenOtherNametags(@NotNull Player player) {
         return hideNametags.contains(player.getUniqueId());
+    }
+
+    public void swapNametag(@NotNull Player player, @NotNull Settings.NameTag nameTag) {
+        final PacketNameTag display = nameTags.get(player.getUniqueId());
+        if (display == null) {
+            return;
+        }
+
+        display.setNameTag(nameTag);
+
+        final List<Player> relationalPlayers = display.getViewers().stream()
+                .map(Bukkit::getPlayer)
+                .filter(Objects::nonNull)
+                .toList();
+
+        plugin.getPlaceholderManager().applyPlaceholders(player, nameTag.linesGroups(), relationalPlayers)
+                .thenAccept(lines -> {
+                    final Component component = lines.get(player);
+                    display.text(player, component);
+                    display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
+                    display.setShadowed(nameTag.background().shadowed());
+                    display.setSeeThrough(nameTag.background().seeThrough());
+                    display.setBackgroundColor(nameTag.background().getColor());
+                    display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
+                    display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
+
+                    plugin.getTaskScheduler().runTaskLater(() -> display.modifyOwner(meta -> meta.setText(component)), 1);
+
+                    lines.forEach((p, c) -> {
+                        if (!p.equals(player)) {
+                            display.text(p, c);
+                        }
+                    });
+
+                    display.refresh();
+                })
+                .exceptionally(throwable -> {
+                    plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to swap nametag for " + player.getName(), throwable);
+                    return null;
+                });
+    }
+
+    public void setNametagOverride(@NotNull Player player, @NotNull Settings.NameTag nameTag) {
+        nameTagOverrides.put(player.getUniqueId(), nameTag);
+
+        final PacketNameTag display = nameTags.get(player.getUniqueId());
+        if (display != null) {
+            swapNametag(player, nameTag);
+        }
+    }
+
+    public void removeNametagOverride(@NotNull Player player) {
+        nameTagOverrides.remove(player.getUniqueId());
+
+        final PacketNameTag display = nameTags.get(player.getUniqueId());
+        if (display != null) {
+            final Settings.NameTag configNametag = getConfigNametag(player);
+            swapNametag(player, configNametag);
+        }
+    }
+
+    public void setShiftSystemBlocked(@NotNull Player player, boolean blocked) {
+        if (blocked) {
+            shiftSystemBlocked.put(player.getUniqueId(), true);
+        } else {
+            shiftSystemBlocked.remove(player.getUniqueId());
+        }
+    }
+
+    public boolean isShiftSystemBlocked(@NotNull Player player) {
+        return shiftSystemBlocked.getOrDefault(player.getUniqueId(), false);
     }
 }

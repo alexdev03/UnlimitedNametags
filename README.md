@@ -116,8 +116,6 @@ Unlimited Name Tags works seamlessly with:
 - **MiniPlaceholders**: Works when using MiniMessage for advanced formatting.
 - **Custom Plugins**: Easily hook into your custom plugins to extend functionality.
 
----
-
 ## 📜 **Supported Versions**
 - **Paper**: Fully supported from **1.20.1+** *(highly recommended)*.
 - **Spigot**: Supported from **1.20.2+**, but Paper is preferred for enhanced performance. (Not all spigot versions can be supported)

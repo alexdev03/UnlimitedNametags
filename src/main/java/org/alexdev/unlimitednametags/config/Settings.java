@@ -14,6 +14,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.Color;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -100,10 +101,35 @@ public class Settings {
     public record PlaceholderReplacement(String placeholder, String replacement) {
     }
 
-    public record NameTag(String permission, List<LinesGroup> linesGroups, Background background, float scale) {
+    public record NameTag(@Nullable String permission, @NotNull List<LinesGroup> linesGroups, @NotNull Background background, float scale) {
+
+        public NameTag(@NotNull List<LinesGroup> linesGroups, @NotNull Background background, float scale) {
+            this(null, linesGroups, background, scale);
+        }
+
+        @NotNull
+        public NameTag withPermission(@Nullable String permission) {
+            return new NameTag(permission, linesGroups, background, scale);
+        }
+
+        @NotNull
+        public NameTag withLinesGroups(@NotNull List<LinesGroup> linesGroups) {
+            return new NameTag(permission, linesGroups, background, scale);
+        }
+
+        @NotNull
+        public NameTag withBackground(@NotNull Background background) {
+            return new NameTag(permission, linesGroups, background, scale);
+        }
+
+        @NotNull
+        public NameTag withScale(float scale) {
+            return new NameTag(permission, linesGroups, background, scale);
+        }
+
     }
 
-    public record LinesGroup(List<String> lines, List<Modifier> modifiers) {
+    public record LinesGroup(@NotNull List<String> lines, @Nullable List<Modifier> modifiers) {
 
     }
 
@@ -194,7 +220,12 @@ public class Settings {
 
         @Override
         public Color getColor() {
-            return !enabled ? Color.BLACK.setAlpha(0) : Color.fromRGB(red, green, blue).setAlpha(opacity);
+            return !enabled() ? Color.BLACK.setAlpha(0) : Color.fromRGB(red, green, blue).setAlpha(opacity());
+        }
+
+        @NotNull
+        public IntegerBackground clone() {
+            return new IntegerBackground(enabled(), getRed(), getGreen(), getBlue(), opacity(), shadowed(), seeThrough());
         }
     }
 
@@ -213,7 +244,12 @@ public class Settings {
         @Override
         public Color getColor() {
             int hex = Integer.parseInt(this.hex.substring(1), 16);
-            return !enabled ? Color.BLACK.setAlpha(0) : Color.fromRGB(hex).setAlpha(opacity);
+            return !enabled() ? Color.BLACK.setAlpha(0) : Color.fromRGB(hex).setAlpha(opacity());
+        }
+
+        @NotNull
+        public HexBackground clone() {
+            return new HexBackground(enabled(), getHex(), opacity(), shadowed(), seeThrough());
         }
     }
 }
