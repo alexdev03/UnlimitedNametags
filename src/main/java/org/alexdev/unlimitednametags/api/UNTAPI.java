@@ -2,6 +2,7 @@ package org.alexdev.unlimitednametags.api;
 
 
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
+import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
@@ -357,6 +358,60 @@ public class UNTAPI {
         }
         final Settings.NameTag modified = current.withBackground(newBg);
         plugin.getNametagManager().setNametagOverride(player, modified);
+    }
+
+    /**
+     * Forces a specific component as the nametag for a player.
+     * This overrides any existing nametag configuration or overrides.
+     *
+     * @param player the player whose nametag should be forced
+     * @param component the component to display as the nametag
+     */
+    public void setForcedNametag(@NotNull Player player, @NotNull Component component) {
+        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+            packetNameTag.setForcedNameTag(component);
+            packetNameTag.refresh();
+        });
+    }
+
+    /**
+     * Forces a specific component as the nametag for a player, visible only to a specific viewer.
+     * This overrides any existing nametag configuration or overrides for that specific viewer.
+     *
+     * @param player the player whose nametag should be forced
+     * @param viewer the player who will see the forced nametag
+     * @param component the component to display as the nametag
+     */
+    public void setForcedNametag(@NotNull Player player, @NotNull Player viewer, @NotNull Component component) {
+        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+            packetNameTag.setForcedNameTag(viewer.getUniqueId(), component);
+            packetNameTag.refreshForPlayer(viewer);
+        });
+    }
+
+    /**
+     * Clears the forced nametag for a player.
+     *
+     * @param player the player whose forced nametag should be cleared
+     */
+    public void clearForcedNametag(@NotNull Player player) {
+        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+            packetNameTag.clearForcedNameTag();
+            packetNameTag.refresh();
+        });
+    }
+
+    /**
+     * Clears the forced nametag for a player, for a specific viewer.
+     *
+     * @param player the player whose forced nametag should be cleared
+     * @param viewer the player who was seeing the forced nametag
+     */
+    public void clearForcedNametag(@NotNull Player player, @NotNull Player viewer) {
+        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+            packetNameTag.clearForcedNameTag(viewer.getUniqueId());
+            packetNameTag.refreshForPlayer(viewer);
+        });
     }
 
     static final class NotRegisteredException extends IllegalStateException {

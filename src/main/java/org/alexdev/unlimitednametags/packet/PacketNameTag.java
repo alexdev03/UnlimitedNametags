@@ -27,6 +27,7 @@ import org.bukkit.Location;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -43,6 +44,9 @@ public class PacketNameTag {
     private final Set<UUID> blocked;
     @NotNull
     private final Map<UUID, Component> relationalCache;
+    private final Map<UUID, Component> calculatedTextCache = Maps.newConcurrentMap();
+    private final Map<UUID, Component> forcedRelationalText = Maps.newConcurrentMap();
+    private volatile Component forcedGlobalText = null;
     private long lastUpdate;
     @Setter
     private boolean visible;
@@ -51,7 +55,7 @@ public class PacketNameTag {
     private float scale;
     private float offset;
     private float increasedOffset;
-    private boolean removed;
+    private volatile boolean removed;
     @Setter
     private boolean sneaking;
 
@@ -84,6 +88,16 @@ public class PacketNameTag {
             return false;
         }
 
+        calculatedTextCache.put(player.getUniqueId(), text);
+
+        if (forcedRelationalText.containsKey(player.getUniqueId()) || forcedGlobalText != null) {
+            return false;
+        }
+
+        return applyText(player, text);
+    }
+
+    private boolean applyText(@NotNull Player player, @NotNull Component text) {
         if (text.equals(relationalCache.get(player.getUniqueId()))) {
             return false;
         }
@@ -99,7 +113,7 @@ public class PacketNameTag {
         return true;
     }
 
-    public void modify(User user, Consumer<TextDisplayMeta> consumer) {
+    public void modify(@Nullable User user, @NotNull Consumer<TextDisplayMeta> consumer) {
         if (removed) {
             return;
         }
@@ -114,7 +128,7 @@ public class PacketNameTag {
         });
     }
 
-    public void modifyOwner(Consumer<TextDisplayMeta> consumer) {
+    public void modifyOwner(@NotNull Consumer<TextDisplayMeta> consumer) {
         if (removed) {
             return;
         }
@@ -127,7 +141,7 @@ public class PacketNameTag {
         modify(owner, consumer);
     }
 
-    public void modifyOwnerEntity(Consumer<WrapperEntity> consumer) {
+    public void modifyOwnerEntity(@NotNull Consumer<WrapperEntity> consumer) {
         if (removed) {
             return;
         }
@@ -140,7 +154,7 @@ public class PacketNameTag {
         modifyEntity(owner, consumer);
     }
 
-    public void modify(Consumer<TextDisplayMeta> consumer) {
+    public void modify(@NotNull Consumer<TextDisplayMeta> consumer) {
         if (removed) {
             return;
         }
@@ -151,7 +165,7 @@ public class PacketNameTag {
         });
     }
 
-    public void modifyEntity(User user, Consumer<WrapperEntity> consumer) {
+    public void modifyEntity(@Nullable User user, @NotNull Consumer<WrapperEntity> consumer) {
         if (removed) {
             return;
         }
@@ -159,7 +173,7 @@ public class PacketNameTag {
         perPlayerEntity.modify(user, consumer);
     }
 
-    public void modifyEntity(Consumer<WrapperEntity> consumer) {
+    public void modifyEntity(@NotNull Consumer<WrapperEntity> consumer) {
         if (removed) {
             return;
         }
@@ -354,7 +368,7 @@ public class PacketNameTag {
     }
 
     private boolean hasRequiredPermissions(@NotNull Player player) {
-        boolean isOwner = isOwner(player);
+        final boolean isOwner = isOwner(player);
         if (!isOwner && !player.hasPermission("unt.shownametags")) {
             return false;
         }
@@ -439,6 +453,7 @@ public class PacketNameTag {
 
         }
         relationalCache.remove(player.getUniqueId());
+        calculatedTextCache.remove(player.getUniqueId());
 
         plugin.getPacketManager().removePassenger(player, entityId);
     }
@@ -463,6 +478,7 @@ public class PacketNameTag {
         }
         perPlayerEntity.getEntities().remove(player.getUniqueId());
         relationalCache.remove(player.getUniqueId());
+        calculatedTextCache.remove(player.getUniqueId());
     }
 
     public boolean canPlayerSee(@NotNull Player player) {
@@ -520,6 +536,9 @@ public class PacketNameTag {
 
         plugin.getPacketManager().removePassenger(entityId);
         relationalCache.clear();
+        calculatedTextCache.clear();
+        forcedRelationalText.clear();
+        forcedGlobalText = null;
     }
 
     public void handleQuit(@NotNull Player player) {
@@ -569,6 +588,51 @@ public class PacketNameTag {
         properties.put("increasedOffset", String.valueOf(increasedOffset));
         properties.put("viewRange", String.valueOf(meta.getViewRange()));
         return properties;
+    }
+
+    public void setForcedNameTag(@NotNull Component component) {
+        this.forcedGlobalText = component;
+        updateAllViewers();
+    }
+
+    public void setForcedNameTag(@NotNull UUID viewer, @NotNull Component component) {
+        this.forcedRelationalText.put(viewer, component);
+        updateViewer(viewer);
+    }
+
+    public void clearForcedNameTag() {
+        this.forcedGlobalText = null;
+        updateAllViewers();
+    }
+
+    public void clearForcedNameTag(@NotNull UUID viewer) {
+        this.forcedRelationalText.remove(viewer);
+        updateViewer(viewer);
+    }
+
+    private void updateAllViewers() {
+        for (final UUID uuid : getViewers()) {
+            updateViewer(uuid);
+        }
+    }
+
+    private void updateViewer(@NotNull UUID uuid) {
+        final Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return;
+
+        Component textToUse = calculatedTextCache.get(uuid);
+
+        if (forcedRelationalText.containsKey(uuid)) {
+            textToUse = forcedRelationalText.get(uuid);
+        } else if (forcedGlobalText != null) {
+            textToUse = forcedGlobalText;
+        }
+
+        if (textToUse != null) {
+            if (applyText(player, textToUse)) {
+                refreshForPlayer(player);
+            }
+        }
     }
 
     /**
