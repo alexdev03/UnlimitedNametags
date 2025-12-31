@@ -35,6 +35,7 @@ repositories {
     maven("https://repo.nexomc.com/snapshots/")
     maven("https://repo.nexomc.com/releases")
     maven("https://repo.md-5.net/content/groups/public/")
+    maven("https://mvn.lib.co.nz/public")
     maven {
         name = "feather-repo"
         url = uri("https://repo.feathermc.net/artifactory/maven-releases")
@@ -44,6 +45,7 @@ repositories {
         url = uri("https://dist.labymod.net/api/v1/maven/release/")
     }
     maven("https://repo.hibiscusmc.com/releases")
+    maven("https://maven.pvphub.me/tofaa")
 }
 
 dependencies {

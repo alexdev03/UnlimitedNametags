@@ -44,7 +44,7 @@ configlib = { module = "de.exlll:configlib-yaml", version.ref = "configlibVersio
 configlibPaper = { module = "de.exlll:configlib-paper", version.ref = "configlibVersion" }
 minedownAdventure = { module = "de.themoep:minedown-adventure", version.ref = "minedownAdventureVersion" }
 drink = { module = "com.github.alexdev03:drink", version.ref = "drinkVersion" }
-entityLib = { module = "com.github.Tofaa2.EntityLib:spigot", version.ref = "entityLibVersion" }
+entityLib = { module = "io.github.Tofaa2.EntityLib:spigot", version.ref = "entityLibVersion" }
 packeteventsSpigot = { module = "com.github.retrooper:packetevents-spigot", version.ref = "packeteventsSpigotVersion" }
 universalScheduler = { module = "com.github.Anon8281:UniversalScheduler", version.ref = "universalSchedulerVersion" }
 viaVersionApi = { module = "com.viaversion:viaversion-api", version.ref = "viaVersionApiVersion" }
