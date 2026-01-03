@@ -11,7 +11,7 @@ commonsLangVersion = "3.14.0"
 configlibVersion = "4.6.1"
 minedownAdventureVersion = "1.7.2-SNAPSHOT"
 drinkVersion = "1.5.3"
-entityLibVersion = "cef23ea"
+entityLibVersion = "3.0.3-SNAPSHOT"
 packeteventsSpigotVersion = "2.10.0-SNAPSHOT"
 universalSchedulerVersion = "0.1.6"
 viaVersionApiVersion = "5.0.1"
@@ -44,7 +44,7 @@ configlib = { module = "de.exlll:configlib-yaml", version.ref = "configlibVersio
 configlibPaper = { module = "de.exlll:configlib-paper", version.ref = "configlibVersion" }
 minedownAdventure = { module = "de.themoep:minedown-adventure", version.ref = "minedownAdventureVersion" }
 drink = { module = "com.github.alexdev03:drink", version.ref = "drinkVersion" }
-entityLib = { module = "com.github.Tofaa2.EntityLib:spigot", version.ref = "entityLibVersion" }
+entityLib = { module = "io.github.Tofaa2.EntityLib:spigot", version.ref = "entityLibVersion" }
 packeteventsSpigot = { module = "com.github.retrooper:packetevents-spigot", version.ref = "packeteventsSpigotVersion" }
 universalScheduler = { module = "com.github.Anon8281:UniversalScheduler", version.ref = "universalSchedulerVersion" }
 viaVersionApi = { module = "com.viaversion:viaversion-api", version.ref = "viaVersionApiVersion" }
