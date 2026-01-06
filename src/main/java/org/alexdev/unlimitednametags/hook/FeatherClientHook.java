@@ -7,7 +7,6 @@ import net.digitalingot.feather.serverapi.api.FeatherAPI;
 import net.digitalingot.feather.serverapi.api.event.player.PlayerHelloEvent;
 import net.digitalingot.feather.serverapi.api.model.FeatherMod;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.Collections;
@@ -24,7 +23,7 @@ public class FeatherClientHook extends Hook {
     @Override
     public void onEnable() {
         FeatherAPI.getEventService().subscribe(PlayerHelloEvent.class, event -> {
-            final Player player = Bukkit.getPlayer(event.getPlayer().getUniqueId());
+            final Player player = plugin.getPlayerListener().getPlayer(event.getPlayer().getUniqueId());
             if (player == null) {
                 return;
             }

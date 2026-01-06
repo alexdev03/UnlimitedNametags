@@ -68,6 +68,8 @@ public final class UnlimitedNameTags extends JavaPlugin {
             return;
         }
 
+        loadListeners();
+
         trackerManager = new TrackerManager(this);
         nametagManager = new NameTagManager(this);
         placeholderManager = new PlaceholderManager(this);
@@ -77,7 +79,6 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
 
         loadCommands();
-        loadListeners();
         loadHooks();
         loadStats();
 
@@ -309,6 +310,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
         placeholderManager.close();
         packetManager.close();
         taskScheduler.cancelTasks();
+        playerListener.close();
     }
 
 }

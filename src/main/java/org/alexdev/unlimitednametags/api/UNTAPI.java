@@ -120,7 +120,7 @@ public class UNTAPI {
      * @since 1.5
      */
     public void showNametag(@NotNull Player player) {
-        plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()));
+        plugin.getNametagManager().showToTrackedPlayers(player);
     }
 
     /**

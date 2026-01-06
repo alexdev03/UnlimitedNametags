@@ -1,14 +1,11 @@
 package org.alexdev.unlimitednametags.listeners;
 
-import com.github.retrooper.packetevents.PacketEvents;
-import com.google.common.collect.*;
 import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.data.ConcurrentSetMultimap;
-import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -16,99 +13,175 @@ import java.util.*;
 public class TrackerManager {
 
     private final UnlimitedNameTags plugin;
+
+    /**
+     * Map associating a player (key) with the players they are tracking (value).
+     * A -> [B, C] means A sees B and C.
+     */
     @Getter
     private final ConcurrentSetMultimap<UUID, UUID> trackedPlayers;
+
+    /**
+     * Reverse map associating a player (key) with those who are tracking them (value).
+     * B -> [A] means B is seen by A.
+     * Used to optimize reverse lookups.
+     */
+    private final ConcurrentSetMultimap<UUID, UUID> trackedBy;
 
     public TrackerManager(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.trackedPlayers = new ConcurrentSetMultimap<>();
+        this.trackedBy = new ConcurrentSetMultimap<>();
         loadTracker();
     }
 
-    @SuppressWarnings({"deprecation"})
     private void loadTracker() {
-        final boolean isPaper = plugin.isPaper();
         Bukkit.getOnlinePlayers().forEach(player -> {
-            final Set<Player> currentTracked = (isPaper ? player.getTrackedPlayers() : player.getTrackedBy()).stream()
-                            .filter(p -> Bukkit.getPlayer(p.getUniqueId()) != null)
-                            .collect(ImmutableSet.toImmutableSet());
-            trackedPlayers.putAll(player.getUniqueId(), currentTracked
-                    .stream()
-                    .map(Player::getUniqueId)
-                    .collect(ImmutableSet.toImmutableSet()));
+            // Unsafe call, but run only on startup
+            List<Entity> nearbyEntities = player.getNearbyEntities(
+                    Bukkit.getViewDistance() * 16,
+                    256,
+                    Bukkit.getViewDistance() * 16
+            );
+
+            for (Entity entity : nearbyEntities) {
+                if (entity instanceof Player target) {
+                    trackedPlayers.put(player.getUniqueId(), target.getUniqueId());
+                    trackedBy.put(target.getUniqueId(), player.getUniqueId());
+                }
+            }
         });
     }
 
     public void onDisable() {
         trackedPlayers.clear();
+        trackedBy.clear();
     }
 
-    @NotNull
-    public Set<UUID> getTrackedPlayers(@NotNull UUID player) {
-        return trackedPlayers.get(player);
-    }
-
+    /**
+     * Handles adding a target to a player's tracking list.
+     * Updates both direct and reverse maps asynchronously.
+     *
+     * @param player The observer player.
+     * @param target The target player being observed.
+     */
     public void handleAdd(@NotNull Player player, @NotNull Player target) {
-        if (!target.isConnected()) {
-            return;
-        }
+        if (player.hasMetadata("NPC") || target.hasMetadata("NPC")) return;
+        if (target.hasPotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY)) return;
 
-        // Check if it's a real player
-        if (Bukkit.getPlayer(target.getUniqueId()) == null || Bukkit.getPlayer(player.getUniqueId()) == null) {
-            return;
-        }
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
+            if (trackedPlayers.containsEntry(player.getUniqueId(), target.getUniqueId())) {
+                return;
+            }
 
-        if (PacketEvents.getAPI().getPlayerManager().getUser(target) == null || PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
-            return;
-        }
-
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             trackedPlayers.put(player.getUniqueId(), target.getUniqueId());
-
-            final boolean isVanished = plugin.getVanishManager().isVanished(target);
-            if (isVanished && !plugin.getVanishManager().canSee(player, target)) {
-                return;
-            }
-
-            if (target.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
-                return;
-            }
-
-            final Optional<PacketNameTag> display = plugin.getNametagManager().getPacketDisplayText(target);
-
-            if (display.isEmpty()) {
-//                plugin.getLogger().warning("Display is empty for " + target.getName());
-                return;
-            }
+            trackedBy.put(target.getUniqueId(), player.getUniqueId());
 
             plugin.getNametagManager().updateDisplay(player, target);
-        }, 3);
-
-    }
-
-    public void handleRemove(@NotNull Player player, @NotNull Player target) {
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-            trackedPlayers.remove(player.getUniqueId(), target.getUniqueId());
-
-            plugin.getNametagManager().removeDisplay(player, target);
         });
     }
 
+    /**
+     * Removes tracking between two players.
+     *
+     * @param player The observer player.
+     * @param target The target player being observed.
+     */
+    public void handleRemove(@NotNull Player player, @NotNull Player target) {
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> removePlayerInternal(player, target));
+    }
+
+    private void removePlayerInternal(@NotNull Player player, @NotNull Player target) {
+        trackedPlayers.remove(player.getUniqueId(), target.getUniqueId());
+        trackedBy.remove(target.getUniqueId(), player.getUniqueId());
+        plugin.getNametagManager().removeDisplay(player, target);
+    }
+
+    /**
+     * Handles a player quitting the server.
+     * Efficiently cleans up all references in both maps.
+     *
+     * @param player The player who is quitting.
+     */
     public void handleQuit(@NotNull Player player) {
         plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-            trackedPlayers.removeAll(player.getUniqueId());
-            trackedPlayers.values().remove(player.getUniqueId());
+            UUID quittingUuid = player.getUniqueId();
+
+            // 1. Remove the player from the lists of those who were watching them.
+            // trackedBy.removeAll returns who was watching the quitting player.
+            Set<UUID> watchers = trackedBy.removeAll(quittingUuid);
+            if (watchers != null) {
+                for (UUID watcherUuid : watchers) {
+                    trackedPlayers.remove(watcherUuid, quittingUuid);
+                }
+            }
+
+            // 2. Remove the lists of players the quitting player was watching.
+            // trackedPlayers.removeAll returns who the quitting player was watching.
+            Set<UUID> targets = trackedPlayers.removeAll(quittingUuid);
+            if (targets != null) {
+                for (UUID targetUuid : targets) {
+                    trackedBy.remove(targetUuid, quittingUuid);
+                }
+            }
         });
     }
 
+    /**
+     * Forces removal of all targets tracked by a specific player.
+     * Useful during world changes or distant teleports.
+     *
+     * @param player The player to reset.
+     */
     public void forceUntrack(@NotNull Player player) {
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-            trackedPlayers.get(player.getUniqueId())
-                    .stream()
-                    .map(Bukkit::getPlayer)
-                    .filter(Objects::nonNull)
-                    .forEach(p -> handleRemove(p, player));
-        });
+        Set<UUID> tracked = trackedPlayers.get(player.getUniqueId());
+        if (tracked == null || tracked.isEmpty()) return;
+
+        // Copy to avoid ConcurrentModification during iteration if necessary,
+        // although removePlayerInternal handles concurrency.
+        Set<UUID> targetsSnapshot = new HashSet<>(tracked);
+
+        Map<UUID, Player> onlinePlayers = plugin.getPlayerListener().getOnlinePlayers();
+
+        for (UUID targetUuid : targetsSnapshot) {
+            Player target = onlinePlayers.get(targetUuid);
+            if (target != null) {
+                removePlayerInternal(player, target);
+            }
+        }
     }
 
+    /**
+     * Retrieves the list of players currently tracking the specified target.
+     * Uses the reverse map for O(1) performance.
+     *
+     * @param target The target player.
+     * @return List of players seeing the target.
+     */
+    @NotNull
+    public List<Player> getWhoTracks(@NotNull Player target) {
+        final List<Player> trackers = new ArrayList<>();
+        final Map<UUID, Player> onlinePlayers = plugin.getPlayerListener().getOnlinePlayers();
+
+        Set<UUID> trackerUuids = trackedBy.get(target.getUniqueId());
+        if (trackerUuids != null) {
+            for (UUID uuid : trackerUuids) {
+                Player p = onlinePlayers.get(uuid);
+                if (p != null) {
+                    trackers.add(p);
+                }
+            }
+        }
+        return trackers;
+    }
+
+    /**
+     * Retrieves the UUIDs of players that the specified tracker is observing.
+     *
+     * @param uuid UUID of the tracker.
+     * @return Set of UUIDs of the targets.
+     */
+    public Set<UUID> getTrackedPlayers(@NotNull UUID uuid) {
+        return trackedPlayers.get(uuid);
+    }
 }

@@ -1,8 +1,6 @@
 package org.alexdev.unlimitednametags.listeners;
 
 import com.github.Anon8281.universalScheduler.foliaScheduler.FoliaScheduler;
-import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
@@ -18,6 +16,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -29,18 +28,24 @@ public class PlayerListener implements PackSendHandler {
     private final Map<Integer, UUID> playerEntityId;
     @Getter
     private final Map<String, UUID> playerNameId;
+    @Getter
+    private final Map<UUID, Player> onlinePlayers;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.diedPlayers = Sets.newConcurrentHashSet();
         this.playerEntityId = Maps.newConcurrentMap();
         this.playerNameId = Maps.newConcurrentMap();
+        this.onlinePlayers = Maps.newConcurrentMap();
         this.loadFoliaRespawnTask();
         this.loadEntityIds();
     }
 
     private void loadEntityIds() {
-        Bukkit.getOnlinePlayers().forEach(player -> playerEntityId.put(player.getEntityId(), player.getUniqueId()));
+        Bukkit.getOnlinePlayers().forEach(player -> {
+            playerEntityId.put(player.getEntityId(), player.getUniqueId());
+            onlinePlayers.put(player.getUniqueId(), player);
+        });
     }
 
     private void loadFoliaRespawnTask() {
@@ -68,20 +73,11 @@ public class PlayerListener implements PackSendHandler {
         return Optional.ofNullable(plugin.getServer().getPlayer(player));
     }
 
-    @EventHandler
-    public void onPlayerLogin(PlayerLoginEvent event) {
-        final String name = event.getPlayer().getName();
-        playerNameId.put(name, event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            if (Bukkit.getPlayer(name) == null) {
-                playerNameId.remove(name);
-            }
-        }, 40);
-    }
-
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), true), 6);
+        onlinePlayers.put(event.getPlayer().getUniqueId(), event.getPlayer());
+        plugin.getTaskScheduler()
+                .runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), true), 6);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
@@ -90,13 +86,14 @@ public class PlayerListener implements PackSendHandler {
         plugin.getPacketEventsListener().removePlayerData(event.getPlayer());
         playerNameId.remove(event.getPlayer().getName());
         diedPlayers.remove(event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
             plugin.getNametagManager().removePlayer(event.getPlayer());
             plugin.getNametagManager().clearCache(event.getPlayer().getUniqueId());
             plugin.getPlaceholderManager().removePlayer(event.getPlayer());
             diedPlayers.remove(event.getPlayer().getUniqueId());
-        }, 1);
-        playerEntityId.remove(event.getPlayer().getEntityId());
+            onlinePlayers.remove(event.getPlayer().getUniqueId());
+            playerEntityId.remove(event.getPlayer().getEntityId());
+        });
     }
 
     @EventHandler
@@ -113,7 +110,8 @@ public class PlayerListener implements PackSendHandler {
         }
 
         if (event.getAction() == EntityPotionEffectEvent.Action.ADDED) {
-            if (event.getNewEffect() == null || (!event.getNewEffect().getType().equals(PotionEffectType.INVISIBILITY))) {
+            if (event.getNewEffect() == null
+                    || (!event.getNewEffect().getType().equals(PotionEffectType.INVISIBILITY))) {
                 if (plugin.getNametagManager().isDebug()) {
                     plugin.getLogger().info("Potion effect is not invisibility, skipping potion event");
                 }
@@ -121,17 +119,19 @@ public class PlayerListener implements PackSendHandler {
             }
             plugin.getNametagManager().removeAllViewers(player);
             plugin.getNametagManager().blockPlayer(player);
-        } else if (event.getAction() == EntityPotionEffectEvent.Action.REMOVED || event.getAction() == EntityPotionEffectEvent.Action.CLEARED) {
+        } else if (event.getAction() == EntityPotionEffectEvent.Action.REMOVED
+                || event.getAction() == EntityPotionEffectEvent.Action.CLEARED) {
             if (event.getOldEffect() == null || !event.getOldEffect().getType().equals(PotionEffectType.INVISIBILITY)) {
                 if (plugin.getNametagManager().isDebug()) {
-                    plugin.getLogger().info("Potion effect is not invisibility, skipping potion event: " + (event.getOldEffect() != null ? event.getOldEffect().getType() : null));
+                    plugin.getLogger().info("Potion effect is not invisibility, skipping potion event: "
+                            + (event.getOldEffect() != null ? event.getOldEffect().getType() : null));
                 }
                 return;
             }
 
             plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
                 plugin.getNametagManager().unblockPlayer(player);
-                plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers().get(player.getUniqueId()));
+                plugin.getNametagManager().showToTrackedPlayers(player);
             }, 3);
 
         }
@@ -143,7 +143,7 @@ public class PlayerListener implements PackSendHandler {
             plugin.getNametagManager().unblockPlayer(e.getPlayer());
             plugin.getNametagManager().showToTrackedPlayers(e.getPlayer());
         } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
-            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().removeAllViewers(e.getPlayer()), 2);
+            plugin.getNametagManager().removeAllViewers(e.getPlayer());
         }
     }
 
@@ -160,13 +160,7 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            final List<UUID> nearbyPlayers = Bukkit.getOnlinePlayers().stream()
-                    .filter(p -> p.getWorld().equals(event.getPlayer().getWorld()) && p.getLocation().distanceSquared(event.getPlayer().getLocation()) <= 6400)
-                    .map(Player::getUniqueId)
-                    .toList();
-            plugin.getNametagManager().showToTrackedPlayers(event.getPlayer(), nearbyPlayers);
-        }, 4);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer()), 1);
     }
 
     @EventHandler
@@ -197,12 +191,10 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler
     public void onTeleport(@NotNull PlayerTeleportEvent event) {
-        //1.20.1+ bug
-        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_1) &&
-                event.getFrom().getWorld() != event.getTo().getWorld()
-        ) {
+        if (event.getFrom().getWorld() != event.getTo().getWorld()) {
             plugin.getTrackerManager().forceUntrack(event.getPlayer());
         }
+
         if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             return;
         }
@@ -215,7 +207,8 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToOwner(event.getPlayer()), 5);
+        plugin.getTaskScheduler()
+                .runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToOwner(event.getPlayer()), 5);
     }
 
     public void logicElytra(Player player) {
@@ -228,6 +221,18 @@ public class PlayerListener implements PackSendHandler {
 
             plugin.getTaskScheduler().runTaskLaterAsynchronously(packetDisplayText::showForOwner, 5);
         });
+    }
+    
+    @Nullable
+    public Player getPlayer(@NotNull UUID uuid) {
+        return onlinePlayers.get(uuid);
+    }
+
+    public void close() {
+        diedPlayers.clear();
+        playerEntityId.clear();
+        playerNameId.clear();
+        onlinePlayers.clear();
     }
 
 }

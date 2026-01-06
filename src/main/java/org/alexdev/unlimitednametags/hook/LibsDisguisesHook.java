@@ -39,7 +39,7 @@ public class LibsDisguisesHook extends Hook implements Listener {
         }
         if (event.getDisguise().getEntity() instanceof Player player) {
             plugin.getNametagManager().unblockPlayer(player);
-            plugin.getNametagManager().showToTrackedPlayers(player, plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()));
+            plugin.getNametagManager().showToTrackedPlayers(player);
         }
     }
 }

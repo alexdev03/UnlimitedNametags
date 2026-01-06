@@ -35,6 +35,7 @@ public class TypeWriterListener extends Hook implements Listener {
                             .map(Bukkit::getPlayer)
                             .filter(p -> p != null && p != event.getPlayer())
                             .collect(Collectors.toSet());
+
                     plugin.getNametagManager().getPacketDisplayText(event.getPlayer()).ifPresent(display -> display.showToPlayers(viewers));
                 },
                 1);

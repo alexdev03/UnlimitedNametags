@@ -7,7 +7,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -80,7 +79,7 @@ public class PlaceholderManager {
     public void reload() {
         cachedComponents.clear();
         this.cachedPlaceholders = Maps.newConcurrentMap();
-        Bukkit.getOnlinePlayers().forEach(p -> cachedPlaceholders.put(p.getUniqueId(), ExpiringMap.builder()
+        plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> cachedPlaceholders.put(p.getUniqueId(), ExpiringMap.builder()
                 .expiration(plugin.getConfigManager().getSettings().getPlaceholderCacheTime() * 50L, TimeUnit.MILLISECONDS) // Adjusted unit based on previous code
                 .build()));
         reloadPlaceholdersReplacements();

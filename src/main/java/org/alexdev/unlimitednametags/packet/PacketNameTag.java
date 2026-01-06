@@ -21,7 +21,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
-import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.attribute.AttributeInstance;
@@ -253,7 +252,10 @@ public class PacketNameTag {
         }
 
         if (!player.getUniqueId().equals(owner.getUniqueId())) {
-            applyOwnerData(perPlayerEntity.getEntityOf(getUser(player)));
+            WrapperEntity entity = perPlayerEntity.getEntityOf(getUser(player));
+            if (entity != null) {
+                applyOwnerData(entity);
+            }
         }
 
         spawn(player);
@@ -265,6 +267,8 @@ public class PacketNameTag {
         }
 
         perPlayerEntity.addViewer(getUser(player));
+
+        updateViewer(player.getUniqueId());
 
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
             final User user = getUser(player);
@@ -406,7 +410,7 @@ public class PacketNameTag {
         }
 
         getViewers().forEach(u -> {
-            final Player player = Bukkit.getPlayer(u);
+            final Player player = plugin.getPlayerListener().getPlayer(u);
             if (player == null) {
                 return;
             }
@@ -460,7 +464,7 @@ public class PacketNameTag {
 
     public void clearViewers() {
         getViewers().forEach(u -> {
-            final Player player = Bukkit.getPlayer(u);
+            final Player player = plugin.getPlayerListener().getPlayer(u);
             if (player != null) {
                 hideFromPlayer(player);
             }
@@ -521,7 +525,7 @@ public class PacketNameTag {
     public void remove() {
         removed = true;
         perPlayerEntity.getEntities().keySet().forEach(u -> {
-            final Player player = Bukkit.getPlayer(u);
+            final Player player = plugin.getPlayerListener().getPlayer(u);
             if (player == null) {
                 return;
             }
@@ -617,7 +621,7 @@ public class PacketNameTag {
     }
 
     private void updateViewer(@NotNull UUID uuid) {
-        final Player player = Bukkit.getPlayer(uuid);
+        final Player player = plugin.getPlayerListener().getPlayer(uuid);
         if (player == null) return;
 
         Component textToUse = calculatedTextCache.get(uuid);

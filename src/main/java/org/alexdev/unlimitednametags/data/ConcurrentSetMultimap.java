@@ -140,5 +140,36 @@ public class ConcurrentSetMultimap<K, V> {
     public Set<K> keySet() {
         return map.keySet();
     }
+
+    /**
+     * Returns a set of key-value pairs in the multimap.
+     * Each entry consists of a key and the corresponding set of values.
+     *
+     * @return a Set of Map.Entry containing keys and their associated value sets
+     */
+    public Set<java.util.Map.Entry<K, Set<V>>> entrySet() {
+        Set<java.util.Map.Entry<K, Set<V>>> entries = new HashSet<>();
+        for (K key : map.keySet()) {
+            entries.add(new java.util.AbstractMap.SimpleEntry<>(key, get(key)));
+        }
+        return entries;
+    }
+
+    //forEach <key, Set<value>>
+    public void forEach(java.util.function.BiConsumer<K, Set<V>> action) {
+        for (K key : map.keySet()) {
+            action.accept(key, get(key));
+        }
+    }
+
+    public boolean containsEntry(K key, V value) {
+        ConcurrentLinkedQueue<V> queue = map.get(key);
+        if (queue == null) {
+            return false;
+        }
+        synchronized (queue) {
+            return queue.contains(value);
+        }
+    }
 }
 
