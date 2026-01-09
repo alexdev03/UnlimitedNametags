@@ -23,6 +23,7 @@ repositories {
     maven("https://repo.codemc.io/repository/maven-snapshots/")
     maven("https://repo.codemc.io/repository/maven-releases/")
     maven("https://repo.viaversion.com/")
+    maven("https://maven.pvphub.me/#/tofaa/io/github/tofaa2/")
     maven("https://repo.opencollab.dev/main/")
     maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
     maven("https://repo.oraxen.com/releases")
