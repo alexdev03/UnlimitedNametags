@@ -36,7 +36,7 @@ public class TypeWriterListener extends Hook implements Listener {
                             .filter(p -> p != null && p != event.getPlayer())
                             .collect(Collectors.toSet());
 
-                    plugin.getNametagManager().getPacketDisplayText(event.getPlayer()).ifPresent(display -> display.showToPlayers(viewers));
+                    plugin.getNametagManager().getPacketDisplayText(event.getPlayer()).forEach(display -> display.showToPlayers(viewers));
                 },
                 1);
         plugin.getTaskScheduler().runTaskLaterAsynchronously(

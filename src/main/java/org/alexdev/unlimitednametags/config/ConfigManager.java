@@ -29,7 +29,7 @@ public class ConfigManager {
     private Settings settings;
     private boolean compiled;
 
-    public ConfigManager(@NotNull UnlimitedNameTags plugin) {
+    public ConfigManager(@NotNull final UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.loadUsage();
     }
@@ -39,7 +39,7 @@ public class ConfigManager {
              final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))
         ) {
             compiled = YamlConfiguration.loadConfiguration(reader).getBoolean("compiled", true);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -56,7 +56,7 @@ public class ConfigManager {
             );
             checkData();
             return Optional.empty();
-        } catch (Exception e) {
+        } catch (final Exception e) {
             return Optional.of(e);
         }
     }
@@ -78,14 +78,16 @@ public class ConfigManager {
         final Map<String, Settings.NameTag> nameTags = Maps.newLinkedHashMap();
         boolean save = false;
 
-        for (Map.Entry<String, Settings.NameTag> entry : settings.getNameTags().entrySet()) {
+        for (final Map.Entry<String, Settings.NameTag> entry : settings.getNameTags().entrySet()) {
             final Settings.NameTag nameTag = entry.getValue();
-            if (nameTag.scale() <= 0) {
-                plugin.getLogger().warning("Nametag scale is less than or equal to 0");
-                nameTags.put(entry.getKey(), new Settings.NameTag(nameTag.permission(), nameTag.linesGroups(), nameTag.background(), 1f));
-                save = true;
-            } else {
-                nameTags.put(entry.getKey(), nameTag);
+            for (final Settings.LinesGroup linesGroup : nameTag.linesGroups()) {
+                if (linesGroup.scale() <= 0) {
+                    plugin.getLogger().warning("Nametag scale is less than or equal to 0");
+                    nameTags.put(entry.getKey(), new Settings.NameTag(nameTag.permission(), nameTag.linesGroups()));
+                    save = true;
+                } else {
+                    nameTags.put(entry.getKey(), nameTag);
+                }
             }
         }
 

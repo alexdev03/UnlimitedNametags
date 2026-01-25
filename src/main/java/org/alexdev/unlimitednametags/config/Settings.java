@@ -1,5 +1,6 @@
 package org.alexdev.unlimitednametags.config;
 
+import com.google.common.collect.Lists;
 import de.exlll.configlib.Comment;
 import de.exlll.configlib.Configuration;
 import de.exlll.configlib.Polymorphic;
@@ -17,6 +18,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 @Configuration
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
@@ -24,18 +27,18 @@ import java.util.*;
 public class Settings {
 
     private Map<String, NameTag> nameTags = new LinkedHashMap<>() {{
-        put("staffer", new NameTag("nametag.staffer", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true)))),
-                new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f));
-        put("default", new NameTag("nametag.default", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true))),
-                new LinesGroup(List.of("Rich Player"), List.of(new ConditionalModifier("%vault_eco_balance%", ">", "1000")))),
-                new HexBackground(false, "#ffffff", 255, false, false), 1f));
+        put("staffer", new NameTag("nametag.staffer", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true)),
+                new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f))));
+        put("default", new NameTag("nametag.default", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true)),
+                        new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f),
+                new LinesGroup(List.of("Rich Player"), List.of(new ConditionalModifier("%vault_eco_balance%", ">", "1000")), new HexBackground(false, "#ffffff", 255, false, false), 1f, 1.0f))));
     }};
 
     @Setter
     @Comment("The default billboard constraints for the nametag. CENTER, HORIZONTAL, VERTICAL, FIXED)")
     private AbstractDisplayMeta.BillboardConstraints defaultBillboard = AbstractDisplayMeta.BillboardConstraints.CENTER;
 
-    public NameTag getNametag(Player player) {
+    public NameTag getNametag(final Player player) {
         return nameTags.entrySet().stream()
                 .filter(entry -> entry.getValue().permission == null || player.hasPermission(entry.getValue().permission))
                 .findFirst()
@@ -101,35 +104,48 @@ public class Settings {
     public record PlaceholderReplacement(String placeholder, String replacement) {
     }
 
-    public record NameTag(@Nullable String permission, @NotNull List<LinesGroup> linesGroups, @NotNull Background background, float scale) {
+    public record NameTag(@Nullable String permission, @NotNull List<LinesGroup> linesGroups) {
 
-        public NameTag(@NotNull List<LinesGroup> linesGroups, @NotNull Background background, float scale) {
-            this(null, linesGroups, background, scale);
+        public NameTag(@NotNull final List<LinesGroup> linesGroups) {
+            this(null, linesGroups);
         }
 
         @NotNull
-        public NameTag withPermission(@Nullable String permission) {
-            return new NameTag(permission, linesGroups, background, scale);
+        public NameTag withPermission(@Nullable final String permission) {
+            return new NameTag(permission, linesGroups);
         }
 
         @NotNull
-        public NameTag withLinesGroups(@NotNull List<LinesGroup> linesGroups) {
-            return new NameTag(permission, linesGroups, background, scale);
+        public NameTag withLinesGroups(@NotNull final List<LinesGroup> linesGroups) {
+            return new NameTag(permission, linesGroups);
+        }
+
+        @NotNull
+        public NameTag withLinesGroups(@NotNull final UnaryOperator<LinesGroup> unaryOperator) {
+            return withLinesGroups(Lists.transform(linesGroups, unaryOperator::apply));
         }
 
         @NotNull
         public NameTag withBackground(@NotNull Background background) {
-            return new NameTag(permission, linesGroups, background, scale);
+            return withLinesGroups(group -> group.withBackground(background));
         }
 
         @NotNull
         public NameTag withScale(float scale) {
-            return new NameTag(permission, linesGroups, background, scale);
+            return withLinesGroups(group -> group.withScale(scale));
         }
 
     }
 
-    public record LinesGroup(@NotNull List<String> lines, @Nullable List<Modifier> modifiers) {
+    public record LinesGroup(@NotNull List<String> lines, @Nullable List<Modifier> modifiers, @NotNull Background background, float scale, float yOffset) {
+
+        public LinesGroup withBackground(@NotNull Background background) {
+            return new LinesGroup(lines, modifiers, background, scale, yOffset);
+        }
+
+        public LinesGroup withScale(float scale) {
+            return new LinesGroup(lines, modifiers, background, scale, yOffset);
+        }
 
     }
 
@@ -156,7 +172,7 @@ public class Settings {
         private boolean enabled;
 
         @Override
-        public boolean isVisible(@NotNull Player player, @NotNull UnlimitedNameTags plugin) {
+        public boolean isVisible(@NotNull final Player player, @NotNull final UnlimitedNameTags plugin) {
             return enabled;
         }
     }
@@ -175,7 +191,7 @@ public class Settings {
         }
 
         @Override
-        public boolean isVisible(@NotNull Player player, @NotNull UnlimitedNameTags plugin) {
+        public boolean isVisible(@NotNull final Player player, @NotNull final UnlimitedNameTags plugin) {
             return plugin.getConditionalManager().evaluateExpression(this, player);
         }
     }
@@ -211,7 +227,7 @@ public class Settings {
         private int green;
         private int blue;
 
-        public IntegerBackground(boolean enabled, int red, int green, int blue, int opacity, boolean shadowed, boolean seeThrough) {
+        public IntegerBackground(final boolean enabled, final int red, final int green, final int blue, final int opacity, final boolean shadowed, final boolean seeThrough) {
             super(enabled, opacity, shadowed, seeThrough);
             this.red = red;
             this.green = green;
@@ -236,14 +252,14 @@ public class Settings {
 
         private String hex;
 
-        public HexBackground(boolean enabled, String hex, int opacity, boolean shadowed, boolean seeThrough) {
+        public HexBackground(final boolean enabled, final String hex, final int opacity, final boolean shadowed, final boolean seeThrough) {
             super(enabled, opacity, shadowed, seeThrough);
             this.hex = hex;
         }
 
         @Override
         public Color getColor() {
-            int hex = Integer.parseInt(this.hex.substring(1), 16);
+            final int hex = Integer.parseInt(this.hex.substring(1), 16);
             return !enabled() ? Color.BLACK.setAlpha(0) : Color.fromRGB(hex).setAlpha(opacity());
         }
 

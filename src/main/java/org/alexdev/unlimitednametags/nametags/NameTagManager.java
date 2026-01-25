@@ -14,6 +14,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.alexdev.unlimitednametags.data.ConcurrentMultimap;
 import org.alexdev.unlimitednametags.hook.HMCCosmeticsHook;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
@@ -34,7 +35,7 @@ import java.util.stream.Collectors;
 public class NameTagManager {
 
     private final UnlimitedNameTags plugin;
-    private final Map<UUID, PacketNameTag> nameTags;
+    private final ConcurrentMultimap<UUID, PacketNameTag> nameTags;
     private final Map<Integer, PacketNameTag> entityIdToDisplay;
     private final Set<UUID> creating;
     private final Set<UUID> blocked;
@@ -48,7 +49,7 @@ public class NameTagManager {
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
-        this.nameTags = Maps.newConcurrentMap();
+        this.nameTags = new ConcurrentMultimap<>();
         this.entityIdToDisplay = Maps.newConcurrentMap();
         this.tasks = Lists.newCopyOnWriteArrayList();
         this.creating = Sets.newConcurrentHashSet();
@@ -84,7 +85,7 @@ public class NameTagManager {
                 .map(PacketNameTag::getOwner)
                 .filter(p -> plugin.getHook(HMCCosmeticsHook.class).map(h -> !h.hasBackpack(p)).orElse(true))
                 .forEach(player -> getPacketDisplayText(player)
-                        .ifPresent(PacketNameTag::sendPassengerPacketToViewers)),
+                        .forEach(PacketNameTag::sendPassengerPacketToViewers)),
                 20, 20 * 5L);
 
         // Scale task
@@ -282,32 +283,23 @@ public class NameTagManager {
         creating.add(player.getUniqueId());
 
         final Settings.NameTag nametag = getEffectiveNametag(player);
-        final PacketNameTag display = new PacketNameTag(plugin, player, nametag);
-        display.text(player, Component.empty());
-        display.spawn(player);
 
-        if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
-            display.showToPlayer(player);
+        updateLineCount(player, nametag);
+
+        for (int i = 0; i < nametag.linesGroups().size(); i++) {
+            final Settings.LinesGroup linesGroup = nametag.linesGroups().get(i);
+            final PacketNameTag display = List.copyOf(nameTags.get(player.getUniqueId())).get(i);
+            plugin.getPlaceholderManager().applyPlaceholders(player, linesGroup, List.of(player))
+                    .thenAccept(lines -> loadDisplay(player, lines.get(player), linesGroup, display))
+                    .exceptionally(throwable -> {
+                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                                "Failed to create nametag for " + player.getName(), throwable);
+                        creating.remove(player.getUniqueId());
+                        return null;
+                    });
         }
 
-        handleVanish(player, display);
-
-        nameTags.put(player.getUniqueId(), display);
-        if (debug) {
-            plugin.getLogger().info("Added nametag for " + player.getName());
-        }
-        entityIdToDisplay.put(display.getEntityId(), display);
-
-        plugin.getPlaceholderManager().applyPlaceholders(player, nametag.linesGroups(), List.of(player))
-                .thenAccept(lines -> loadDisplay(player, lines.get(player), nametag, display))
-                .exceptionally(throwable -> {
-                    plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                            "Failed to create nametag for " + player.getName(), throwable);
-                    creating.remove(player.getUniqueId());
-                    return null;
-                });
     }
-
     public void refresh(@NotNull Player player, boolean force) {
         final Settings.NameTag nametag = getEffectiveNametag(player);
 
@@ -319,88 +311,129 @@ public class NameTagManager {
             return;
         }
 
-        final PacketNameTag display = nameTags.get(player.getUniqueId());
-        if (display == null) {
-            return;
-        }
+        updateLineCount(player, nametag);
 
-        final boolean show = plugin.getConfigManager().getSettings().isShowCurrentNameTag();
-        if (show && !display.canPlayerSee(player)) {
-            display.showToPlayer(player);
-        } else if (!show && display.canPlayerSee(player)) {
-            display.hideFromPlayer(player);
-        }
+        for (int i = 0; i < nametag.linesGroups().size(); i++) {
+            final Settings.LinesGroup linesGroup = nametag.linesGroups().get(i);
+            final PacketNameTag display = List.copyOf(nameTags.get(player.getUniqueId())).get(i);
 
-        if (force) {
-            if (show) {
-                display.showToPlayer(display.getOwner());
-            } else {
-                display.hideFromPlayer(display.getOwner());
+            final boolean show = plugin.getConfigManager().getSettings().isShowCurrentNameTag();
+            if (show && !display.canPlayerSee(player)) {
+                display.showToPlayer(player);
+            } else if (!show && display.canPlayerSee(player)) {
+                display.hideFromPlayer(player);
             }
+
+            if (force) {
+                if (show) {
+                    display.showToPlayer(display.getOwner());
+                } else {
+                    display.hideFromPlayer(display.getOwner());
+                }
+            }
+
+            final List<Player> relationalPlayers = display.getViewers().stream()
+                    .map(Bukkit::getPlayer)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            plugin.getPlaceholderManager().applyPlaceholders(player, linesGroup, relationalPlayers)
+                    .thenAccept(lines -> editDisplay(display, lines, linesGroup, force))
+                    .exceptionally(throwable -> {
+                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                                "Failed to edit nametag for " + player.getName(), throwable);
+                        return null;
+                    });
         }
-
-        final List<Player> relationalPlayers = display.getViewers().stream()
-                .map(Bukkit::getPlayer)
-                .filter(Objects::nonNull)
-                .toList();
-
-        plugin.getPlaceholderManager().applyPlaceholders(player, nametag.linesGroups(), relationalPlayers)
-                .thenAccept(lines -> editDisplay(player, lines, nametag, force))
-                .exceptionally(throwable -> {
-                    plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                            "Failed to edit nametag for " + player.getName(), throwable);
-                    return null;
-                });
     }
 
-    private void editDisplay(@NotNull Player player, Map<Player, Component> components,
-            @NotNull Settings.NameTag nameTag, boolean force) {
-        getPacketDisplayText(player).ifPresent(packetNameTag -> {
-            if (!packetNameTag.getNameTag().equals(nameTag)) {
-                packetNameTag.setNameTag(nameTag);
-            }
-            if (force && isScalePresent()) {
-                packetNameTag.checkScale();
-            }
+    private void updateLineCount(Player player, Settings.NameTag nametag) {
+        Collection<PacketNameTag> packetNameTags = this.nameTags.get(player.getUniqueId());
 
-            final boolean shadowed = nameTag.background().shadowed();
-            final boolean seeThrough = nameTag.background().seeThrough();
-            final int backgroundColor = nameTag.background().getColor().asARGB();
+        int toAdd = nametag.linesGroups().size() - packetNameTags.size();
 
-            components.forEach((p, c) -> {
-                final boolean[] updateRef = { packetNameTag.text(p, c) || force };
-                final User user = PacketEvents.getAPI().getPlayerManager().getUser(p);
-                if (user == null) {
-                    return;
+        if(toAdd == 0) return;
+        if(toAdd > 0) {
+            for (int i = 0; i < toAdd; i++) {
+                int index = nametag.linesGroups().size() - 1 - i;
+                Settings.LinesGroup linesGroup = nametag.linesGroups().get(index);
+
+                final PacketNameTag display = new PacketNameTag(plugin, player, linesGroup);
+                display.text(player, Component.empty());
+                display.spawn(player);
+
+                if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+                    display.showToPlayer(player);
                 }
-                packetNameTag.modify(user, m -> {
 
-                    if (force) {
+                handleVanish(player, display);
+
+                nameTags.put(player.getUniqueId(), display);
+                if (debug) {
+                    plugin.getLogger().info("Added nametag for " + player.getName());
+                }
+                entityIdToDisplay.put(display.getEntityId(), display);
+            }
+        }   else  {
+            Iterator<PacketNameTag> iterator = packetNameTags.iterator();
+            for (int i = 0; i < -toAdd; i++) {
+                final PacketNameTag display = iterator.next();
+                display.remove();
+                entityIdToDisplay.remove(display.getEntityId());
+                iterator.remove();
+                if (debug) {
+                    plugin.getLogger().info("Removed nametag for " + player.getName());
+                }
+            }
+        }
+    }
+
+    private void editDisplay(PacketNameTag packetNameTag, Map<Player, Component> components,
+            @NotNull Settings.LinesGroup linesGroup, boolean force) {
+        if (!packetNameTag.getLinesGroup().equals(linesGroup)) {
+            packetNameTag.setLinesGroup(linesGroup);
+        }
+        if (force && isScalePresent()) {
+            packetNameTag.checkScale();
+        }
+
+        final boolean shadowed = linesGroup.background().shadowed();
+        final boolean seeThrough = linesGroup.background().seeThrough();
+        final int backgroundColor = linesGroup.background().getColor().asARGB();
+
+        components.forEach((p, c) -> {
+            final boolean[] updateRef = { packetNameTag.text(p, c) || force };
+            final User user = PacketEvents.getAPI().getPlayerManager().getUser(p);
+            if (user == null) {
+                return;
+            }
+            packetNameTag.modify(user, m -> {
+
+                if (force) {
+                    m.setShadow(shadowed);
+                    m.setSeeThrough(seeThrough);
+                    m.setBackgroundColor(backgroundColor);
+                } else {
+                    if (m.isShadow() != shadowed) {
                         m.setShadow(shadowed);
-                        m.setSeeThrough(seeThrough);
-                        m.setBackgroundColor(backgroundColor);
-                    } else {
-                        if (m.isShadow() != shadowed) {
-                            m.setShadow(shadowed);
-                            updateRef[0] = true;
-                        }
-                        if (m.isSeeThrough() != seeThrough) {
-                            m.setSeeThrough(seeThrough);
-                            updateRef[0] = true;
-                        }
+                        updateRef[0] = true;
                     }
-
-                });
-
-                if (updateRef[0]) {
-                    packetNameTag.refreshForPlayer(p);
+                    if (m.isSeeThrough() != seeThrough) {
+                        m.setSeeThrough(seeThrough);
+                        updateRef[0] = true;
+                    }
                 }
+
             });
+
+            if (updateRef[0]) {
+                packetNameTag.refreshForPlayer(p);
+            }
         });
     }
 
     private void loadDisplay(@NotNull Player player, @NotNull Component component,
-            @NotNull Settings.NameTag nameTag,
+            @NotNull Settings.LinesGroup linesGroup,
             @NotNull PacketNameTag display) {
         try {
             final Location location = player.getLocation().clone();
@@ -411,10 +444,10 @@ public class NameTagManager {
             display.modify(m -> m.setUseDefaultBackground(false));
             display.text(player, component);
             display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
-            display.setShadowed(nameTag.background().shadowed());
-            display.setSeeThrough(nameTag.background().seeThrough());
+            display.setShadowed(linesGroup.background().shadowed());
+            display.setSeeThrough(linesGroup.background().seeThrough());
             // background color, if disabled, set to transparent
-            display.setBackgroundColor(nameTag.background().getColor());
+            display.setBackgroundColor(linesGroup.background().getColor());
 
             display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
 
@@ -447,8 +480,8 @@ public class NameTagManager {
     }
 
     public void removePlayer(@NotNull Player player) {
-        final PacketNameTag packetNameTag = nameTags.remove(player.getUniqueId());
-        if (packetNameTag != null) {
+        final Collection<PacketNameTag> packetNameTags = nameTags.removeAll(player.getUniqueId());
+        for (PacketNameTag packetNameTag : packetNameTags) {
             packetNameTag.remove();
             entityIdToDisplay.remove(packetNameTag.getEntityId());
         }
@@ -460,8 +493,8 @@ public class NameTagManager {
     }
 
     public void removeAllViewers(@NotNull Player player) {
-        final PacketNameTag packetNameTag = nameTags.get(player.getUniqueId());
-        if (packetNameTag != null) {
+        final Collection<PacketNameTag> packetNameTags = nameTags.get(player.getUniqueId());
+        for (PacketNameTag packetNameTag : packetNameTags) {
             packetNameTag.setVisible(false);
             packetNameTag.clearViewers();
         }
@@ -472,8 +505,8 @@ public class NameTagManager {
     }
 
     public void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<Player> tracked) {
-        final PacketNameTag packetNameTag = nameTags.get(player.getUniqueId());
-        if (packetNameTag != null) {
+        final Collection<PacketNameTag> packetNameTags = nameTags.get(player.getUniqueId());
+        for (PacketNameTag packetNameTag : packetNameTags) {
             packetNameTag.setVisible(true);
             final Set<Player> players = tracked.stream()
                     .filter(Objects::nonNull)
@@ -484,7 +517,6 @@ public class NameTagManager {
                 plugin.getLogger().info("Showing nametag of " + player.getName() + " to tracked players: " +
                         players.stream().map(Player::getName).collect(Collectors.joining(", ")));
             }
-            return;
         }
 
         addPlayer(player, false);
@@ -495,7 +527,9 @@ public class NameTagManager {
             display.hideFromPlayer(player);
             display.getBlocked().add(player.getUniqueId());
         });
-        getPacketDisplayText(player).ifPresent(PacketNameTag::clearViewers);
+        for (PacketNameTag packetNameTag : getPacketDisplayText(player)) {
+            packetNameTag.clearViewers();
+        }
     }
 
     public void removeAll() {
@@ -510,8 +544,8 @@ public class NameTagManager {
             return;
         }
 
-        getPacketDisplayText(player).ifPresent(packetNameTag -> {
-            if (packetNameTag.getNameTag().background().seeThrough()) {
+        for (PacketNameTag packetNameTag : getPacketDisplayText(player)) {
+            if (packetNameTag.getLinesGroup().background().seeThrough()) {
                 packetNameTag.setSeeThrough(!sneaking);
             }
 
@@ -519,7 +553,7 @@ public class NameTagManager {
             packetNameTag
                     .setTextOpacity((byte) (sneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
             packetNameTag.refresh();
-        });
+        }
     }
 
     public void reload() {
@@ -590,21 +624,21 @@ public class NameTagManager {
     }
 
     private void setYOffset(@NotNull Player player, float yOffset) {
-        getPacketDisplayText(player).ifPresent(packetNameTag -> {
+        for (PacketNameTag packetNameTag : getPacketDisplayText(player)) {
             packetNameTag.resetOffset(yOffset);
-        });
+        }
     }
 
     private void setBillBoard(@NotNull Player player, AbstractDisplayMeta.BillboardConstraints billboard) {
-        getPacketDisplayText(player).ifPresent(packetNameTag -> packetNameTag.setBillboard(billboard));
+        getPacketDisplayText(player).forEach(packetNameTag -> packetNameTag.setBillboard(billboard));
     }
 
     private void setViewDistance(@NotNull Player player, float viewDistance) {
-        getPacketDisplayText(player).ifPresent(packetNameTag -> packetNameTag.setViewRange(viewDistance));
+        getPacketDisplayText(player).forEach(packetNameTag -> packetNameTag.setViewRange(viewDistance));
     }
 
     public void vanishPlayer(@NotNull Player player) {
-        getPacketDisplayText(player).ifPresent(packetNameTag -> {
+        getPacketDisplayText(player).forEach(packetNameTag -> {
             final Set<UUID> viewers = new HashSet<>(packetNameTag.getViewers());
             final boolean isVanished = plugin.getVanishManager().isVanished(player);
             viewers.forEach(uuid -> {
@@ -621,7 +655,7 @@ public class NameTagManager {
     }
 
     public void unVanishPlayer(@NotNull Player player) {
-        getPacketDisplayText(player).ifPresent(packetNameTag -> {
+        getPacketDisplayText(player).forEach(packetNameTag -> {
             final Set<UUID> viewers = new HashSet<>(packetNameTag.getViewers());
             viewers.forEach(uuid -> {
                 final Player viewer = plugin.getPlayerListener().getPlayer(uuid);
@@ -634,8 +668,8 @@ public class NameTagManager {
     }
 
     @NotNull
-    public Optional<PacketNameTag> getPacketDisplayText(@NotNull Player player) {
-        return Optional.ofNullable(nameTags.get(player.getUniqueId()));
+    public Collection<PacketNameTag> getPacketDisplayText(@NotNull Player player) {
+        return nameTags.get(player.getUniqueId());
     }
 
     @NotNull
@@ -648,24 +682,28 @@ public class NameTagManager {
             showToOwner(player);
             return;
         }
-        getPacketDisplayText(target).ifPresent(packetNameTag -> {
+        for (PacketNameTag packetNameTag : getPacketDisplayText(target)) {
             packetNameTag.hideFromPlayerSilently(player);
             packetNameTag.showToPlayer(player);
-        });
+        }
     }
 
     public void showToOwner(@NotNull Player player) {
         if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             return;
         }
-        getPacketDisplayText(player).ifPresent(PacketNameTag::spawnForOwner);
+        for (PacketNameTag packetNameTag : getPacketDisplayText(player)) {
+            packetNameTag.spawnForOwner();
+        }
     }
 
     public void removeDisplay(@NotNull Player player, @NotNull Player target) {
         if (player == target && !plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
             return;
         }
-        getPacketDisplayText(target).ifPresent(packetNameTag -> packetNameTag.hideFromPlayer(player));
+        for (PacketNameTag packetNameTag : getPacketDisplayText(target)) {
+            packetNameTag.hideFromPlayer(player);
+        }
     }
 
     public void updateDisplaysForPlayer(@NotNull Player player) {
@@ -726,7 +764,9 @@ public class NameTagManager {
                 return;
             }
 
-            getPacketDisplayText(tracked).ifPresent(display -> display.showToPlayer(player));
+            for (PacketNameTag packetNameTag : getPacketDisplayText(tracked)) {
+                packetNameTag.showToPlayer(player);
+            }
         });
     }
 
@@ -735,64 +775,60 @@ public class NameTagManager {
     }
 
     public void swapNametag(@NotNull Player player, @NotNull Settings.NameTag nameTag) {
-        final PacketNameTag display = nameTags.get(player.getUniqueId());
-        if (display == null) {
-            return;
+        updateLineCount(player, nameTag);
+
+        for (int i = 0; i < nameTag.linesGroups().size(); i++) {
+            final Settings.LinesGroup linesGroup = nameTag.linesGroups().get(i);
+            final PacketNameTag display = List.copyOf(nameTags.get(player.getUniqueId())).get(i);
+
+            final List<Player> relationalPlayers = display.getViewers().stream()
+                    .map(Bukkit::getPlayer)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            plugin.getPlaceholderManager().applyPlaceholders(player, linesGroup, relationalPlayers)
+                    .thenAccept(lines -> {
+                        final Component component = lines.get(player);
+                        display.text(player, component);
+                        display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
+                        display.setShadowed(linesGroup.background().shadowed());
+                        display.setSeeThrough(linesGroup.background().seeThrough());
+                        display.setBackgroundColor(linesGroup.background().getColor());
+                        display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
+                        display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
+
+                        plugin.getTaskScheduler().runTaskLater(() -> display.modifyOwner(meta -> meta.setText(component)),
+                                1);
+
+                        lines.forEach((p, c) -> {
+                            if (!p.equals(player)) {
+                                display.text(p, c);
+                            }
+                        });
+
+                        display.refresh();
+                    })
+                    .exceptionally(throwable -> {
+                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                                "Failed to swap nametag for " + player.getName(), throwable);
+                        return null;
+                    });
         }
 
-        display.setNameTag(nameTag);
 
-        final List<Player> relationalPlayers = display.getViewers().stream()
-                .map(Bukkit::getPlayer)
-                .filter(Objects::nonNull)
-                .toList();
-
-        plugin.getPlaceholderManager().applyPlaceholders(player, nameTag.linesGroups(), relationalPlayers)
-                .thenAccept(lines -> {
-                    final Component component = lines.get(player);
-                    display.text(player, component);
-                    display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
-                    display.setShadowed(nameTag.background().shadowed());
-                    display.setSeeThrough(nameTag.background().seeThrough());
-                    display.setBackgroundColor(nameTag.background().getColor());
-                    display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
-                    display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
-
-                    plugin.getTaskScheduler().runTaskLater(() -> display.modifyOwner(meta -> meta.setText(component)),
-                            1);
-
-                    lines.forEach((p, c) -> {
-                        if (!p.equals(player)) {
-                            display.text(p, c);
-                        }
-                    });
-
-                    display.refresh();
-                })
-                .exceptionally(throwable -> {
-                    plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                            "Failed to swap nametag for " + player.getName(), throwable);
-                    return null;
-                });
     }
 
     public void setNametagOverride(@NotNull Player player, @NotNull Settings.NameTag nameTag) {
         nameTagOverrides.put(player.getUniqueId(), nameTag);
 
-        final PacketNameTag display = nameTags.get(player.getUniqueId());
-        if (display != null) {
-            swapNametag(player, nameTag);
-        }
+        swapNametag(player, nameTag);
     }
 
     public void removeNametagOverride(@NotNull Player player) {
         nameTagOverrides.remove(player.getUniqueId());
 
-        final PacketNameTag display = nameTags.get(player.getUniqueId());
-        if (display != null) {
-            final Settings.NameTag configNametag = getConfigNametag(player);
-            swapNametag(player, configNametag);
-        }
+        final Settings.NameTag configNametag = getConfigNametag(player);
+        swapNametag(player, configNametag);
     }
 
     public void setShiftSystemBlocked(@NotNull Player player, boolean blocked) {
@@ -805,5 +841,9 @@ public class NameTagManager {
 
     public boolean isShiftSystemBlocked(@NotNull Player player) {
         return shiftSystemBlocked.getOrDefault(player.getUniqueId(), false);
+    }
+
+    public void sendPassengersPacket(@NotNull User user, Player owner) {
+        plugin.getPacketManager().sendPassengersPacket(user, owner, getPacketDisplayText(owner));
     }
 }

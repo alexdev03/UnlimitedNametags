@@ -62,7 +62,7 @@ public class MainCommand {
     @Command(name = "refresh", desc = "Refreshes the nametag of a player for you", usage = "refresh")
     @Require(value = "unt.refresh", message = "&cYou do not have permission to refresh the nametag")
     public void onRefresh(@Sender Player sender, Player target) {
-        plugin.getNametagManager().getPacketDisplayText(target).ifPresent(packetDisplayText -> {
+        plugin.getNametagManager().getPacketDisplayText(target).forEach(packetDisplayText -> {
             packetDisplayText.refreshForPlayer(sender);
         });
     }
