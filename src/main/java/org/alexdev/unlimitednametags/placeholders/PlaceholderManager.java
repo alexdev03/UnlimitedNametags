@@ -157,18 +157,19 @@ public class PlaceholderManager {
 
 
     @NotNull
-    public CompletableFuture<Map<Player, Component>> applyPlaceholders(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines,
+    public CompletableFuture<Map<Player, Component>> applyPlaceholders(@NotNull Player player, @NotNull Settings.LinesGroup lines,
                                                                        @NotNull List<Player> relationalPlayers) {
         return getCheckedLines(player, lines).thenApplyAsync(strings -> createComponent(player, strings, relationalPlayers), executorService);
     }
 
     @NotNull
-    private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull List<Settings.LinesGroup> lines) {
-        return CompletableFuture.supplyAsync(() -> lines.stream()
-                .filter(l -> l.modifiers() == null || l.modifiers().isEmpty() || l.modifiers().stream().allMatch(m -> m.isVisible(player, plugin)))
-                .map(Settings.LinesGroup::lines)
-                .flatMap(List::stream)
-                .toList(), executorService);
+    private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull Settings.LinesGroup lines) {
+        return CompletableFuture.supplyAsync(() -> {
+            if(lines.modifiers() == null || lines.modifiers().isEmpty() || lines.modifiers().stream().allMatch(m -> m.isVisible(player, plugin))) {
+                return lines.lines();
+            }
+            return List.of();
+        }, executorService);
     }
 
     @NotNull

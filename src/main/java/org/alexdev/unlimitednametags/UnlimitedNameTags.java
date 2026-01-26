@@ -277,9 +277,7 @@ public final class UnlimitedNameTags extends JavaPlugin {
         metrics.addCustomChart(new Metrics.AdvancedPie("nametags", () -> {
             final Map<String, Integer> map = Maps.newHashMap();
             configManager.getSettings().getNameTags().forEach((key, value) -> {
-                final int count = (int) nametagManager.getNameTags().values().stream()
-                        .filter(n -> n.getNameTag().equals(value))
-                        .count();
+                final int count = nametagManager.getNameTags().values().size();
                 map.put(key, count);
             });
             return map;

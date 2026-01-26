@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -139,7 +140,7 @@ public class UNTAPI {
      * @param player the player to retrieve the display text packet for
      * @return the display text packet for the player
      */
-    public Optional<PacketNameTag> getPacketDisplayText(@NotNull Player player) {
+    public Collection<PacketNameTag> getPacketDisplayText(@NotNull Player player) {
         return plugin.getNametagManager().getPacketDisplayText(player);
     }
 
@@ -312,7 +313,7 @@ public class UNTAPI {
      * @param billboard the new billboard constraints
      */
     public void setNametagBillboard(@NotNull Player player, @NotNull AbstractDisplayMeta.BillboardConstraints billboard) {
-        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+        plugin.getNametagManager().getPacketDisplayText(player).forEach(packetNameTag -> {
             packetNameTag.setBillboard(billboard);
             packetNameTag.refresh();
         });
@@ -326,16 +327,19 @@ public class UNTAPI {
      */
     public void setNametagShadowed(@NotNull Player player, boolean shadowed) {
         final Settings.NameTag current = plugin.getNametagManager().getEffectiveNametag(player);
-        final Settings.Background bg = current.background();
-        Settings.Background newBg;
-        if (bg instanceof Settings.IntegerBackground intBg) {
-            newBg = new Settings.IntegerBackground(bg.enabled(), intBg.getRed(), intBg.getGreen(), intBg.getBlue(), bg.opacity(), shadowed, bg.seeThrough());
-        } else if (bg instanceof Settings.HexBackground hexBg) {
-            newBg = new Settings.HexBackground(bg.enabled(), hexBg.getHex(), bg.opacity(), shadowed, bg.seeThrough());
-        } else {
-            return;
-        }
-        final Settings.NameTag modified = current.withBackground(newBg);
+        Settings.NameTag modified = current.withLinesGroups(linesGroup -> {
+            final Settings.Background bg = linesGroup.background();
+            Settings.Background newBg;
+            if (bg instanceof Settings.IntegerBackground intBg) {
+                newBg = new Settings.IntegerBackground(bg.enabled(), intBg.getRed(), intBg.getGreen(), intBg.getBlue(), bg.opacity(), shadowed, bg.seeThrough());
+            } else if (bg instanceof Settings.HexBackground hexBg) {
+                newBg = new Settings.HexBackground(bg.enabled(), hexBg.getHex(), bg.opacity(), shadowed, bg.seeThrough());
+            } else {
+                return linesGroup;
+            }
+            return new Settings.LinesGroup(linesGroup.lines(), linesGroup.modifiers(), newBg, linesGroup.scale(), linesGroup.yOffset());
+        });
+
         plugin.getNametagManager().setNametagOverride(player, modified);
     }
 
@@ -347,17 +351,18 @@ public class UNTAPI {
      */
     public void setNametagSeeThrough(@NotNull Player player, boolean seeThrough) {
         final Settings.NameTag current = plugin.getNametagManager().getEffectiveNametag(player);
-        final Settings.Background bg = current.background();
-        Settings.Background newBg;
-        if (bg instanceof Settings.IntegerBackground intBg) {
-            newBg = new Settings.IntegerBackground(bg.enabled(), intBg.getRed(), intBg.getGreen(), intBg.getBlue(), bg.opacity(), bg.shadowed(), seeThrough);
-        } else if (bg instanceof Settings.HexBackground hexBg) {
-            newBg = new Settings.HexBackground(bg.enabled(), hexBg.getHex(), bg.opacity(), bg.shadowed(), seeThrough);
-        } else {
-            return;
-        }
-        final Settings.NameTag modified = current.withBackground(newBg);
-        plugin.getNametagManager().setNametagOverride(player, modified);
+        current.withLinesGroups(linesGroup -> {
+            final Settings.Background bg = linesGroup.background();
+            Settings.Background newBg;
+            if (bg instanceof Settings.IntegerBackground intBg) {
+                newBg = new Settings.IntegerBackground(bg.enabled(), intBg.getRed(), intBg.getGreen(), intBg.getBlue(), bg.opacity(), bg.shadowed(), seeThrough);
+            } else if (bg instanceof Settings.HexBackground hexBg) {
+                newBg = new Settings.HexBackground(bg.enabled(), hexBg.getHex(), bg.opacity(), bg.shadowed(), seeThrough);
+            } else {
+                return linesGroup;
+            }
+            return new Settings.LinesGroup(linesGroup.lines(), linesGroup.modifiers(), newBg, linesGroup.scale(), linesGroup.yOffset());
+        });
     }
 
     /**
@@ -368,7 +373,7 @@ public class UNTAPI {
      * @param component the component to display as the nametag
      */
     public void setForcedNametag(@NotNull Player player, @NotNull Component component) {
-        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+        plugin.getNametagManager().getPacketDisplayText(player).forEach(packetNameTag -> {
             packetNameTag.setForcedNameTag(component);
             packetNameTag.refresh();
         });
@@ -383,7 +388,7 @@ public class UNTAPI {
      * @param component the component to display as the nametag
      */
     public void setForcedNametag(@NotNull Player player, @NotNull Player viewer, @NotNull Component component) {
-        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+        plugin.getNametagManager().getPacketDisplayText(player).forEach(packetNameTag -> {
             packetNameTag.setForcedNameTag(viewer.getUniqueId(), component);
             packetNameTag.refreshForPlayer(viewer);
         });
@@ -395,7 +400,7 @@ public class UNTAPI {
      * @param player the player whose forced nametag should be cleared
      */
     public void clearForcedNametag(@NotNull Player player) {
-        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+        plugin.getNametagManager().getPacketDisplayText(player).forEach(packetNameTag -> {
             packetNameTag.clearForcedNameTag();
             packetNameTag.refresh();
         });
@@ -408,7 +413,7 @@ public class UNTAPI {
      * @param viewer the player who was seeing the forced nametag
      */
     public void clearForcedNametag(@NotNull Player player, @NotNull Player viewer) {
-        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetNameTag -> {
+        plugin.getNametagManager().getPacketDisplayText(player).forEach(packetNameTag -> {
             packetNameTag.clearForcedNameTag(viewer.getUniqueId());
             packetNameTag.refreshForPlayer(viewer);
         });
