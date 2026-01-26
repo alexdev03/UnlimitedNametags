@@ -236,7 +236,7 @@ public class PacketNameTag {
     }
 
     public void updateYOOffset() {
-        this.setTransformation(new Vector3f(0, offset + increasedOffset, 0));
+        this.setTransformation(new Vector3f(0, offset + increasedOffset + linesGroup.yOffset(), 0));
     }
 
     public void setViewRange(float range) {
@@ -588,6 +588,7 @@ public class PacketNameTag {
         properties.put("backgroundColor", String.valueOf(meta.getBackgroundColor()));
         properties.put("transformation", meta.getTranslation().toString());
         properties.put("yOffset", String.valueOf(offset));
+        properties.put("lineGroupYOffset", String.valueOf(linesGroup.yOffset()));
         properties.put("scale", String.valueOf(meta.getScale()));
         properties.put("increasedOffset", String.valueOf(increasedOffset));
         properties.put("viewRange", String.valueOf(meta.getViewRange()));

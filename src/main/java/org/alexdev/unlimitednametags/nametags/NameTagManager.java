@@ -396,6 +396,9 @@ public class NameTagManager {
         if (force && isScalePresent()) {
             packetNameTag.checkScale();
         }
+        if (force) {
+            packetNameTag.updateYOOffset();
+        }
 
         final boolean shadowed = linesGroup.background().shadowed();
         final boolean seeThrough = linesGroup.background().seeThrough();
