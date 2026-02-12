@@ -364,7 +364,11 @@ public class NameTagManager {
             }
 
             final boolean shadowed = nameTag.background().shadowed();
-            final boolean seeThrough = nameTag.background().seeThrough();
+            final boolean seeThrough;
+            if (!shiftSystemBlocked.getOrDefault(player.getUniqueId(), false) && packetNameTag.isSneaking())
+                seeThrough = false;
+            else
+                seeThrough = nameTag.background().seeThrough();
             final int backgroundColor = nameTag.background().getColor().asARGB();
 
             components.forEach((p, c) -> {
