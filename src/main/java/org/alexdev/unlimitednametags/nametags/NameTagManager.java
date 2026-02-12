@@ -528,12 +528,13 @@ public class NameTagManager {
         final AbstractDisplayMeta.BillboardConstraints billboard = plugin.getConfigManager().getSettings()
                 .getDefaultBillboard();
 
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> {
-            setYOffset(p, yOffset);
-            setViewDistance(p, viewDistance);
-            setBillBoard(p, billboard);
-            refresh(p, true);
-        }));
+        plugin.getTaskScheduler()
+                .runTaskAsynchronously(() -> plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> {
+                    setYOffset(p, yOffset);
+                    setViewDistance(p, viewDistance);
+                    setBillBoard(p, billboard);
+                    refresh(p, true);
+                }));
         startTask();
     }
 

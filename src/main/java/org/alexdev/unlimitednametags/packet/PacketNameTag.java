@@ -246,7 +246,8 @@ public class PacketNameTag {
     public void showToPlayer(@NotNull Player player) {
         if (!isEligibleToShow(player)) {
             if (plugin.getNametagManager().isDebug()) {
-                plugin.getLogger().info("Player " + player.getName() + " is not eligible to show nametag for " + owner.getName());
+                plugin.getLogger()
+                        .info("Player " + player.getName() + " is not eligible to show nametag for " + owner.getName());
             }
             return;
         }
@@ -290,14 +291,16 @@ public class PacketNameTag {
 
         if (plugin.getHook(ViaVersionHook.class).map(h -> h.hasNotTextDisplays(player)).orElse(false)) {
             if (plugin.getNametagManager().isDebug()) {
-                plugin.getLogger().info("Player " + player.getName() + " is on a version that does not support text displays.");
+                plugin.getLogger()
+                        .info("Player " + player.getName() + " is on a version that does not support text displays.");
             }
             return false;
         }
 
         if (blocked.contains(player.getUniqueId())) {
             if (plugin.getNametagManager().isDebug()) {
-                plugin.getLogger().info("Player " + player.getName() + " is blocked from seeing nametag of " + owner.getName());
+                plugin.getLogger()
+                        .info("Player " + player.getName() + " is blocked from seeing nametag of " + owner.getName());
             }
             return false;
         }
@@ -311,21 +314,24 @@ public class PacketNameTag {
 
         if (player.getWorld() != owner.getWorld()) {
             if (plugin.getNametagManager().isDebug()) {
-                plugin.getLogger().info("Player " + player.getName() + " is in a different world than owner " + owner.getName());
+                plugin.getLogger()
+                        .info("Player " + player.getName() + " is in a different world than owner " + owner.getName());
             }
             return false;
         }
 
         if (isPlayerChannelNotValid(player) || isPlayerChannelNotValid(owner)) {
             if (plugin.getNametagManager().isDebug()) {
-                plugin.getLogger().info("Player " + player.getName() + " or owner " + owner.getName() + " has an invalid channel/user.");
+                plugin.getLogger().info("Player " + player.getName() + " or owner " + owner.getName()
+                        + " has an invalid channel/user.");
             }
             return false;
         }
 
         if (!hasRequiredPermissions(player)) {
             if (plugin.getNametagManager().isDebug()) {
-                plugin.getLogger().info("Player " + player.getName() + " does not have required permissions to see nametag of " + owner.getName());
+                plugin.getLogger().info("Player " + player.getName()
+                        + " does not have required permissions to see nametag of " + owner.getName());
             }
             return false;
         }
@@ -345,9 +351,11 @@ public class PacketNameTag {
             return false;
         }
 
-        if (plugin.getConfigManager().getSettings().isShowCurrentNameTag() && player.getUniqueId() == owner.getUniqueId()) {
+        if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()
+                && player.getUniqueId() == owner.getUniqueId()) {
             if (plugin.getNametagManager().isDebug()) {
-                plugin.getLogger().info("Player " + player.getName() + " is the owner and show current nametag is enabled.");
+                plugin.getLogger()
+                        .info("Player " + player.getName() + " is the owner and show current nametag is enabled.");
             }
             return true;
         }
@@ -401,6 +409,9 @@ public class PacketNameTag {
     }
 
     public void sendPassengersPacket(@NotNull User player) {
+        if (removed) {
+            return;
+        }
         plugin.getPacketManager().sendPassengersPacket(player, this);
     }
 
@@ -427,12 +438,12 @@ public class PacketNameTag {
     }
 
     private void setOwnerPosition() {
-        final Location location = getOffsetLocation(); //.add(0, 0.25, 0)
+        final Location location = getOffsetLocation(); // .add(0, 0.25, 0)
         modifyOwnerEntity(meta -> meta.setLocation(SpigotConversionUtil.fromBukkitLocation(location)));
     }
 
     public Location getOffsetLocation() {
-        final Location location = owner.getLocation().clone();
+        final Location location = owner.getLocation();
         location.setPitch(0);
         location.setYaw(-180);
         location.setY(location.getY() + (1.8) * scale);
@@ -573,14 +584,16 @@ public class PacketNameTag {
                 .findFirst();
         final Metadata ownerMetadata = perPlayerEntity.getEntityOf(ownerUser).getEntityMeta().getMetadata();
         metadata.copyFrom(ownerMetadata);
-        component.ifPresent(entityData -> ((TextDisplayMeta) wrapper.getEntityMeta()).setText((Component) entityData.getValue()));
+        component.ifPresent(
+                entityData -> ((TextDisplayMeta) wrapper.getEntityMeta()).setText((Component) entityData.getValue()));
         metadata.setNotifyAboutChanges(false);
     }
 
     @NotNull
     public Map<String, String> properties() {
         final Map<String, String> properties = new LinkedHashMap<>();
-        final TextDisplayMeta meta = (TextDisplayMeta) this.perPlayerEntity.getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(owner)).getEntityMeta();
+        final TextDisplayMeta meta = (TextDisplayMeta) this.perPlayerEntity
+                .getEntityOf(PacketEvents.getAPI().getPlayerManager().getUser(owner)).getEntityMeta();
         properties.put("text", MiniMessage.miniMessage().serialize(meta.getText()));
         properties.put("billboard", meta.getBillboardConstraints().name());
         properties.put("shadowed", String.valueOf(meta.isShadow()));
@@ -622,7 +635,8 @@ public class PacketNameTag {
 
     private void updateViewer(@NotNull UUID uuid) {
         final Player player = plugin.getPlayerListener().getPlayer(uuid);
-        if (player == null) return;
+        if (player == null)
+            return;
 
         Component textToUse = calculatedTextCache.get(uuid);
 

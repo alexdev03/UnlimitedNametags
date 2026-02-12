@@ -22,7 +22,8 @@ public class TrackerManager {
     private final ConcurrentSetMultimap<UUID, UUID> trackedPlayers;
 
     /**
-     * Reverse map associating a player (key) with those who are tracking them (value).
+     * Reverse map associating a player (key) with those who are tracking them
+     * (value).
      * B -> [A] means B is seen by A.
      * Used to optimize reverse lookups.
      */
@@ -41,8 +42,7 @@ public class TrackerManager {
             List<Entity> nearbyEntities = player.getNearbyEntities(
                     Bukkit.getViewDistance() * 16,
                     256,
-                    Bukkit.getViewDistance() * 16
-            );
+                    Bukkit.getViewDistance() * 16);
 
             for (Entity entity : nearbyEntities) {
                 if (entity instanceof Player target) {
@@ -66,19 +66,19 @@ public class TrackerManager {
      * @param target The target player being observed.
      */
     public void handleAdd(@NotNull Player player, @NotNull Player target) {
-        if (player.hasMetadata("NPC") || target.hasMetadata("NPC")) return;
-        if (target.hasPotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY)) return;
+        if (player.hasMetadata("NPC") || target.hasMetadata("NPC"))
+            return;
+        if (target.hasPotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY))
+            return;
 
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-            if (trackedPlayers.containsEntry(player.getUniqueId(), target.getUniqueId())) {
-                return;
-            }
+        if (trackedPlayers.containsEntry(player.getUniqueId(), target.getUniqueId())) {
+            return;
+        }
 
-            trackedPlayers.put(player.getUniqueId(), target.getUniqueId());
-            trackedBy.put(target.getUniqueId(), player.getUniqueId());
+        trackedPlayers.put(player.getUniqueId(), target.getUniqueId());
+        trackedBy.put(target.getUniqueId(), player.getUniqueId());
 
-            plugin.getNametagManager().updateDisplay(player, target);
-        });
+        plugin.getNametagManager().updateDisplay(player, target);
     }
 
     /**
@@ -135,7 +135,8 @@ public class TrackerManager {
      */
     public void forceUntrack(@NotNull Player player) {
         Set<UUID> tracked = trackedPlayers.get(player.getUniqueId());
-        if (tracked == null || tracked.isEmpty()) return;
+        if (tracked == null || tracked.isEmpty())
+            return;
 
         // Copy to avoid ConcurrentModification during iteration if necessary,
         // although removePlayerInternal handles concurrency.
