@@ -96,7 +96,7 @@ public class PlayerListener implements PackSendHandler {
         });
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPotion(@NotNull EntityPotionEffectEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
@@ -153,7 +153,7 @@ public class PlayerListener implements PackSendHandler {
         plugin.getNametagManager().removeAllViewers(event.getEntity());
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
         diedPlayers.remove(event.getPlayer().getUniqueId());
         if (event.getPlayer().getGameMode() == GameMode.SPECTATOR) {
@@ -163,7 +163,7 @@ public class PlayerListener implements PackSendHandler {
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer()), 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerVanishes(@NotNull PlayerShowEntityEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
@@ -178,7 +178,7 @@ public class PlayerListener implements PackSendHandler {
         });
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerUnvanishes(@NotNull PlayerHideEntityEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
@@ -189,7 +189,7 @@ public class PlayerListener implements PackSendHandler {
         });
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleport(@NotNull PlayerTeleportEvent event) {
         if (event.getFrom().getWorld() != event.getTo().getWorld()) {
             plugin.getTrackerManager().forceUntrack(event.getPlayer());
