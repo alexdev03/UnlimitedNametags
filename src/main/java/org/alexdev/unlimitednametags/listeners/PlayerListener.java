@@ -173,7 +173,7 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(display -> {
+        plugin.getNametagManager().getPacketDisplayText(player).forEach(display -> {
             display.showToPlayer(event.getPlayer());
         });
     }
@@ -184,7 +184,7 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(display -> {
+        plugin.getNametagManager().getPacketDisplayText(player).forEach(display -> {
             display.hideFromPlayer(event.getPlayer());
         });
     }
@@ -216,7 +216,7 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        plugin.getNametagManager().getPacketDisplayText(player).ifPresent(packetDisplayText -> {
+        plugin.getNametagManager().getPacketDisplayText(player).forEach(packetDisplayText -> {
             packetDisplayText.hideForOwner();
 
             plugin.getTaskScheduler().runTaskLaterAsynchronously(packetDisplayText::showForOwner, 5);

@@ -50,7 +50,7 @@ public class PacketNameTag {
     @Setter
     private boolean visible;
     @Setter
-    private Settings.NameTag nameTag;
+    private Settings.LinesGroup linesGroup;
     private float scale;
     private float offset;
     private float increasedOffset;
@@ -58,7 +58,7 @@ public class PacketNameTag {
     @Setter
     private boolean sneaking;
 
-    public PacketNameTag(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.NameTag nameTag) {
+    public PacketNameTag(@NotNull UnlimitedNameTags plugin, @NotNull Player owner, @NotNull Settings.LinesGroup linesGroup) {
         this.plugin = plugin;
         this.owner = owner;
         this.relationalCache = Maps.newConcurrentMap();
@@ -67,7 +67,7 @@ public class PacketNameTag {
         this.perPlayerEntity = new WrapperPerPlayerEntity(this.getBaseSupplier());
         this.blocked = Sets.newConcurrentHashSet();
         this.lastUpdate = System.currentTimeMillis();
-        this.nameTag = nameTag;
+        this.linesGroup = linesGroup;
         this.scale = plugin.getNametagManager().getScale(owner);
         this.setScale(scale);
     }
@@ -184,7 +184,7 @@ public class PacketNameTag {
     }
 
     public float getDefaultScale() {
-        return nameTag.scale();
+        return linesGroup.scale();
     }
 
     public boolean checkScale() {
@@ -234,12 +234,12 @@ public class PacketNameTag {
     }
 
     public void resetOffset(float offset) {
-        this.setTransformation(new Vector3f(0, offset + increasedOffset, 0));
+        this.setTransformation(new Vector3f(0, offset + increasedOffset + linesGroup.yOffset(), 0));
         this.offset = offset;
     }
 
     public void updateYOOffset() {
-        this.setTransformation(new Vector3f(0, offset + increasedOffset, 0));
+        this.setTransformation(new Vector3f(0, offset + increasedOffset + linesGroup.yOffset(), 0));
     }
 
     public void setViewRange(float range) {
@@ -415,7 +415,7 @@ public class PacketNameTag {
         if (removed) {
             return;
         }
-        plugin.getPacketManager().sendPassengersPacket(player, this);
+        plugin.getNametagManager().sendPassengersPacket(player, getOwner());
     }
 
     public void sendPassengerPacketToViewers() {
@@ -607,6 +607,7 @@ public class PacketNameTag {
         properties.put("backgroundColor", String.valueOf(meta.getBackgroundColor()));
         properties.put("transformation", meta.getTranslation().toString());
         properties.put("yOffset", String.valueOf(offset));
+        properties.put("lineGroupYOffset", String.valueOf(linesGroup.yOffset()));
         properties.put("scale", String.valueOf(meta.getScale()));
         properties.put("increasedOffset", String.valueOf(increasedOffset));
         properties.put("viewRange", String.valueOf(meta.getViewRange()));

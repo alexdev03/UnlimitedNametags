@@ -66,9 +66,9 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
         final WrapperPlayServerCamera camera = new WrapperPlayServerCamera(event);
         if (camera.getCameraId() == player.getEntityId()) {
-            plugin.getNametagManager().getPacketDisplayText(player).ifPresent(PacketNameTag::showForOwner);
+            plugin.getNametagManager().getPacketDisplayText(player).forEach(PacketNameTag::showForOwner);
         } else {
-            plugin.getNametagManager().getPacketDisplayText(player).ifPresent(PacketNameTag::hideForOwner);
+            plugin.getNametagManager().getPacketDisplayText(player).forEach(PacketNameTag::hideForOwner);
         }
     }
 
@@ -106,12 +106,12 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
 
         final WrapperPlayClientPlayerInput packet = new WrapperPlayClientPlayerInput(event);
-        final Optional<PacketNameTag> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player);
-        if (optionalPacketDisplayText.isEmpty()) {
-            return;
-        }
+        final Collection<PacketNameTag> packetNameTags = plugin.getNametagManager().getPacketDisplayText(player);
 
-        if (packet.isShift() != optionalPacketDisplayText.get().isSneaking()) {
+        boolean updateSneaking = packetNameTags.stream()
+                .anyMatch(packetNameTag -> packet.isShift() != packetNameTag.isSneaking());
+
+        if (updateSneaking) {
             plugin.getNametagManager().updateSneaking(player, packet.isShift());
         }
     }
@@ -124,17 +124,19 @@ public class PacketEventsListener extends PacketListenerAbstract {
         }
 
         final List<Integer> passengers = collectPassengers(packet.getPassengers());
-        final Optional<PacketNameTag> optionalPacketDisplayText = plugin.getNametagManager().getPacketDisplayText(player.get());
-        if (optionalPacketDisplayText.isEmpty()) {
+        final Collection<PacketNameTag> packetNameTags = plugin.getNametagManager().getPacketDisplayText(player.get());
+        if (packetNameTags.isEmpty()) {
             plugin.getPacketManager().setPassengers(player.get(), passengers);
             return;
         }
 
-        if(!passengers.contains(optionalPacketDisplayText.get().getEntityId())) {
-            passengers.add(optionalPacketDisplayText.get().getEntityId());
-            passengers.sort(Comparator.naturalOrder());
-            packet.setPassengers(passengers.stream().mapToInt(i -> i).toArray());
-            event.markForReEncode(true);
+        for (PacketNameTag packetNameTag : packetNameTags) {
+            if(!passengers.contains(packetNameTag.getEntityId())) {
+                passengers.add(packetNameTag.getEntityId());
+                passengers.sort(Comparator.naturalOrder());
+                packet.setPassengers(passengers.stream().mapToInt(i -> i).toArray());
+                event.markForReEncode(true);
+            }
         }
 
         plugin.getPacketManager().setPassengers(player.get(), passengers);
