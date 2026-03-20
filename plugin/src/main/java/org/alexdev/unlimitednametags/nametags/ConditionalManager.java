@@ -3,6 +3,7 @@ package org.alexdev.unlimitednametags.nametags;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.jodah.expiringmap.ExpiringMap;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.api.UntConditionalManager;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.apache.commons.jexl3.*;
 import org.bukkit.entity.Player;
@@ -13,7 +14,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class ConditionalManager {
+public class ConditionalManager implements UntConditionalManager {
 
     private final UnlimitedNameTags plugin;
     private final BlockingQueue<JexlEngine> jexlEnginePool;

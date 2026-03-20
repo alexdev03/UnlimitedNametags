@@ -2,10 +2,11 @@ package org.alexdev.unlimitednametags.vanish;
 
 
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.api.UntVanishManager;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-public class VanishManager {
+public class VanishManager implements UntVanishManager {
 
     private final UnlimitedNameTags plugin;
     private VanishIntegration integration;

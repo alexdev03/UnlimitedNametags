@@ -9,7 +9,10 @@ import com.google.common.collect.Maps;
 import com.jonahseguin.drink.CommandService;
 import com.jonahseguin.drink.Drink;
 import lombok.Getter;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.api.UNTAPI;
+import org.alexdev.unlimitednametags.api.UnlimitedNameTagsPlugin;
 import org.alexdev.unlimitednametags.commands.MainCommand;
 import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.hook.*;
@@ -23,6 +26,8 @@ import org.alexdev.unlimitednametags.packet.PacketManager;
 import org.alexdev.unlimitednametags.placeholders.PlaceholderManager;
 import org.alexdev.unlimitednametags.vanish.VanishManager;
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -32,7 +37,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @Getter
-public final class UnlimitedNameTags extends JavaPlugin {
+public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedNameTagsPlugin {
 
     private boolean isPaper;
     private ConfigManager configManager;
@@ -296,6 +301,16 @@ public final class UnlimitedNameTags extends JavaPlugin {
 
     public <H extends Hook> Optional<H> getHook(@NotNull Class<H> hookType) {
         return Optional.ofNullable(hooks.get(hookType)).map(hookType::cast);
+    }
+
+    @Override
+    public @NotNull Component formatTextForNametag(@NotNull CommandSender audience, @NotNull String text) {
+        if (audience instanceof Player player) {
+            return getHook(MiniPlaceholdersHook.class)
+                    .map(h -> h.format(text, player))
+                    .orElseGet(() -> MiniMessage.miniMessage().deserialize(text));
+        }
+        return MiniMessage.miniMessage().deserialize(text);
     }
 
     @Override

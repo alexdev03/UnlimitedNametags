@@ -25,6 +25,13 @@ Unlimited Name Tags is a robust plugin designed for Minecraft servers running **
 
 Enhance your server's customization by tailoring player name tags, integrating dynamic placeholders, and supporting vanish plugins seamlessly. Built with ease-of-use and flexibility in mind, this plugin elevates the player experience while simplifying server management.
 
+### Building
+Gradle multi-module layout: **`common`**, **`api`**, **`plugin`**. Build the server jar with:
+
+`./gradlew :plugin:shadowJar`
+
+Output: **`target/UnlimitedNametags.jar`**. See **`CHANGELOG.md`** for 2.0 breaking changes.
+
 ---
 
 ## 🌟 **Features**

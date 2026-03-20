@@ -19,6 +19,7 @@ import me.tofaa.entitylib.wrapper.WrapperPerPlayerEntity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.api.UntNametagDisplay;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.bukkit.Color;
@@ -33,7 +34,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 @Getter
-public class PacketNameTag {
+public class PacketNameTag implements UntNametagDisplay {
 
     private final UnlimitedNameTags plugin;
     private final WrapperPerPlayerEntity perPlayerEntity;

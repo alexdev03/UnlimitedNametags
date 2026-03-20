@@ -3,3 +3,5 @@ plugins {
 }
 
 rootProject.name = "UnlimitedNametags"
+
+include("common", "api", "plugin")

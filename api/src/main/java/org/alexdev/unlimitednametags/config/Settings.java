@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
-import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.api.UnlimitedNameTagsPlugin;
 import org.bukkit.Color;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -159,7 +159,7 @@ public class Settings {
     @Configuration
     public abstract static class Modifier {
 
-        public abstract boolean isVisible(@NotNull Player player, @NotNull UnlimitedNameTags plugin);
+        public abstract boolean isVisible(@NotNull Player player, @NotNull UnlimitedNameTagsPlugin plugin);
 
     }
 
@@ -171,7 +171,7 @@ public class Settings {
         private boolean enabled;
 
         @Override
-        public boolean isVisible(@NotNull final Player player, @NotNull final UnlimitedNameTags plugin) {
+        public boolean isVisible(@NotNull final Player player, @NotNull final UnlimitedNameTagsPlugin plugin) {
             return enabled;
         }
     }
@@ -190,7 +190,7 @@ public class Settings {
         }
 
         @Override
-        public boolean isVisible(@NotNull final Player player, @NotNull final UnlimitedNameTags plugin) {
+        public boolean isVisible(@NotNull final Player player, @NotNull final UnlimitedNameTagsPlugin plugin) {
             return plugin.getConditionalManager().evaluateExpression(this, player);
         }
     }

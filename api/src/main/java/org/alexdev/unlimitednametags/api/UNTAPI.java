@@ -3,10 +3,8 @@ package org.alexdev.unlimitednametags.api;
 
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import net.kyori.adventure.text.Component;
-import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
-import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.alexdev.unlimitednametags.vanish.VanishIntegration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.ApiStatus;
@@ -24,12 +22,11 @@ import java.util.function.Function;
 @SuppressWarnings("unused")
 public class UNTAPI {
 
-    // Instance of the plugin
-    private final UnlimitedNameTags plugin;
+    private final UnlimitedNameTagsPlugin plugin;
     private static UNTAPI instance;
 
     @ApiStatus.Internal
-    protected UNTAPI(@NotNull UnlimitedNameTags plugin) {
+    protected UNTAPI(@NotNull UnlimitedNameTagsPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -52,7 +49,7 @@ public class UNTAPI {
      * @param plugin the plugin instance
      */
     @ApiStatus.Internal
-    public static void register(@NotNull UnlimitedNameTags plugin) {
+    public static void register(@NotNull UnlimitedNameTagsPlugin plugin) {
         instance = new UNTAPI(plugin);
     }
 
@@ -140,7 +137,7 @@ public class UNTAPI {
      * @param player the player to retrieve the display text packet for
      * @return the display text packet for the player
      */
-    public Collection<PacketNameTag> getPacketDisplayText(@NotNull Player player) {
+    public Collection<? extends UntNametagDisplay> getPacketDisplayText(@NotNull Player player) {
         return plugin.getNametagManager().getPacketDisplayText(player);
     }
 
