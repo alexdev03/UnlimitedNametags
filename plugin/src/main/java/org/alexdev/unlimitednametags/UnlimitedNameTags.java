@@ -11,6 +11,7 @@ import com.jonahseguin.drink.Drink;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.alexdev.unlimitednametags.api.NametagCustomAnimationHandler;
 import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.api.UnlimitedNameTagsPlugin;
 import org.alexdev.unlimitednametags.commands.MainCommand;
@@ -30,11 +31,14 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
 public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedNameTagsPlugin {
@@ -53,6 +57,8 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
     private TaskScheduler taskScheduler;
     private KyoriManager kyoriManager;
     private ConditionalManager conditionalManager;
+
+    private final ConcurrentHashMap<String, NametagCustomAnimationHandler> nametagCustomAnimations = new ConcurrentHashMap<>();
 
     @Override
     public void onLoad() {
@@ -304,6 +310,27 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
     }
 
     @Override
+    public void registerNametagCustomAnimation(@NotNull final String id, @NotNull final NametagCustomAnimationHandler handler) {
+        Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(handler, "handler");
+        final String key = id.trim();
+        if (key.isEmpty()) {
+            throw new IllegalArgumentException("id cannot be blank");
+        }
+        nametagCustomAnimations.put(key, handler);
+    }
+
+    @Override
+    public boolean unregisterNametagCustomAnimation(@NotNull final String id) {
+        return nametagCustomAnimations.remove(id.trim()) != null;
+    }
+
+    @Override
+    public @Nullable NametagCustomAnimationHandler getNametagCustomAnimationHandler(@NotNull final String id) {
+        return nametagCustomAnimations.get(id.trim());
+    }
+
+    @Override
     public @NotNull Component formatTextForNametag(@NotNull CommandSender audience, @NotNull String text) {
         if (audience instanceof Player player) {
             return getHook(MiniPlaceholdersHook.class)
@@ -316,16 +343,33 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
     @Override
     public void onDisable() {
         UNTAPI.unregister();
+        nametagCustomAnimations.clear();
 
-        hooks.values().forEach(Hook::onDisable);
+        if (hooks != null) {
+            hooks.values().forEach(Hook::onDisable);
+        }
 
-        trackerManager.onDisable();
-        packetEventsListener.onDisable();
-        nametagManager.removeAll();
-        placeholderManager.close();
-        packetManager.close();
-        taskScheduler.cancelTasks();
-        playerListener.close();
+        if (trackerManager != null) {
+            trackerManager.onDisable();
+        }
+        if (packetEventsListener != null) {
+            packetEventsListener.onDisable();
+        }
+        if (nametagManager != null) {
+            nametagManager.removeAll();
+        }
+        if (placeholderManager != null) {
+            placeholderManager.close();
+        }
+        if (packetManager != null) {
+            packetManager.close();
+        }
+        if (taskScheduler != null) {
+            taskScheduler.cancelTasks();
+        }
+        if (playerListener != null) {
+            playerListener.close();
+        }
     }
 
 }

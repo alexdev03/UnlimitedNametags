@@ -12,6 +12,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -23,7 +25,7 @@ public class ConfigManager {
 
     private static final YamlConfigurationProperties PROPERTIES = ConfigLib.BUKKIT_DEFAULT_PROPERTIES.toBuilder()
             .charset(StandardCharsets.UTF_8)
-            .outputNulls(true)
+            .outputNulls(false)
             .inputNulls(false)
             .footer("Authors: AlexDev_")
             .build();
@@ -53,8 +55,10 @@ public class ConfigManager {
         final File settingsFile = new File(plugin.getDataFolder(), "settings.yml");
 
         try {
+            final Path settingsPath = settingsFile.toPath();
+            SettingsYamlMigrator.migrateIfNeeded(settingsPath, plugin.getLogger());
             settings = YamlConfigurations.update(
-                    settingsFile.toPath(),
+                    settingsPath,
                     Settings.class,
                     PROPERTIES
             );
@@ -67,7 +71,13 @@ public class ConfigManager {
     }
 
     public void reload() {
-        settings = YamlConfigurations.load(new File(plugin.getDataFolder(), "settings.yml").toPath(), Settings.class, PROPERTIES);
+        final Path settingsPath = new File(plugin.getDataFolder(), "settings.yml").toPath();
+        try {
+            SettingsYamlMigrator.migrateIfNeeded(settingsPath, plugin.getLogger());
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to migrate settings.yml on reload", e);
+        }
+        settings = YamlConfigurations.load(settingsPath, Settings.class, PROPERTIES);
         checkData();
         loadAdvancedConfig(true);
     }
@@ -128,6 +138,11 @@ public class ConfigManager {
             throw new IllegalStateException("Settings not loaded");
         }
 
+        if (settings.getConfigVersion() != SettingsConfigVersion.CURRENT) {
+            plugin.getLogger().warning("settings.yml configVersion is " + settings.getConfigVersion() + " but this build expects "
+                    + SettingsConfigVersion.CURRENT + "; reload after backup or migrate the file.");
+        }
+
         if (settings.getDefaultNameTag().isEmpty()) {
             throw new IllegalStateException("Default name tag is empty");
         }
@@ -135,16 +150,35 @@ public class ConfigManager {
         final Map<String, Settings.NameTag> nameTags = Maps.newLinkedHashMap();
         boolean save = false;
 
+        if (settings.getObscuredNametagCheckInterval() < 1) {
+            plugin.getLogger().warning("obscuredNametagCheckInterval must be >= 1; resetting to 1.");
+            settings.setObscuredNametagCheckInterval(1);
+            save = true;
+        }
+        if (settings.getObscuredNametagMaxDistance() <= 0.0) {
+            plugin.getLogger().warning("obscuredNametagMaxDistance must be > 0; resetting to 48.");
+            settings.setObscuredNametagMaxDistance(48.0);
+            save = true;
+        }
+
         for (final Map.Entry<String, Settings.NameTag> entry : settings.getNameTags().entrySet()) {
             final Settings.NameTag nameTag = entry.getValue();
-            for (final Settings.LinesGroup linesGroup : nameTag.linesGroups()) {
-                if (linesGroup.scale() <= 0) {
-                    plugin.getLogger().warning("Nametag scale is less than or equal to 0");
-                    nameTags.put(entry.getKey(), new Settings.NameTag(nameTag.permission(), nameTag.linesGroups()));
-                    save = true;
+            boolean entryFixed = false;
+            final ArrayList<Settings.DisplayGroup> fixedGroups = new ArrayList<>(nameTag.displayGroups().size());
+            for (final Settings.DisplayGroup group : nameTag.displayGroups()) {
+                if (group.scale() <= 0f) {
+                    plugin.getLogger().warning("NameTag '" + entry.getKey() + "': display group scale is <= 0; persisted as 1.0.");
+                    fixedGroups.add(group.withScale(1f));
+                    entryFixed = true;
                 } else {
-                    nameTags.put(entry.getKey(), nameTag);
+                    fixedGroups.add(group);
                 }
+            }
+            if (entryFixed) {
+                nameTags.put(entry.getKey(), new Settings.NameTag(nameTag.permission(), List.copyOf(fixedGroups)));
+                save = true;
+            } else {
+                nameTags.put(entry.getKey(), nameTag);
             }
         }
 

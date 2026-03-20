@@ -158,18 +158,36 @@ public class PlaceholderManager {
 
 
     @NotNull
-    public CompletableFuture<Map<Player, Component>> applyPlaceholders(@NotNull Player player, @NotNull Settings.LinesGroup lines,
+    public CompletableFuture<Map<Player, Component>> applyPlaceholders(@NotNull Player player, @NotNull Settings.DisplayGroup group,
                                                                        @NotNull List<Player> relationalPlayers) {
-        return getCheckedLines(player, lines).thenApplyAsync(strings -> createComponent(player, strings, relationalPlayers), executorService);
+        return getCheckedLines(player, group).thenApplyAsync(strings -> createComponent(player, strings, relationalPlayers), executorService);
+    }
+
+    /**
+     * Expands placeholders in a raw string for the given player (non-relational).
+     */
+    @NotNull
+    public String expandForOwner(@NotNull Player player, @NotNull String raw) {
+        return replacePlaceholders(raw, player, null);
+    }
+
+    /**
+     * Same visibility as checked lines resolution: when {@code false}, text lines are empty and item/block displays should hide content.
+     */
+    public boolean isDisplayGroupActive(@NotNull Player player, @NotNull Settings.DisplayGroup group) {
+        if (group.when() != null && !group.when().isBlank()) {
+            return plugin.getConditionalManager().evaluateCondition(group.when().trim(), player);
+        }
+        return true;
     }
 
     @NotNull
-    private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull Settings.LinesGroup lines) {
+    private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull Settings.DisplayGroup group) {
         return CompletableFuture.supplyAsync(() -> {
-            if(lines.modifiers() == null || lines.modifiers().isEmpty() || lines.modifiers().stream().allMatch(m -> m.isVisible(player, plugin))) {
-                return lines.lines();
+            if (!isDisplayGroupActive(player, group)) {
+                return List.of();
             }
-            return List.of();
+            return group.lines();
         }, executorService);
     }
 

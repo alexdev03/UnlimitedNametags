@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
-import org.alexdev.unlimitednametags.api.UnlimitedNameTagsPlugin;
 import org.bukkit.Color;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -25,12 +24,18 @@ import java.util.function.UnaryOperator;
 @Getter
 public class Settings {
 
+    @Comment({
+            "Schema version for settings.yml (managed by the plugin; do not lower).",
+            "1 = flat NameTag (lines on tag), 2 = displayGroups / DisplayGroup (current)."
+    })
+    private int configVersion = SettingsConfigVersion.CURRENT;
+
     private Map<String, NameTag> nameTags = new LinkedHashMap<>() {{
-        put("staffer", new NameTag("nametag.staffer", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true)),
-                new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f))));
-        put("default", new NameTag("nametag.default", List.of(new LinesGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"), List.of(new GlobalModifier(true)),
-                        new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f),
-                new LinesGroup(List.of("Rich Player"), List.of(new ConditionalModifier("%vault_eco_balance%", ">", "1000")), new HexBackground(false, "#ffffff", 255, false, false), 1f, 1.0f))));
+        put("staffer", new NameTag("nametag.staffer", List.of(new DisplayGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"),
+                new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f, null, null, null, null, null, null, null, null))));
+        put("default", new NameTag("nametag.default", List.of(new DisplayGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"),
+                        new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f, null, null, null, null, null, null, null, null),
+                new DisplayGroup(List.of("Rich Player"), new HexBackground(false, "#ffffff", 255, false, false), 1f, 1.0f, "%vault_eco_balance% > 1000", null, null, null, null, null, null, null))));
     }};
 
     @Setter
@@ -50,6 +55,12 @@ public class Settings {
     }
 
     private int taskInterval = 20;
+
+    @Comment({
+            "Ticks between display animation updates when a display group has no animation_interval.",
+            "Use 0 to use the same interval as taskInterval (nametag placeholder refresh cadence)."
+    })
+    private int displayAnimationInterval = 1;
 
     @Comment(value = {"This is opacity that will be applied to the nametag when a player sneaks. So, the value is from -128 to 127. ",
             "Similar to the background, the text rendering is discarded when it is less than 26. Defaults to -1, which represents 255 and is completely opaque."})
@@ -77,6 +88,24 @@ public class Settings {
     @Comment("Whether to see the NameTag of a user only while pointing at them")
     private boolean showWhileLooking = false;
 
+    @Comment({
+            "When true, viewers without direct line of sight to the nametag owner (server-side ray trace) still see the text",
+            "with reduced opacity within obscuredNametagMaxDistance blocks. Through-wall visibility uses seeThrough on the text display for those viewers.",
+            "Runs on the server main thread every obscuredNametagCheckInterval ticks; keep the interval reasonable on large player counts."
+    })
+    private boolean obscuredNametagThroughWalls = false;
+
+    @Comment("Text opacity when the viewer has no clear line of sight to the owner (-128–127; same semantics as sneakOpacity).")
+    private int obscuredNametagOpacity = 55;
+
+    @Comment("Maximum distance (blocks) from viewer to owner for obscured-through-walls styling; beyond this, full opacity / normal seeThrough apply.")
+    @Setter
+    private double obscuredNametagMaxDistance = 48.0;
+
+    @Comment("How often to re-check line of sight for obscuredNametagThroughWalls (server tick interval).")
+    @Setter
+    private int obscuredNametagCheckInterval = 5;
+
     @Comment("Whether to see your own NameTag (Similar to nametag mod of Lunar Client)")
     private boolean showCurrentNameTag = false;
 
@@ -95,6 +124,17 @@ public class Settings {
         return viewDistance / 160;
     }
 
+    /**
+     * Global animation tick spacing when a {@link DisplayGroup} has no {@code animation_interval}.
+     */
+    public int resolveDisplayAnimationTickInterval() {
+        if (displayAnimationInterval > 0) {
+            return displayAnimationInterval;
+        }
+        return Math.max(1, taskInterval);
+    }
+
+    @Comment("Match PAPI output strings. Quote reserved YAML 1.1 words: use placeholder: \"Yes\" not Yes (otherwise they become booleans).")
     private Map<String, List<PlaceholderReplacement>> placeholdersReplacements = new LinkedHashMap<>() {{
         put("%advancedvanish_is_vanished%", List.of(new PlaceholderReplacement("Yes", " &7[V]&r"), new PlaceholderReplacement("No", "")));
     }};
@@ -103,98 +143,143 @@ public class Settings {
     public record PlaceholderReplacement(String placeholder, String replacement) {
     }
 
-    public record NameTag(@Nullable String permission, @NotNull List<LinesGroup> linesGroups) {
+    public record NameTag(@Nullable String permission, @NotNull List<DisplayGroup> displayGroups) {
 
-        public NameTag(@NotNull final List<LinesGroup> linesGroups) {
-            this(null, linesGroups);
+        public NameTag(@NotNull final List<DisplayGroup> displayGroups) {
+            this(null, displayGroups);
         }
 
         @NotNull
         public NameTag withPermission(@Nullable final String permission) {
-            return new NameTag(permission, linesGroups);
+            return new NameTag(permission, displayGroups);
         }
 
         @NotNull
-        public NameTag withLinesGroups(@NotNull final List<LinesGroup> linesGroups) {
-            return new NameTag(permission, linesGroups);
+        public NameTag withDisplayGroups(@NotNull final List<DisplayGroup> displayGroups) {
+            return new NameTag(permission, displayGroups);
         }
 
         @NotNull
-        public NameTag withLinesGroups(@NotNull final UnaryOperator<LinesGroup> unaryOperator) {
-            return withLinesGroups(linesGroups.stream().map(unaryOperator::apply).toList());
+        public NameTag withDisplayGroups(@NotNull final UnaryOperator<DisplayGroup> unaryOperator) {
+            return withDisplayGroups(displayGroups.stream().map(unaryOperator::apply).toList());
         }
 
         @NotNull
         public NameTag withBackground(@NotNull Background background) {
-            return withLinesGroups(group -> group.withBackground(background));
+            return withDisplayGroups(group -> group.withBackground(background));
         }
 
         @NotNull
         public NameTag withScale(float scale) {
-            return withLinesGroups(group -> group.withScale(scale));
+            return withDisplayGroups(group -> group.withScale(scale));
         }
 
     }
 
-    public record LinesGroup(@NotNull List<String> lines, @Nullable List<Modifier> modifiers, @NotNull Background background, float scale, float yOffset) {
+    /**
+     * One stacked nametag display (text, item, or block). Visibility is controlled only by optional {@code when} (JEXL).
+     * <p>
+     * {@code background} may be omitted in YAML (null): same as a disabled transparent background — useful for {@link NametagDisplayType#ITEM}
+     * and {@link NametagDisplayType#BLOCK} rows where text styling does not apply.
+     * <p>
+     * <b>Lines</b>: used only for {@link NametagDisplayType#TEXT} (default). For {@link NametagDisplayType#ITEM} / {@link NametagDisplayType#BLOCK},
+     * {@code lines} in YAML are ignored; set {@code itemMaterial} / {@code blockMaterial} (required for content).
+     * <p>
+     * Optional {@code animation} (rotate, bob, dvd_bounce, pulse_scale, wiggle, orbit); optional {@code animation_interval}
+     * (ticks between pose updates) overrides root {@code displayAnimationInterval} (or {@code taskInterval} when that is 0).
+     * Optional {@code billboard} ({@code CENTER}, {@code HORIZONTAL}, {@code VERTICAL}, {@code FIXED}) overrides {@link Settings#getDefaultBillboard()} for this row only.
+     */
+    public record DisplayGroup(
+            List<String> lines,
+            @Nullable Background background,
+            float scale,
+            float yOffset,
+            @Nullable String when,
+            @Nullable NametagDisplayType displayType,
+            @Nullable String itemMaterial,
+            @Nullable String blockMaterial,
+            @Nullable String itemDisplayMode,
+            @Nullable DisplayAnimation animation,
+            @Nullable Integer animationInterval,
+            @Nullable AbstractDisplayMeta.BillboardConstraints billboard) {
 
-        public LinesGroup withBackground(@NotNull Background background) {
-            return new LinesGroup(lines, modifiers, background, scale, yOffset);
+        public DisplayGroup {
+            final NametagDisplayType resolved = displayType != null ? displayType : NametagDisplayType.TEXT;
+            if (resolved != NametagDisplayType.TEXT) {
+                lines = List.of();
+            } else {
+                lines = lines == null ? List.of() : List.copyOf(lines);
+            }
+            background = isRedundantOmittedStyleIntegerBackground(background) ? null : background;
         }
 
-        public LinesGroup withScale(float scale) {
-            return new LinesGroup(lines, modifiers, background, scale, yOffset);
+        /**
+         * Disabled integer RGB(0,0,0) with zero opacity and no shadow — same as omitting {@code background} in YAML
+         * ({@code seeThrough} is ignored for equivalence; effective omitted style uses {@link #OMITTED_BACKGROUND}).
+         */
+        public static boolean isRedundantOmittedStyleIntegerBackground(@Nullable final Background background) {
+            if (!(background instanceof IntegerBackground ib)) {
+                return false;
+            }
+            return !ib.enabled()
+                    && ib.opacity() == 0
+                    && !ib.shadowed()
+                    && ib.getRed() == 0
+                    && ib.getGreen() == 0
+                    && ib.getBlue() == 0;
+        }
+
+        private static final Background OMITTED_BACKGROUND = new IntegerBackground(false, 0, 0, 0, 0, false, true);
+
+        @NotNull
+        public NametagDisplayType resolvedDisplayType() {
+            return displayType != null ? displayType : NametagDisplayType.TEXT;
+        }
+
+        /**
+         * Background from config, or a fixed disabled/transparent default when omitted.
+         */
+        @NotNull
+        public Background effectiveBackground() {
+            return background != null ? background : OMITTED_BACKGROUND;
+        }
+
+        /**
+         * Scale for the display entity; values {@code <= 0} are treated as {@code 1} (zero scale makes the entity invisible).
+         */
+        public float effectiveScale() {
+            return scale > 0f ? scale : 1f;
+        }
+
+        /**
+         * Ticks between animation pose updates for this row; {@code null} or {@code <= 0} uses {@link Settings#resolveDisplayAnimationTickInterval()}.
+         */
+        public int effectiveAnimationTickInterval(@NotNull Settings settings) {
+            if (animationInterval != null && animationInterval > 0) {
+                return animationInterval;
+            }
+            return Math.max(1, settings.resolveDisplayAnimationTickInterval());
+        }
+
+        @NotNull
+        public AbstractDisplayMeta.BillboardConstraints effectiveBillboard(@NotNull Settings settings) {
+            return billboard != null ? billboard : settings.getDefaultBillboard();
+        }
+
+        public DisplayGroup withBackground(@NotNull Background background) {
+            return new DisplayGroup(lines, background, scale, yOffset, when, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+        }
+
+        public DisplayGroup withScale(float scale) {
+            return new DisplayGroup(lines, background, scale, yOffset, when, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+        }
+
+        @NotNull
+        public DisplayGroup withAnimation(@Nullable DisplayAnimation animation) {
+            return new DisplayGroup(lines, background, scale, yOffset, when, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
         }
 
     }
-
-    @Getter
-    @NoArgsConstructor
-    @Accessors(fluent = true)
-    @Polymorphic
-    @PolymorphicTypes({
-            @PolymorphicTypes.Type(type = GlobalModifier.class, alias = "global"),
-            @PolymorphicTypes.Type(type = ConditionalModifier.class, alias = "conditional")
-    })
-    @Configuration
-    public abstract static class Modifier {
-
-        public abstract boolean isVisible(@NotNull Player player, @NotNull UnlimitedNameTagsPlugin plugin);
-
-    }
-
-    @Getter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class GlobalModifier extends Modifier {
-
-        private boolean enabled;
-
-        @Override
-        public boolean isVisible(@NotNull final Player player, @NotNull final UnlimitedNameTagsPlugin plugin) {
-            return enabled;
-        }
-    }
-
-    @Getter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ConditionalModifier extends Modifier {
-
-        private String parameter;
-        private String condition;
-        private String value;
-
-        public String getExpression() {
-            return parameter + " " + condition + " " + value;
-        }
-
-        @Override
-        public boolean isVisible(@NotNull final Player player, @NotNull final UnlimitedNameTagsPlugin plugin) {
-            return plugin.getConditionalManager().evaluateExpression(this, player);
-        }
-    }
-
 
     @Getter
     @NoArgsConstructor

@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Public view of a per-line nametag text display entity.
+ * Public view of a per-line nametag display entity (text, item, or block display).
  */
 public interface UntNametagDisplay {
 

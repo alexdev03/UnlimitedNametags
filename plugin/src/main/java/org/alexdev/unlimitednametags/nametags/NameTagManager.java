@@ -14,6 +14,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.api.UntNametagManager;
+import org.alexdev.unlimitednametags.config.NametagDisplayType;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.HMCCosmeticsHook;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -45,6 +47,7 @@ public class NameTagManager implements UntNametagManager {
     private final Map<UUID, Settings.NameTag> nameTagOverrides;
     private final Map<UUID, Boolean> shiftSystemBlocked;
     private final List<MyScheduledTask> tasks;
+    private final AtomicLong displayAnimationMonotonicTick = new AtomicLong();
     @Setter
     private boolean debug = false;
     private final Attribute scaleAttribute;
@@ -72,6 +75,14 @@ public class NameTagManager implements UntNametagManager {
 
     private void startTask() {
         tasks.forEach(MyScheduledTask::cancel);
+        final MyScheduledTask displayAnimations = plugin.getTaskScheduler().runTaskTimerAsynchronously(
+                () -> {
+                    final long t = displayAnimationMonotonicTick.incrementAndGet();
+                    nameTags.values().forEach(tags -> tags.forEach(tag -> tag.tickDisplayAnimation(t)));
+                },
+                1L,
+                1L);
+
         final MyScheduledTask refresh = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                 () -> {
                     if (plugin.isPaper() && plugin.getServer().isStopping()) {
@@ -128,6 +139,16 @@ public class NameTagManager implements UntNametagManager {
             tasks.add(point);
         }
 
+        if (plugin.getConfigManager().getSettings().isObscuredNametagThroughWalls()) {
+            final int obscuredInterval = Math.max(1, plugin.getConfigManager().getSettings().getObscuredNametagCheckInterval());
+            final MyScheduledTask obscured = plugin.getTaskScheduler().runTaskTimer(
+                    this::tickObscuredNametagThroughWalls,
+                    obscuredInterval,
+                    obscuredInterval);
+            tasks.add(obscured);
+        }
+
+        tasks.add(displayAnimations);
         tasks.add(refresh);
         tasks.add(passengers);
     }
@@ -141,6 +162,37 @@ public class NameTagManager implements UntNametagManager {
         } else {
             return Registry.ATTRIBUTE.get(NamespacedKey.minecraft("generic.scale"));
         }
+    }
+
+    private void tickObscuredNametagThroughWalls() {
+        if (!plugin.getConfigManager().getSettings().isObscuredNametagThroughWalls()) {
+            return;
+        }
+        final Settings s = plugin.getConfigManager().getSettings();
+        final byte sneakB = clampMcTextOpacity(s.getSneakOpacity());
+        final byte obscB = clampMcTextOpacity(s.getObscuredNametagOpacity());
+        final double maxSq = s.getObscuredNametagMaxDistance() * s.getObscuredNametagMaxDistance();
+        for (final CopyOnWriteArrayList<PacketNameTag> tags : nameTags.values()) {
+            for (final PacketNameTag tag : tags) {
+                if (!tag.isTextDisplay()) {
+                    continue;
+                }
+                final Player owner = tag.getOwner();
+                final boolean shiftBlocked = shiftSystemBlocked.getOrDefault(owner.getUniqueId(), false);
+                final boolean sneakEff = tag.isSneaking() && !shiftBlocked;
+                tag.applyObscuredLineOfSightPresentation(true, sneakB, obscB, maxSq, sneakEff);
+            }
+        }
+    }
+
+    private static byte clampMcTextOpacity(final int raw) {
+        if (raw < -128) {
+            return -128;
+        }
+        if (raw > 127) {
+            return 127;
+        }
+        return (byte) raw;
     }
 
     public boolean isPlayerPointingAt(Player player1, Player player2) {
@@ -293,11 +345,11 @@ public class NameTagManager implements UntNametagManager {
         updateLineCount(player, nametag);
 
         final CopyOnWriteArrayList<PacketNameTag> createdTags = nameTags.get(player.getUniqueId());
-        for (int i = 0; i < nametag.linesGroups().size(); i++) {
-            final Settings.LinesGroup linesGroup = nametag.linesGroups().get(i);
+        for (int i = 0; i < nametag.displayGroups().size(); i++) {
+            final Settings.DisplayGroup displayGroup = nametag.displayGroups().get(i);
             final PacketNameTag display = createdTags.get(i);
-            plugin.getPlaceholderManager().applyPlaceholders(player, linesGroup, List.of(player))
-                    .thenAccept(lines -> loadDisplay(player, lines.get(player), linesGroup, display))
+            plugin.getPlaceholderManager().applyPlaceholders(player, displayGroup, List.of(player))
+                    .thenAccept(lines -> loadDisplay(player, lines.get(player), displayGroup, display))
                     .exceptionally(throwable -> {
                         plugin.getLogger().log(java.util.logging.Level.SEVERE,
                                 "Failed to create nametag for " + player.getName(), throwable);
@@ -321,8 +373,9 @@ public class NameTagManager implements UntNametagManager {
             return;
         }
 
-        for (int i = 0; i < nametag.linesGroups().size(); i++) {
-            final Settings.LinesGroup linesGroup = nametag.linesGroups().get(i);
+        for (int i = 0; i < nametag.displayGroups().size(); i++) {
+            final Settings.DisplayGroup displayGroup = nametag.displayGroups().get(i);
+            replaceDisplayIfNeeded(player, i, displayGroup);
             final PacketNameTag display = playerTags.get(i);
 
             final boolean show = plugin.getConfigManager().getSettings().isShowCurrentNameTag();
@@ -340,13 +393,10 @@ public class NameTagManager implements UntNametagManager {
                 }
             }
 
-            final List<Player> relationalPlayers = display.getViewers().stream()
-                    .map(Bukkit::getPlayer)
-                    .filter(Objects::nonNull)
-                    .toList();
+            final List<Player> relationalPlayers = relationalPlayersForRefresh(player, display);
 
-            plugin.getPlaceholderManager().applyPlaceholders(player, linesGroup, relationalPlayers)
-                    .thenAccept(lines -> editDisplay(display, lines, linesGroup, force))
+            plugin.getPlaceholderManager().applyPlaceholders(player, displayGroup, relationalPlayers)
+                    .thenAccept(lines -> editDisplay(display, lines, displayGroup, force))
                     .exceptionally(throwable -> {
                         plugin.getLogger().log(java.util.logging.Level.SEVERE,
                                 "Failed to edit nametag for " + player.getName(), throwable);
@@ -359,14 +409,16 @@ public class NameTagManager implements UntNametagManager {
         CopyOnWriteArrayList<PacketNameTag> list = nameTags.computeIfAbsent(player.getUniqueId(),
                 k -> new CopyOnWriteArrayList<>());
 
-        int needed = nametag.linesGroups().size();
+        int needed = nametag.displayGroups().size();
         int current = list.size();
 
         if (needed > current) {
             for (int i = current; i < needed; i++) {
-                Settings.LinesGroup linesGroup = nametag.linesGroups().get(i);
-                final PacketNameTag display = new PacketNameTag(plugin, player, linesGroup);
-                display.text(player, Component.empty());
+                Settings.DisplayGroup displayGroup = nametag.displayGroups().get(i);
+                final PacketNameTag display = PacketNameTag.create(plugin, player, displayGroup);
+                if (displayGroup.resolvedDisplayType() == NametagDisplayType.TEXT) {
+                    display.text(player, Component.empty());
+                }
                 display.spawn(player);
 
                 if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
@@ -398,9 +450,24 @@ public class NameTagManager implements UntNametagManager {
     }
 
     private void editDisplay(PacketNameTag packetNameTag, Map<Player, Component> components,
-            @NotNull Settings.LinesGroup linesGroup, boolean force) {
-        if (!packetNameTag.getLinesGroup().equals(linesGroup)) {
-            packetNameTag.setLinesGroup(linesGroup);
+            @NotNull Settings.DisplayGroup displayGroup, boolean force) {
+        if (!packetNameTag.getDisplayGroup().equals(displayGroup)) {
+            packetNameTag.setDisplayGroup(displayGroup);
+        }
+        final Settings cfg = plugin.getConfigManager().getSettings();
+        packetNameTag.setBillboard(displayGroup.effectiveBillboard(cfg));
+        if (displayGroup.resolvedDisplayType() != NametagDisplayType.TEXT) {
+            packetNameTag.syncVisualFromGroup(displayGroup);
+            if (force && isScalePresent()) {
+                packetNameTag.checkScale();
+            }
+            if (force) {
+                packetNameTag.updateYOOffset();
+            }
+            for (Player p : components.keySet()) {
+                packetNameTag.refreshForPlayer(p);
+            }
+            return;
         }
         if (force && isScalePresent()) {
             packetNameTag.checkScale();
@@ -409,9 +476,10 @@ public class NameTagManager implements UntNametagManager {
             packetNameTag.updateYOOffset();
         }
 
-        final boolean shadowed = linesGroup.background().shadowed();
-        final boolean seeThrough = linesGroup.background().seeThrough() && !packetNameTag.isSneaking();
-        final int backgroundColor = linesGroup.background().getColor().asARGB();
+        final boolean shadowed = displayGroup.effectiveBackground().shadowed();
+        final boolean seeThrough = displayGroup.effectiveBackground().seeThrough() && !packetNameTag.isSneaking();
+        final int backgroundColor = displayGroup.effectiveBackground().getColor().asARGB();
+        final boolean wallOpacity = cfg.isObscuredNametagThroughWalls();
 
         components.forEach((p, c) -> {
             final boolean[] updateRef = { packetNameTag.text(p, c) || force };
@@ -419,18 +487,20 @@ public class NameTagManager implements UntNametagManager {
             if (user == null) {
                 return;
             }
-            packetNameTag.modify(user, m -> {
+            packetNameTag.modifyTextForViewer(user, m -> {
 
                 if (force) {
                     m.setShadow(shadowed);
-                    m.setSeeThrough(seeThrough);
+                    if (!wallOpacity) {
+                        m.setSeeThrough(seeThrough);
+                    }
                     m.setBackgroundColor(backgroundColor);
                 } else {
                     if (m.isShadow() != shadowed) {
                         m.setShadow(shadowed);
                         updateRef[0] = true;
                     }
-                    if (m.isSeeThrough() != seeThrough) {
+                    if (!wallOpacity && m.isSeeThrough() != seeThrough) {
                         m.setSeeThrough(seeThrough);
                         updateRef[0] = true;
                     }
@@ -445,7 +515,7 @@ public class NameTagManager implements UntNametagManager {
     }
 
     private void loadDisplay(@NotNull Player player, @NotNull Component component,
-            @NotNull Settings.LinesGroup linesGroup,
+            @NotNull Settings.DisplayGroup displayGroup,
             @NotNull PacketNameTag display) {
         try {
             final Location location = player.getLocation().clone();
@@ -453,21 +523,36 @@ public class NameTagManager implements UntNametagManager {
             location.setY(location.getY() + 1.80);
 
             creating.remove(player.getUniqueId());
-            display.modify(m -> m.setUseDefaultBackground(false));
-            display.text(player, component);
-            display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
-            display.setShadowed(linesGroup.background().shadowed());
-            display.setSeeThrough(linesGroup.background().seeThrough() && !display.isSneaking());
-            // background color, if disabled, set to transparent
-            display.setBackgroundColor(linesGroup.background().getColor());
+            final NametagDisplayType dt = displayGroup.resolvedDisplayType();
+            if (dt == NametagDisplayType.TEXT) {
+                display.modifyTextAll(m -> m.setUseDefaultBackground(false));
+                display.text(player, component);
+            } else {
+                display.syncVisualFromGroup(displayGroup);
+            }
+            display.setBillboard(displayGroup.effectiveBillboard(plugin.getConfigManager().getSettings()));
+            if (dt == NametagDisplayType.TEXT) {
+                display.setShadowed(displayGroup.effectiveBackground().shadowed());
+                if (!plugin.getConfigManager().getSettings().isObscuredNametagThroughWalls()) {
+                    display.setSeeThrough(displayGroup.effectiveBackground().seeThrough() && !display.isSneaking());
+                }
+                display.setBackgroundColor(displayGroup.effectiveBackground().getColor());
+            }
 
             display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
-            plugin.getTaskScheduler().runTaskLater(() -> display.modifyOwner(meta -> meta.setText(component)), 1);
+            if (dt == NametagDisplayType.TEXT) {
+                plugin.getTaskScheduler().runTaskLater(() -> display.modifyTextForOwner(meta -> meta.setText(component)),
+                        1);
+            }
 
             display.refresh();
+
+            if (dt == NametagDisplayType.TEXT && plugin.getConfigManager().getSettings().isObscuredNametagThroughWalls()) {
+                plugin.getTaskScheduler().runTask(this::tickObscuredNametagThroughWalls);
+            }
 
             handleVanish(player, display);
 
@@ -475,6 +560,45 @@ public class NameTagManager implements UntNametagManager {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to create nametag for " + player.getName(),
                     e);
         }
+    }
+
+    private void replaceDisplayIfNeeded(@NotNull Player player, int index, @NotNull Settings.DisplayGroup displayGroup) {
+        final CopyOnWriteArrayList<PacketNameTag> list = nameTags.get(player.getUniqueId());
+        if (list == null || index < 0 || index >= list.size()) {
+            return;
+        }
+        final PacketNameTag current = list.get(index);
+        if (current.matchesDisplayGroupEntityType(displayGroup)) {
+            return;
+        }
+        current.remove();
+        entityIdToDisplay.remove(current.getEntityId());
+        final PacketNameTag neu = PacketNameTag.create(plugin, player, displayGroup);
+        if (displayGroup.resolvedDisplayType() == NametagDisplayType.TEXT) {
+            neu.text(player, Component.empty());
+        }
+        neu.spawn(player);
+        if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            neu.showToPlayer(player);
+        }
+        handleVanish(player, neu);
+        list.set(index, neu);
+        entityIdToDisplay.put(neu.getEntityId(), neu);
+    }
+
+    @NotNull
+    private List<Player> relationalPlayersForRefresh(@NotNull Player owner, @NotNull PacketNameTag display) {
+        final List<Player> fromViewers = display.getViewers().stream()
+                .map(Bukkit::getPlayer)
+                .filter(Objects::nonNull)
+                .toList();
+        if (!fromViewers.isEmpty()) {
+            return fromViewers;
+        }
+        final LinkedHashSet<Player> set = new LinkedHashSet<>();
+        set.add(owner);
+        set.addAll(plugin.getTrackerManager().getWhoTracks(owner));
+        return new ArrayList<>(set);
     }
 
     private void handleVanish(@NotNull Player player, @NotNull PacketNameTag display) {
@@ -560,14 +684,24 @@ public class NameTagManager implements UntNametagManager {
             return;
         }
 
-        for (PacketNameTag packetNameTag : getPacketDisplayText(player)) {
-            if (packetNameTag.getLinesGroup().background().seeThrough()) {
-                packetNameTag.setSeeThrough(!sneaking);
-            }
+        final Settings settings = plugin.getConfigManager().getSettings();
+        final boolean wall = settings.isObscuredNametagThroughWalls();
+        final byte sneakB = clampMcTextOpacity(settings.getSneakOpacity());
+        final byte obscB = clampMcTextOpacity(settings.getObscuredNametagOpacity());
+        final double maxSq = settings.getObscuredNametagMaxDistance() * settings.getObscuredNametagMaxDistance();
 
+        for (PacketNameTag packetNameTag : getPacketDisplayText(player)) {
             packetNameTag.setSneaking(sneaking);
-            packetNameTag
-                    .setTextOpacity((byte) (sneaking ? plugin.getConfigManager().getSettings().getSneakOpacity() : -1));
+            if (packetNameTag.isTextDisplay()) {
+                if (wall) {
+                    packetNameTag.applyObscuredLineOfSightPresentation(true, sneakB, obscB, maxSq, sneaking);
+                } else {
+                    if (packetNameTag.getDisplayGroup().effectiveBackground().seeThrough()) {
+                        packetNameTag.setSeeThrough(!sneaking);
+                    }
+                    packetNameTag.setTextOpacity(sneaking ? sneakB : (byte) -1);
+                }
+            }
             packetNameTag.refresh();
         }
     }
@@ -575,14 +709,14 @@ public class NameTagManager implements UntNametagManager {
     public void reload() {
         final float yOffset = plugin.getConfigManager().getSettings().getYOffset();
         final float viewDistance = plugin.getConfigManager().getSettings().getViewDistance();
-        final AbstractDisplayMeta.BillboardConstraints billboard = plugin.getConfigManager().getSettings()
-                .getDefaultBillboard();
-
+        if (!plugin.getConfigManager().getSettings().isObscuredNametagThroughWalls()) {
+            nameTags.values().forEach(tags -> tags.forEach(PacketNameTag::clearObscuredPresentationTracking));
+        }
         plugin.getTaskScheduler()
                 .runTaskAsynchronously(() -> plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> {
                     setYOffset(p, yOffset);
                     setViewDistance(p, viewDistance);
-                    setBillBoard(p, billboard);
+                    applyBillboardsFromEffectiveNametag(p);
                     refresh(p, true);
                 }));
         startTask();
@@ -646,8 +780,18 @@ public class NameTagManager implements UntNametagManager {
         }
     }
 
-    private void setBillBoard(@NotNull Player player, AbstractDisplayMeta.BillboardConstraints billboard) {
-        getPacketDisplayText(player).forEach(packetNameTag -> packetNameTag.setBillboard(billboard));
+    private void applyBillboardsFromEffectiveNametag(@NotNull Player player) {
+        final Settings.NameTag nameTag = getEffectiveNametag(player);
+        final List<Settings.DisplayGroup> groups = nameTag.displayGroups();
+        final Settings settings = plugin.getConfigManager().getSettings();
+        int i = 0;
+        for (PacketNameTag tag : getPacketDisplayText(player)) {
+            if (i >= groups.size()) {
+                break;
+            }
+            tag.setBillboard(groups.get(i).effectiveBillboard(settings));
+            i++;
+        }
     }
 
     private void setViewDistance(@NotNull Player player, float viewDistance) {
@@ -803,36 +947,49 @@ public class NameTagManager implements UntNametagManager {
             return;
         }
 
-        for (int i = 0; i < nameTag.linesGroups().size(); i++) {
-            final Settings.LinesGroup linesGroup = nameTag.linesGroups().get(i);
+        for (int i = 0; i < nameTag.displayGroups().size(); i++) {
+            final Settings.DisplayGroup displayGroup = nameTag.displayGroups().get(i);
+            replaceDisplayIfNeeded(player, i, displayGroup);
             final PacketNameTag display = swapTags.get(i);
 
-            final List<Player> relationalPlayers = display.getViewers().stream()
-                    .map(Bukkit::getPlayer)
-                    .filter(Objects::nonNull)
-                    .toList();
+            final List<Player> relationalPlayers = relationalPlayersForRefresh(player, display);
 
-            plugin.getPlaceholderManager().applyPlaceholders(player, linesGroup, relationalPlayers)
+            plugin.getPlaceholderManager().applyPlaceholders(player, displayGroup, relationalPlayers)
                     .thenAccept(lines -> {
                         final Component component = lines.get(player);
-                        display.text(player, component);
-                        display.setBillboard(plugin.getConfigManager().getSettings().getDefaultBillboard());
-                        display.setShadowed(linesGroup.background().shadowed());
-                        display.setSeeThrough(linesGroup.background().seeThrough() && !display.isSneaking());
-                        display.setBackgroundColor(linesGroup.background().getColor());
+                        final NametagDisplayType dt = displayGroup.resolvedDisplayType();
+                        if (dt == NametagDisplayType.TEXT) {
+                            display.text(player, component);
+                        } else {
+                            display.syncVisualFromGroup(displayGroup);
+                        }
+                        display.setBillboard(displayGroup.effectiveBillboard(plugin.getConfigManager().getSettings()));
+                        if (dt == NametagDisplayType.TEXT) {
+                            display.setShadowed(displayGroup.effectiveBackground().shadowed());
+                            if (!plugin.getConfigManager().getSettings().isObscuredNametagThroughWalls()) {
+                                display.setSeeThrough(displayGroup.effectiveBackground().seeThrough() && !display.isSneaking());
+                            }
+                            display.setBackgroundColor(displayGroup.effectiveBackground().getColor());
+                        }
                         display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
                         display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
-                        plugin.getTaskScheduler().runTaskLater(() -> display.modifyOwner(meta -> meta.setText(component)),
-                                1);
+                        if (dt == NametagDisplayType.TEXT) {
+                            plugin.getTaskScheduler()
+                                    .runTaskLater(() -> display.modifyTextForOwner(meta -> meta.setText(component)), 1);
+                        }
 
                         lines.forEach((p, c) -> {
-                            if (!p.equals(player)) {
+                            if (!p.equals(player) && dt == NametagDisplayType.TEXT) {
                                 display.text(p, c);
                             }
                         });
 
                         display.refresh();
+
+                        if (dt == NametagDisplayType.TEXT && plugin.getConfigManager().getSettings().isObscuredNametagThroughWalls()) {
+                            plugin.getTaskScheduler().runTask(this::tickObscuredNametagThroughWalls);
+                        }
                     })
                     .exceptionally(throwable -> {
                         plugin.getLogger().log(java.util.logging.Level.SEVERE,

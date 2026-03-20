@@ -22,6 +22,7 @@ public class MainCommand {
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt debug &7- Debugs the plugin"));
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt hide <player> &7- Hides the nametag"));
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt show <player> &7- Shows the nametag"));
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt refresh <player> &7- Re-applies nametag (permissions / placeholders) for everyone"));
         plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender, "&a/unt debugger <true/false> &7- Enable or disable the debugger"));
     }
 
@@ -59,12 +60,12 @@ public class MainCommand {
         plugin.getNametagManager().showToTrackedPlayers(target);
     }
 
-    @Command(name = "refresh", desc = "Refreshes the nametag of a player for you", usage = "refresh")
+    @Command(name = "refresh", desc = "Re-applies a player's nametag for all viewers (e.g. after permission changes)", usage = "refresh <player>")
     @Require(value = "unt.refresh", message = "&cYou do not have permission to refresh the nametag")
-    public void onRefresh(@Sender Player sender, Player target) {
-        plugin.getNametagManager().getPacketDisplayText(target).forEach(packetDisplayText -> {
-            packetDisplayText.refreshForPlayer(sender);
-        });
+    public void onRefresh(@Sender CommandSender sender, Player target) {
+        plugin.getNametagManager().refresh(target, true);
+        plugin.getKyoriManager().sendMessage(sender, Formatter.LEGACY.format(plugin, sender,
+                "&aNametag refreshed for &e" + target.getName() + "&a."));
     }
 
     @Command(name = "billboard", desc = "Sets the default billboard", usage = "billboard")

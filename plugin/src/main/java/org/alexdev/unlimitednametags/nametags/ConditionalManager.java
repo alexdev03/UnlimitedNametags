@@ -4,7 +4,6 @@ import me.clip.placeholderapi.PlaceholderAPI;
 import net.jodah.expiringmap.ExpiringMap;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.api.UntConditionalManager;
-import org.alexdev.unlimitednametags.config.Settings;
 import org.apache.commons.jexl3.*;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -44,14 +43,20 @@ public class ConditionalManager implements UntConditionalManager {
         return new MapContext();
     }
 
-    public boolean evaluateExpression(@NotNull Settings.ConditionalModifier modifier, @NotNull Player player) {
-        final String entireExpression = plugin.getPlaceholderManager().getPapiManager().isPapiEnabled() ?
-                PlaceholderAPI.setPlaceholders(player, modifier.getExpression()) :
-                modifier.getExpression();
+    @Override
+    public boolean evaluateCondition(@NotNull String expression, @NotNull Player player) {
+        final String trimmed = expression.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
 
-        final Boolean cached = cachedExpressions.getOrDefault(entireExpression, null) instanceof Boolean b ? b : null;
-        if (cached != null) {
-            return cached;
+        final String entireExpression = plugin.getPlaceholderManager().getPapiManager().isPapiEnabled() ?
+                PlaceholderAPI.setPlaceholders(player, trimmed) :
+                trimmed;
+
+        final Object cachedVal = cachedExpressions.get(entireExpression);
+        if (cachedVal instanceof Boolean b) {
+            return b;
         }
 
         JexlEngine jexlEngine = null;

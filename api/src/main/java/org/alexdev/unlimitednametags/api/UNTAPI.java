@@ -3,13 +3,16 @@ package org.alexdev.unlimitednametags.api;
 
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import net.kyori.adventure.text.Component;
+import org.alexdev.unlimitednametags.config.DisplayAnimation;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.alexdev.unlimitednametags.vanish.VanishIntegration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -291,15 +294,70 @@ public class UNTAPI {
     }
 
     /**
-     * Sets the lines groups of the player's nametag by cloning the current nametag and applying the new lines groups.
+     * Sets the display groups of the player's nametag by cloning the current nametag and applying the new list.
      *
-     * @param player the player whose nametag lines should be modified
-     * @param linesGroups the new lines groups
+     * @param player the player whose nametag should be modified
+     * @param displayGroups the new display groups (stacked text/item/block slots)
      */
-    public void setNametagLines(@NotNull Player player, @NotNull List<Settings.LinesGroup> linesGroups) {
+    public void setNametagDisplayGroups(@NotNull Player player, @NotNull List<Settings.DisplayGroup> displayGroups) {
         final Settings.NameTag current = plugin.getNametagManager().getEffectiveNametag(player);
-        final Settings.NameTag modified = current.withLinesGroups(linesGroups);
+        final Settings.NameTag modified = current.withDisplayGroups(displayGroups);
         plugin.getNametagManager().setNametagOverride(player, modified);
+    }
+
+    /**
+     * Sets or clears the {@link DisplayAnimation} on one stacked display group (0-based index), using a nametag override
+     * cloned from {@link UntNametagManager#getEffectiveNametag(Player)}. Refreshes the player afterwards.
+     *
+     * @param player            target player
+     * @param displayGroupIndex index into {@link Settings.NameTag#displayGroups()}
+     * @param animation         new animation, or {@code null} to remove
+     * @throws IllegalArgumentException if the index is out of range
+     */
+    public void setNametagDisplayGroupAnimation(@NotNull Player player, int displayGroupIndex, @Nullable DisplayAnimation animation) {
+        final Settings.NameTag current = plugin.getNametagManager().getEffectiveNametag(player);
+        final List<Settings.DisplayGroup> groups = new ArrayList<>(current.displayGroups());
+        if (displayGroupIndex < 0 || displayGroupIndex >= groups.size()) {
+            throw new IllegalArgumentException(
+                    "displayGroupIndex " + displayGroupIndex + " out of range (size " + groups.size() + ")");
+        }
+        groups.set(displayGroupIndex, groups.get(displayGroupIndex).withAnimation(animation));
+        final Settings.NameTag modified = new Settings.NameTag(current.permission(), List.copyOf(groups));
+        plugin.getNametagManager().setNametagOverride(player, modified);
+        plugin.getNametagManager().refresh(player, true);
+    }
+
+    /**
+     * Removes the animation from the display group at the given index (same as {@link #setNametagDisplayGroupAnimation(Player, int, DisplayAnimation)} with {@code null}).
+     */
+    public void clearNametagDisplayGroupAnimation(@NotNull Player player, int displayGroupIndex) {
+        setNametagDisplayGroupAnimation(player, displayGroupIndex, null);
+    }
+
+    /**
+     * Registers a handler for {@link DisplayAnimation.CustomDisplayAnimation} ({@code type: custom} + {@code id} in YAML).
+     *
+     * @see UnlimitedNameTagsPlugin#registerNametagCustomAnimation
+     */
+    public void registerNametagCustomAnimation(@NotNull String id, @NotNull NametagCustomAnimationHandler handler) {
+        plugin.registerNametagCustomAnimation(id, handler);
+    }
+
+    public boolean unregisterNametagCustomAnimation(@NotNull String id) {
+        return plugin.unregisterNametagCustomAnimation(id);
+    }
+
+    @Nullable
+    public NametagCustomAnimationHandler getNametagCustomAnimationHandler(@NotNull String id) {
+        return plugin.getNametagCustomAnimationHandler(id);
+    }
+
+    /**
+     * @deprecated Renamed to {@link #setNametagDisplayGroups(Player, List)}.
+     */
+    @Deprecated(forRemoval = true, since = "2.0.0")
+    public void setNametagLines(@NotNull Player player, @NotNull List<Settings.DisplayGroup> displayGroups) {
+        setNametagDisplayGroups(player, displayGroups);
     }
 
     /**
@@ -324,17 +382,18 @@ public class UNTAPI {
      */
     public void setNametagShadowed(@NotNull Player player, boolean shadowed) {
         final Settings.NameTag current = plugin.getNametagManager().getEffectiveNametag(player);
-        Settings.NameTag modified = current.withLinesGroups(linesGroup -> {
-            final Settings.Background bg = linesGroup.background();
+        Settings.NameTag modified = current.withDisplayGroups(group -> {
+            final Settings.Background bg = group.effectiveBackground();
             Settings.Background newBg;
             if (bg instanceof Settings.IntegerBackground intBg) {
                 newBg = new Settings.IntegerBackground(bg.enabled(), intBg.getRed(), intBg.getGreen(), intBg.getBlue(), bg.opacity(), shadowed, bg.seeThrough());
             } else if (bg instanceof Settings.HexBackground hexBg) {
                 newBg = new Settings.HexBackground(bg.enabled(), hexBg.getHex(), bg.opacity(), shadowed, bg.seeThrough());
             } else {
-                return linesGroup;
+                return group;
             }
-            return new Settings.LinesGroup(linesGroup.lines(), linesGroup.modifiers(), newBg, linesGroup.scale(), linesGroup.yOffset());
+            return new Settings.DisplayGroup(group.lines(), newBg, group.scale(), group.yOffset(), group.when(),
+                    group.displayType(), group.itemMaterial(), group.blockMaterial(), group.itemDisplayMode(), group.animation(), group.animationInterval(), group.billboard());
         });
 
         plugin.getNametagManager().setNametagOverride(player, modified);
@@ -348,17 +407,18 @@ public class UNTAPI {
      */
     public void setNametagSeeThrough(@NotNull Player player, boolean seeThrough) {
         final Settings.NameTag current = plugin.getNametagManager().getEffectiveNametag(player);
-        final Settings.NameTag modified = current.withLinesGroups(linesGroup -> {
-            final Settings.Background bg = linesGroup.background();
+        final Settings.NameTag modified = current.withDisplayGroups(group -> {
+            final Settings.Background bg = group.effectiveBackground();
             Settings.Background newBg;
             if (bg instanceof Settings.IntegerBackground intBg) {
                 newBg = new Settings.IntegerBackground(bg.enabled(), intBg.getRed(), intBg.getGreen(), intBg.getBlue(), bg.opacity(), bg.shadowed(), seeThrough);
             } else if (bg instanceof Settings.HexBackground hexBg) {
                 newBg = new Settings.HexBackground(bg.enabled(), hexBg.getHex(), bg.opacity(), bg.shadowed(), seeThrough);
             } else {
-                return linesGroup;
+                return group;
             }
-            return new Settings.LinesGroup(linesGroup.lines(), linesGroup.modifiers(), newBg, linesGroup.scale(), linesGroup.yOffset());
+            return new Settings.DisplayGroup(group.lines(), newBg, group.scale(), group.yOffset(), group.when(),
+                    group.displayType(), group.itemMaterial(), group.blockMaterial(), group.itemDisplayMode(), group.animation(), group.animationInterval(), group.billboard());
         });
         plugin.getNametagManager().setNametagOverride(player, modified);
     }
