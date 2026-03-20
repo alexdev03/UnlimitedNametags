@@ -1,0 +1,26 @@
+# Copy to plugins/UnlimitedNameTags/advanced.yml and edit.
+# Optional: if this file is missing, the plugin behaves as before.
+# Keys use camelCase (ConfigLib default).
+
+helmetHeightRules:
+  # Example: custom head with a specific CustomModelData
+  - priority: 10
+    height: 28
+    material: PLAYER_HEAD
+    customModelData: 12345
+
+  # Example: any leather helmet with CMD in a range (inclusive)
+  - priority: 5
+    height: 20
+    material: LEATHER_HELMET
+    customModelDataMin: 1000
+    customModelDataMax: 1999
+
+  # Example: equippable item model (1.21.3+)
+  - priority: 8
+    height: 32
+    equippableModel: "mypack:item/tall_hat"
+
+  # Optional filters on any rule:
+  # worlds: [world, world_nether]
+  # permission: "myserver.bighelmet"

@@ -122,6 +122,9 @@ public class PacketNameTag {
         }
 
         perPlayerEntity.modify(user, e -> {
+            if (e == null) {
+                return; // Entity removed (e.g. player disconnected during async refresh)
+            }
             final TextDisplayMeta meta = (TextDisplayMeta) e.getEntityMeta();
             consumer.accept(meta);
         });
@@ -530,7 +533,10 @@ public class PacketNameTag {
             return;
         }
 
-        perPlayerEntity.getEntityOf(user).refresh();
+        final WrapperEntity entity = perPlayerEntity.getEntityOf(user);
+        if (entity != null) {
+            entity.refresh();
+        }
     }
 
     public void remove() {

@@ -7,13 +7,16 @@ import de.exlll.configlib.YamlConfigurations;
 import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.Material;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.logging.Level;
 
 @Getter
 public class ConfigManager {
@@ -27,6 +30,7 @@ public class ConfigManager {
 
     private final UnlimitedNameTags plugin;
     private Settings settings;
+    private Advanced advanced = new Advanced();
     private boolean compiled;
 
     public ConfigManager(@NotNull UnlimitedNameTags plugin) {
@@ -55,6 +59,7 @@ public class ConfigManager {
                     PROPERTIES
             );
             checkData();
+            loadAdvancedConfig(false);
             return Optional.empty();
         } catch (Exception e) {
             return Optional.of(e);
@@ -64,6 +69,58 @@ public class ConfigManager {
     public void reload() {
         settings = YamlConfigurations.load(new File(plugin.getDataFolder(), "settings.yml").toPath(), Settings.class, PROPERTIES);
         checkData();
+        loadAdvancedConfig(true);
+    }
+
+    @NotNull
+    public Advanced getAdvanced() {
+        return advanced;
+    }
+
+    private void loadAdvancedConfig(boolean keepPreviousOnFailure) {
+        final File file = new File(plugin.getDataFolder(), "advanced.yml");
+        if (!file.exists()) {
+            advanced = new Advanced();
+            return;
+        }
+        try {
+            advanced = YamlConfigurations.load(file.toPath(), Advanced.class, PROPERTIES);
+            validateAdvancedRules();
+            plugin.getLogger().info("Loaded optional advanced.yml");
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to load advanced.yml", e);
+            if (!keepPreviousOnFailure) {
+                advanced = new Advanced();
+            }
+        }
+    }
+
+    private void validateAdvancedRules() {
+        final List<Advanced.HelmetHeightRule> rules = advanced.getHelmetHeightRules();
+        if (rules == null) {
+            return;
+        }
+        for (int i = 0; i < rules.size(); i++) {
+            final Advanced.HelmetHeightRule rule = rules.get(i);
+            if (!rule.definesItemMatch()) {
+                plugin.getLogger().warning("advanced.yml helmetHeightRules[" + i + "] has no item matcher; it will never apply.");
+            }
+            if (rule.getHeight() <= 0) {
+                plugin.getLogger().warning("advanced.yml helmetHeightRules[" + i + "] height must be > 0; it will never apply.");
+            }
+            final boolean minSet = rule.getCustomModelDataMin() != null;
+            final boolean maxSet = rule.getCustomModelDataMax() != null;
+            if (minSet != maxSet) {
+                plugin.getLogger().warning("advanced.yml helmetHeightRules[" + i + "] must set both customModelDataMin and customModelDataMax for a CMD range.");
+            }
+            if (minSet && maxSet && rule.getCustomModelData() != null) {
+                plugin.getLogger().warning("advanced.yml helmetHeightRules[" + i + "] customModelData is ignored when customModelDataMin/Max range is set.");
+            }
+            if (rule.getMaterial() != null && !rule.getMaterial().isEmpty()
+                    && Material.matchMaterial(rule.getMaterial(), false) == null) {
+                plugin.getLogger().warning("advanced.yml helmetHeightRules[" + i + "] unknown material: " + rule.getMaterial());
+            }
+        }
     }
 
     private void checkData() {

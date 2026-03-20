@@ -73,6 +73,7 @@ public class PlaceholderManager {
         reloadPlaceholdersReplacements();
         createDecimalFormat();
         reload();
+        updateFormattedPhaseValues(); // Populate immediately to avoid race: gradient with #-phase-mm-g# fails when map is empty
         startIndexTask();
     }
 
@@ -242,10 +243,10 @@ public class PlaceholderManager {
             return value;
         }
 
-        String result = value.replace("#phase-mm-g#", formattedPhaseValues.getOrDefault(PHASE_MM_G_KEY, ""));
+        String result = value.replace("#phase-mm-g#", formattedPhaseValues.getOrDefault(PHASE_MM_G_KEY, "0"));
         if (result.indexOf('#') == -1) return result;
 
-        result = result.replace("#-phase-mm-g#", formattedPhaseValues.getOrDefault(NEG_PHASE_MM_G_KEY, ""));
+        result = result.replace("#-phase-mm-g#", formattedPhaseValues.getOrDefault(NEG_PHASE_MM_G_KEY, "0"));
         if (result.indexOf('#') == -1) return result;
 
         result = result.replace("#phase-md#", formattedPhaseValues.getOrDefault(PHASE_MD_KEY, ""));

@@ -160,7 +160,7 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer()), 1);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer()), 5);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

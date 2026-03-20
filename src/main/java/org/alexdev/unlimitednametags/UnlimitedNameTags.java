@@ -186,6 +186,8 @@ public final class UnlimitedNameTags extends JavaPlugin {
     }
 
     private void loadHooks() {
+        hatHooks.add(new AdvancedHatHook(this));
+
         if (Bukkit.getPluginManager().isPluginEnabled("TypeWriter")) {
             hooks.put(TypeWriterListener.class, new TypeWriterListener(this));
             getLogger().info("TypeWriter found, hooking into it");
