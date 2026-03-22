@@ -66,6 +66,13 @@ public class Settings {
             "Similar to the background, the text rendering is discarded when it is less than 26. Defaults to -1, which represents 255 and is completely opaque."})
     private int sneakOpacity = 70;
     private float yOffset = 0.3f;
+
+    @Comment({
+            "Divided by 160 and sent to clients as the display entity view_range (vanilla default metadata = 1.0).",
+            "Client culling is not \"this many blocks\": roughly max distance ~ view_range * entityDistanceScaling * 64 blocks",
+            "(entityDistanceScaling is a client video setting, often 1.0). So ~blocks ≈ (viewDistance/160)*64 — e.g. 80 -> 0.5 -> ~32 blocks,",
+            "120 -> ~48 blocks, 160 -> ~64 blocks. Tune by testing; server entity tracking must still reach the viewer."
+    })
     private float viewDistance = 60;
 
     @Comment("""
@@ -91,7 +98,7 @@ public class Settings {
     @Comment({
             "When true, viewers without direct line of sight to the nametag owner (server-side ray trace) still see the text",
             "with reduced opacity within obscuredNametagMaxDistance blocks. Through-wall visibility uses seeThrough on the text display for those viewers.",
-            "Runs on the server main thread every obscuredNametagCheckInterval ticks; keep the interval reasonable on large player counts."
+            "Runs asynchronously every obscuredNametagCheckInterval ticks (Player#hasLineOfSight may not be thread-safe on all backends; increase the interval if you see issues)."
     })
     private boolean obscuredNametagThroughWalls = false;
 

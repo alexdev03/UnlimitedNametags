@@ -77,7 +77,7 @@ Each player can have several **stacked rows** (`displayGroups`): **TEXT**, **ITE
 | | |
 |:---|:---|
 | **Optional `background`** | Omit the key for a transparent default; redundant “disabled integer RGB 0” blocks are normalized away |
-| **Through-wall hint** *(optional)* | **`obscuredNametagThroughWalls`**: if a viewer has **no clear line of sight** to the player but is within range, the **text** row can appear **dimmer** so names behind walls are still noticeable. Tune **`obscuredNametagOpacity`**, **`obscuredNametagMaxDistance`**, **`obscuredNametagCheckInterval`**. *(TEXT only; runs on the main thread.)* |
+| **Through-wall hint** *(optional)* | **`obscuredNametagThroughWalls`**: if a viewer has **no clear line of sight** to the player but is within range, the **text** row can appear **dimmer** so names behind walls are still noticeable. Tune **`obscuredNametagOpacity`**, **`obscuredNametagMaxDistance`**, **`obscuredNametagCheckInterval`**. *(TEXT only; sync task — uses `hasLineOfSight`.)* |
 | **Migration** | `configVersion` + **`SettingsYamlMigrator`** (backup, v1 → v2, YAML cleanup) |
 
 ### Bedrock

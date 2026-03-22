@@ -15,6 +15,7 @@ import java.util.Map;
 /**
  * Optional per-display-group animation. YAML under {@code animation:} with
  * {@code type: rotate | bob | dvd_bounce | pulse_scale | wiggle | orbit | custom}.
+ * Optional {@code cullBeyondBlocks} (on any type) skips pose updates when no viewer is within range.
  * From code, prefer {@link NametagDisplayAnimations} to build instances.
  * <p>
  * {@link CustomDisplayAnimation} dispatches to handlers registered on the plugin via
@@ -42,6 +43,12 @@ public abstract class DisplayAnimation {
 
     @Comment("Tempo multiplier (1 = default speed for the chosen type).")
     private double speed = 1.0;
+
+    @Comment({
+            "If > 0, animation pose updates are skipped when every current viewer is farther than this (blocks) from the nametag owner (same world).",
+            "Clears motion while nobody is close enough to see it meaningfully; resumes smoothly when someone enters range. 0 = no distance culling."
+    })
+    private double cullBeyondBlocks = 0.0;
 
     @Comment({
             "Optional string map for add-ons or future use (readable via API; built-in animators ignore unknown keys).",

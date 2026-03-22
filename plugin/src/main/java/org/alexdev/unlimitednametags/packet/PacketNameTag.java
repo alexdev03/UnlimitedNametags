@@ -20,6 +20,7 @@ import org.alexdev.unlimitednametags.config.DisplayAnimation;
 import org.alexdev.unlimitednametags.config.NametagDisplayType;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
@@ -75,6 +76,8 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
     private Quaternion4f animationLeftQuat = new Quaternion4f(0f, 0f, 0f, 1f);
     private float animationScaleMul = 1f;
     private long animationEpochMs = System.currentTimeMillis();
+    /** True while {@link DisplayAnimation#cullBeyondBlocks()} distance culling is pausing the pose. */
+    private boolean animationCullDistancePaused;
 
     /** DVD bounce state; package-private for {@link DisplayAnimationComputer}. */
     boolean animDvdInitialized;
@@ -97,7 +100,7 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
         this.lastUpdate = System.currentTimeMillis();
         this.animationLeftQuat = new Quaternion4f(0f, 0f, 0f, 1f);
         this.animationEpochMs = System.currentTimeMillis();
-        setScale(plugin.getNametagManager().getScale(owner));
+        setScale(plugin.getNametagManager().getScaledDisplayScale(owner, displayGroup.effectiveScale()));
     }
 
     public void setDisplayGroup(@NotNull Settings.DisplayGroup displayGroup) {
@@ -343,6 +346,7 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
 
     void resetDisplayAnimationState() {
         animationEpochMs = System.currentTimeMillis();
+        animationCullDistancePaused = false;
         clearAnimationPose();
     }
 
@@ -352,6 +356,7 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
         }
         final DisplayAnimation anim = displayGroup.animation();
         if (anim == null || !anim.isAnimating()) {
+            animationCullDistancePaused = false;
             if (hasActiveAnimationResidual()) {
                 clearAnimationPose();
             }
@@ -361,8 +366,47 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
         if (interval > 1 && monotonicTick % interval != 0) {
             return;
         }
+        final double cullBlocks = anim.cullBeyondBlocks();
+        if (cullBlocks > 0 && !hasViewerWithinAnimationCullDistanceSq(cullBlocks * cullBlocks)) {
+            if (hasActiveAnimationResidual()) {
+                clearAnimationPose();
+            }
+            animationCullDistancePaused = true;
+            return;
+        }
+        if (animationCullDistancePaused) {
+            animationEpochMs = System.currentTimeMillis();
+            animationCullDistancePaused = false;
+        }
         final double elapsed = (System.currentTimeMillis() - animationEpochMs) / 1000.0;
         DisplayAnimationComputer.apply(this, anim, elapsed);
+    }
+
+    /**
+     * True if at least one nametag viewer exists in the owner's world within {@code maxDistSq} (blocks²).
+     */
+    private boolean hasViewerWithinAnimationCullDistanceSq(final double maxDistSq) {
+        if (!owner.isOnline()) {
+            return false;
+        }
+        final org.bukkit.World ownerWorld = owner.getWorld();
+        final Location ownerLoc = owner.getLocation();
+        for (final UUID vid : getViewers()) {
+            Player p = plugin.getPlayerListener().getPlayer(vid);
+            if (p == null) {
+                p = Bukkit.getPlayer(vid);
+            }
+            if (p == null || !p.isOnline()) {
+                continue;
+            }
+            if (p.getWorld() != ownerWorld) {
+                continue;
+            }
+            if (ownerLoc.distanceSquared(p.getLocation()) <= maxDistSq) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean hasActiveAnimationResidual() {
@@ -730,7 +774,7 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
     }
 
     /**
-     * When {@code obscuredNametagThroughWalls} is enabled, updates per-viewer text opacity and seeThrough from line-of-sight (main thread).
+     * When {@code obscuredNametagThroughWalls} is enabled, updates per-viewer text opacity and seeThrough from line-of-sight (sync periodic task).
      */
     public void applyObscuredLineOfSightPresentation(
             final boolean featureEnabled,
