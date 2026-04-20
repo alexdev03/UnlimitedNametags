@@ -20,6 +20,9 @@ public class Advanced {
     })
     private List<HelmetHeightRule> helmetHeightRules = new ArrayList<>();
 
+    @Comment("Converts hat-hook helmet height into extra nametag yOffset. Increase if the nametag still clips tall hats.")
+    private float helmetHeightYOffsetMultiplier = 0.25f / 14f;
+
     @Configuration
     @Getter
     @NoArgsConstructor

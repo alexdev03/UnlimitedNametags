@@ -24,6 +24,11 @@ import java.util.Objects;
  */
 public final class SettingsYamlMigrator {
 
+    /**
+     * Subfolder of the plugin data folder where timestamped copies of {@code settings.yml} are stored before migration.
+     */
+    private static final String MIGRATION_BACKUP_DIR = "migration-backups";
+
     private SettingsYamlMigrator() {
     }
 
@@ -88,10 +93,13 @@ public final class SettingsYamlMigrator {
             return;
         }
 
-        final Path backup = settingsPath.resolveSibling(
-                settingsPath.getFileName().toString() + ".backup-" + Instant.now().getEpochSecond() + ".yml");
+        final Path pluginDir = Objects.requireNonNull(settingsPath.getParent(), "settings path has no parent");
+        final Path backupDir = pluginDir.resolve(MIGRATION_BACKUP_DIR);
+        Files.createDirectories(backupDir);
+        final String backupName = settingsPath.getFileName().toString() + ".backup-" + Instant.now().getEpochSecond() + ".yml";
+        final Path backup = backupDir.resolve(backupName);
         Files.copy(settingsPath, backup, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-        log.info("Backed up settings.yml to " + backup.getFileName());
+        log.info("Backed up settings.yml to " + MIGRATION_BACKUP_DIR + "/" + backup.getFileName());
 
         dumpYaml(root, settingsPath);
         log.info("Wrote settings.yml (configVersion " + SettingsConfigVersion.CURRENT + "; migration and/or YAML normalization).");

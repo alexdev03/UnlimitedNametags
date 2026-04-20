@@ -116,6 +116,10 @@ public class Settings {
     @Comment("Whether to see your own NameTag (Similar to nametag mod of Lunar Client)")
     private boolean showCurrentNameTag = false;
 
+    @Comment("When showCurrentNameTag is false, players may still enable seeing their own nametag via /unt preferences if they have permission.")
+    @Setter
+    private boolean allowPerPlayerShowOwnWhenGlobalDisabled = false;
+
     @Comment("""
             Whether to cache components for some time and reuse them or not.
              This is useful for performance improvements where a lot of gradients are used, but it uses a bit more memory.

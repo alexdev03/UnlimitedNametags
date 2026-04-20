@@ -15,6 +15,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.api.UntNametagManager;
 import org.alexdev.unlimitednametags.config.NametagDisplayType;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.alexdev.unlimitednametags.data.NametagPlayerPreferences;
 import org.alexdev.unlimitednametags.hook.HMCCosmeticsHook;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -41,8 +43,14 @@ public class NameTagManager implements UntNametagManager {
     private final ConcurrentHashMap<UUID, CopyOnWriteArrayList<PacketNameTag>> nameTags;
     private final Map<Integer, PacketNameTag> entityIdToDisplay;
     private final Set<UUID> creating;
+    private final Map<UUID, AtomicInteger> pendingRowCreations;
     private final Set<UUID> blocked;
     private final Set<UUID> hideNametags;
+    /** Players who hide their own nametag from themselves (inverse of show-own-to-self preference). */
+    private final Set<UUID> hideOwnFromSelf;
+    /** Owners who hide their nametag from all other viewers. */
+    private final Set<UUID> hideOwnFromOthers;
+    private final NametagPlayerPreferences playerPreferences;
     private final Map<UUID, Settings.NameTag> nameTagOverrides;
     private final Map<UUID, Boolean> shiftSystemBlocked;
     private final List<MyScheduledTask> tasks;
@@ -57,8 +65,12 @@ public class NameTagManager implements UntNametagManager {
         this.entityIdToDisplay = Maps.newConcurrentMap();
         this.tasks = Lists.newCopyOnWriteArrayList();
         this.creating = Sets.newConcurrentHashSet();
+        this.pendingRowCreations = Maps.newConcurrentMap();
         this.blocked = Sets.newConcurrentHashSet();
         this.hideNametags = Sets.newConcurrentHashSet();
+        this.hideOwnFromSelf = Sets.newConcurrentHashSet();
+        this.hideOwnFromOthers = Sets.newConcurrentHashSet();
+        this.playerPreferences = new NametagPlayerPreferences(plugin);
         this.nameTagOverrides = Maps.newConcurrentMap();
         this.shiftSystemBlocked = Maps.newConcurrentMap();
         this.loadAll();
@@ -74,6 +86,8 @@ public class NameTagManager implements UntNametagManager {
 
     private void startTask() {
         tasks.forEach(MyScheduledTask::cancel);
+        tasks.clear();
+
         final MyScheduledTask displayAnimations = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                 () -> {
                     final long t = displayAnimationMonotonicTick.incrementAndGet();
@@ -81,6 +95,7 @@ public class NameTagManager implements UntNametagManager {
                 },
                 1L,
                 1L);
+        tasks.add(displayAnimations);
 
         final MyScheduledTask refresh = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                 () -> {
@@ -90,6 +105,7 @@ public class NameTagManager implements UntNametagManager {
                     nameTags.values().forEach(tags -> tags.forEach(tag -> refresh(tag.getOwner(), false)));
                 },
                 10, plugin.getConfigManager().getSettings().getTaskInterval());
+        tasks.add(refresh);
 
         // Refresh passengers
         final MyScheduledTask passengers = plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> nameTags.values()
@@ -101,6 +117,7 @@ public class NameTagManager implements UntNametagManager {
                 .forEach(player -> getPacketDisplayText(player)
                         .forEach(PacketNameTag::sendPassengerPacketToViewers)),
                 20, 20 * 5L);
+        tasks.add(passengers);
 
         // Scale task
         if (isScalePresent()) {
@@ -146,10 +163,6 @@ public class NameTagManager implements UntNametagManager {
                     obscuredInterval);
             tasks.add(obscured);
         }
-
-        tasks.add(displayAnimations);
-        tasks.add(refresh);
-        tasks.add(passengers);
     }
 
     private Attribute loadScaleAttribute() {
@@ -271,8 +284,188 @@ public class NameTagManager implements UntNametagManager {
         blocked.remove(uuid);
         creating.remove(uuid);
         hideNametags.remove(uuid);
+        hideOwnFromSelf.remove(uuid);
+        hideOwnFromOthers.remove(uuid);
         nameTagOverrides.remove(uuid);
         shiftSystemBlocked.remove(uuid);
+    }
+
+    @NotNull
+    public NametagPlayerPreferences getPlayerPreferences() {
+        return playerPreferences;
+    }
+
+    /**
+     * Whether this player should see their own nametag above them (global setting + per-player preference).
+     */
+    @Override
+    public boolean isEffectiveShowOwnNametag(@NotNull Player player) {
+        final Settings s = plugin.getConfigManager().getSettings();
+        final boolean wants = !hideOwnFromSelf.contains(player.getUniqueId());
+        if (!wants) {
+            return false;
+        }
+        if (s.isShowCurrentNameTag()) {
+            return true;
+        }
+        return s.isAllowPerPlayerShowOwnWhenGlobalDisabled();
+    }
+
+    public boolean isHidingOwnNametagFromOthers(@NotNull Player owner) {
+        return hideOwnFromOthers.contains(owner.getUniqueId());
+    }
+
+    @Override
+    public boolean isShowingOwnNametagToSelf(@NotNull Player player) {
+        return !hideOwnFromSelf.contains(player.getUniqueId());
+    }
+
+    @Override
+    public void setShowingOwnNametagToSelf(@NotNull Player player, boolean show) {
+        playerPreferences.writeShowOwnSelf(player, show);
+        if (show) {
+            hideOwnFromSelf.remove(player.getUniqueId());
+        } else {
+            hideOwnFromSelf.add(player.getUniqueId());
+        }
+        refresh(player, true);
+    }
+
+    @Override
+    public boolean isShowingOwnNametagToOthers(@NotNull Player player) {
+        return !hideOwnFromOthers.contains(player.getUniqueId());
+    }
+
+    @Override
+    public void setShowingOwnNametagToOthers(@NotNull Player player, boolean show) {
+        playerPreferences.writeShowOwnToOthers(player, show);
+        if (show) {
+            hideOwnFromOthers.remove(player.getUniqueId());
+            showToTrackedPlayers(player);
+        } else {
+            hideOwnFromOthers.add(player.getUniqueId());
+            for (Player viewer : plugin.getTrackerManager().getWhoTracks(player)) {
+                if (viewer.getUniqueId().equals(player.getUniqueId())) {
+                    continue;
+                }
+                for (PacketNameTag tag : getPacketDisplayText(player)) {
+                    tag.hideFromPlayer(viewer);
+                }
+            }
+        }
+        refresh(player, true);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void syncPlayerPreferenceSetsFromPdc(@NotNull Player player) {
+        final boolean seeOthers = playerPreferences.readSeeOthers(player);
+        final boolean showOwnSelf = playerPreferences.readShowOwnSelf(player);
+        final boolean showOwnToOthers = playerPreferences.readShowOwnToOthers(player);
+
+        if (!seeOthers) {
+            hideNametags.add(player.getUniqueId());
+        } else {
+            hideNametags.remove(player.getUniqueId());
+        }
+        if (!showOwnSelf) {
+            hideOwnFromSelf.add(player.getUniqueId());
+        } else {
+            hideOwnFromSelf.remove(player.getUniqueId());
+        }
+        if (!showOwnToOthers) {
+            hideOwnFromOthers.add(player.getUniqueId());
+        } else {
+            hideOwnFromOthers.remove(player.getUniqueId());
+        }
+    }
+
+    /**
+     * After the joiner's nametag rows usually exist ({@code addPlayer} ~6 ticks async), re-applies packet
+     * state for preferences that need entities: hide own from others, hide own from self. Safe if tags are
+     * not ready yet (loops are no-ops).
+     */
+    public void reconcileJoinNametagPacketsForOwner(@NotNull Player player) {
+        if (!player.isOnline()) {
+            return;
+        }
+        if (isHidingOwnNametagFromOthers(player)) {
+            for (Player viewer : plugin.getTrackerManager().getWhoTracks(player)) {
+                if (viewer.getUniqueId().equals(player.getUniqueId())) {
+                    continue;
+                }
+                for (PacketNameTag tag : getPacketDisplayText(player)) {
+                    tag.hideFromPlayer(viewer);
+                }
+            }
+        }
+        if (!isEffectiveShowOwnNametag(player)) {
+            for (PacketNameTag tag : getPacketDisplayText(player)) {
+                if (tag.canPlayerSee(player)) {
+                    tag.hideFromPlayer(player);
+                }
+            }
+        }
+    }
+
+    /**
+     * Hides every other player's nametag from this viewer (not the viewer's own rows). Packet-level.
+     */
+    public void hideAllOthersNametagsFromViewer(@NotNull Player viewer) {
+        nameTags.values().forEach(tags -> tags.forEach(display -> {
+            if (display.getOwner().getUniqueId().equals(viewer.getUniqueId())) {
+                return;
+            }
+            if (display.canPlayerSee(viewer)) {
+                display.hideFromPlayer(viewer);
+            }
+        }));
+    }
+
+    /**
+     * Loads PDC into runtime sets and reapplies visibility (call when the player is online and nametags exist).
+     */
+    @Override
+    public void applyPreferencesFromPersistentData(@NotNull Player player) {
+        if (!player.isOnline()) {
+            return;
+        }
+        syncPlayerPreferenceSetsFromPdc(player);
+
+        final boolean seeOthers = playerPreferences.readSeeOthers(player);
+        final boolean showOwnSelf = playerPreferences.readShowOwnSelf(player);
+        final boolean showOwnToOthers = playerPreferences.readShowOwnToOthers(player);
+
+        if (!seeOthers) {
+            hideAllOthersNametagsFromViewer(player);
+        } else {
+            plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()).forEach(uuid -> {
+                final Player tracked = plugin.getPlayerListener().getPlayer(uuid);
+                if (tracked == null) {
+                    return;
+                }
+                for (PacketNameTag packetNameTag : getPacketDisplayText(tracked)) {
+                    packetNameTag.showToPlayer(player);
+                }
+            });
+        }
+
+        if (!showOwnToOthers) {
+            for (Player viewer : plugin.getTrackerManager().getWhoTracks(player)) {
+                if (viewer.getUniqueId().equals(player.getUniqueId())) {
+                    continue;
+                }
+                for (PacketNameTag tag : getPacketDisplayText(player)) {
+                    tag.hideFromPlayer(viewer);
+                }
+            }
+        } else {
+            showToTrackedPlayers(player, plugin.getTrackerManager().getWhoTracks(player));
+        }
+
+        refresh(player, true);
     }
 
     public boolean hasNametagOverride(@NotNull Player player) {
@@ -364,7 +557,10 @@ public class NameTagManager implements UntNametagManager {
         updateLineCount(player, nametag);
 
         final CopyOnWriteArrayList<PacketNameTag> createdTags = nameTags.get(player.getUniqueId());
-        for (int i = 0; i < nametag.displayGroups().size(); i++) {
+        final int rowCount = nametag.displayGroups().size();
+        pendingRowCreations.put(player.getUniqueId(), new AtomicInteger(rowCount));
+
+        for (int i = 0; i < rowCount; i++) {
             final Settings.DisplayGroup displayGroup = nametag.displayGroups().get(i);
             final PacketNameTag display = createdTags.get(i);
             plugin.getPlaceholderManager().applyPlaceholders(player, displayGroup, List.of(player))
@@ -373,7 +569,7 @@ public class NameTagManager implements UntNametagManager {
                         if (resolved == null) {
                             plugin.getLogger().warning(
                                     "No nametag component for owner " + player.getName() + "; skipping display row.");
-                            creating.remove(player.getUniqueId());
+                            finishRowCreation(player.getUniqueId());
                             return;
                         }
                         loadDisplay(player, resolved, displayGroup, display);
@@ -381,7 +577,7 @@ public class NameTagManager implements UntNametagManager {
                     .exceptionally(throwable -> {
                         plugin.getLogger().log(java.util.logging.Level.SEVERE,
                                 "Failed to create nametag for " + player.getName(), throwable);
-                        creating.remove(player.getUniqueId());
+                        finishRowCreation(player.getUniqueId());
                         return null;
                     });
         }
@@ -406,7 +602,7 @@ public class NameTagManager implements UntNametagManager {
             replaceDisplayIfNeeded(player, i, displayGroup);
             final PacketNameTag display = playerTags.get(i);
 
-            final boolean show = plugin.getConfigManager().getSettings().isShowCurrentNameTag();
+            final boolean show = isEffectiveShowOwnNametag(player);
             if (show && !display.canPlayerSee(player)) {
                 display.showToPlayer(player);
             } else if (!show && display.canPlayerSee(player)) {
@@ -449,7 +645,7 @@ public class NameTagManager implements UntNametagManager {
                 }
                 display.spawn(player);
 
-                if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+                if (isEffectiveShowOwnNametag(player)) {
                     display.showToPlayer(player);
                 }
 
@@ -484,6 +680,7 @@ public class NameTagManager implements UntNametagManager {
         }
         final Settings cfg = plugin.getConfigManager().getSettings();
         packetNameTag.setBillboard(displayGroup.effectiveBillboard(cfg));
+        packetNameTag.setHelmetExtraOffset(plugin.getPlaceholderManager().computeHelmetExtraOffset(packetNameTag.getOwner()));
         if (displayGroup.resolvedDisplayType() != NametagDisplayType.TEXT) {
             packetNameTag.syncVisualFromGroup(displayGroup);
             if (force && isScalePresent()) {
@@ -549,11 +746,19 @@ public class NameTagManager implements UntNametagManager {
         });
     }
 
+    private void finishRowCreation(@NotNull UUID uuid) {
+        final AtomicInteger pending = pendingRowCreations.get(uuid);
+        if (pending != null && pending.decrementAndGet() <= 0) {
+            creating.remove(uuid);
+            pendingRowCreations.remove(uuid);
+        }
+    }
+
     private void loadDisplay(@NotNull Player player, @NotNull Component component,
             @NotNull Settings.DisplayGroup displayGroup,
             @NotNull PacketNameTag display) {
         try {
-            creating.remove(player.getUniqueId());
+            finishRowCreation(player.getUniqueId());
             final NametagDisplayType dt = displayGroup.resolvedDisplayType();
             if (dt == NametagDisplayType.TEXT) {
                 display.modifyTextAll(m -> m.setUseDefaultBackground(false));
@@ -571,6 +776,7 @@ public class NameTagManager implements UntNametagManager {
             }
 
             display.resetOffset(plugin.getConfigManager().getSettings().getYOffset());
+            display.setHelmetExtraOffset(plugin.getPlaceholderManager().computeHelmetExtraOffset(player));
 
             display.setViewRange(plugin.getConfigManager().getSettings().getViewDistance());
 
@@ -605,7 +811,7 @@ public class NameTagManager implements UntNametagManager {
             neu.text(player, Component.empty());
         }
         neu.spawn(player);
-        if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (isEffectiveShowOwnNametag(player)) {
             neu.showToPlayer(player);
         }
         handleVanish(player, neu);
@@ -744,7 +950,7 @@ public class NameTagManager implements UntNametagManager {
                     setYOffset(p, yOffset);
                     setViewDistance(p, viewDistance);
                     applyBillboardsFromEffectiveNametag(p);
-                    refresh(p, true);
+                    applyPreferencesFromPersistentData(p);
                 }));
         startTask();
     }
@@ -768,7 +974,7 @@ public class NameTagManager implements UntNametagManager {
                     .map(Player::getName)
                     .collect(Collectors.toList());
 
-            if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+            if (!isEffectiveShowOwnNametag(player)) {
                 viewers.remove(player.getName());
             }
 
@@ -870,7 +1076,7 @@ public class NameTagManager implements UntNametagManager {
     }
 
     public void updateDisplay(@NotNull Player player, @NotNull Player target) {
-        if (player == target && plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (player == target && isEffectiveShowOwnNametag(player)) {
             showToOwner(player);
             return;
         }
@@ -881,7 +1087,7 @@ public class NameTagManager implements UntNametagManager {
     }
 
     public void showToOwner(@NotNull Player player) {
-        if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (!isEffectiveShowOwnNametag(player)) {
             return;
         }
         for (PacketNameTag packetNameTag : getPacketDisplayText(player)) {
@@ -890,7 +1096,7 @@ public class NameTagManager implements UntNametagManager {
     }
 
     public void removeDisplay(@NotNull Player player, @NotNull Player target) {
-        if (player == target && !plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (player == target && !isEffectiveShowOwnNametag(player)) {
             return;
         }
         for (PacketNameTag packetNameTag : getPacketDisplayText(target)) {
@@ -941,15 +1147,13 @@ public class NameTagManager implements UntNametagManager {
 
     public void hideOtherNametags(@NotNull Player player) {
         hideNametags.add(player.getUniqueId());
-        nameTags.values().forEach(tags -> tags.forEach(display -> {
-            if (display.canPlayerSee(player)) {
-                display.hideFromPlayer(player);
-            }
-        }));
+        playerPreferences.writeSeeOthers(player, false);
+        hideAllOthersNametagsFromViewer(player);
     }
 
     public void showOtherNametags(@NotNull Player player) {
         hideNametags.remove(player.getUniqueId());
+        playerPreferences.writeSeeOthers(player, true);
         plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId()).forEach(uuid -> {
             final Player tracked = plugin.getPlayerListener().getPlayer(uuid);
             if (tracked == null) {

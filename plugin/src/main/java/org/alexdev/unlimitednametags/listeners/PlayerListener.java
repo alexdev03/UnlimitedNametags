@@ -1,6 +1,6 @@
 package org.alexdev.unlimitednametags.listeners;
 
-import com.github.Anon8281.universalScheduler.foliaScheduler.FoliaScheduler;
+import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
@@ -30,6 +30,8 @@ public class PlayerListener implements PackSendHandler {
     private final Map<String, UUID> playerNameId;
     @Getter
     private final Map<UUID, Player> onlinePlayers;
+    private final Map<UUID, MyScheduledTask> teleportSyncTasks;
+    private final Map<UUID, MyScheduledTask> respawnShowTasks;
 
     public PlayerListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -37,7 +39,9 @@ public class PlayerListener implements PackSendHandler {
         this.playerEntityId = Maps.newConcurrentMap();
         this.playerNameId = Maps.newConcurrentMap();
         this.onlinePlayers = Maps.newConcurrentMap();
-        this.loadFoliaRespawnTask();
+        this.teleportSyncTasks = Maps.newConcurrentMap();
+        this.respawnShowTasks = Maps.newConcurrentMap();
+        this.loadRespawnSafetyTask();
         this.loadEntityIds();
     }
 
@@ -48,19 +52,31 @@ public class PlayerListener implements PackSendHandler {
         });
     }
 
-    private void loadFoliaRespawnTask() {
-        if (!(plugin.getTaskScheduler() instanceof FoliaScheduler)) {
-            return;
-        }
-
+    /**
+     * Safety net that every tick checks {@link #diedPlayers} and re-shows nametags for anyone who is no longer dead.
+     * <p>
+     * Covers edge cases where {@link PlayerRespawnEvent} never fires (e.g. revive plugins that restore health
+     * directly, custom death flows) and same-tick death+respawn races where the scheduled show from
+     * {@link #scheduleRespawnShow(Player)} may have been skipped or cancelled. Runs on both Paper and Folia.
+     */
+    private void loadRespawnSafetyTask() {
         plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> diedPlayers.forEach(died -> {
             final Player player = plugin.getServer().getPlayer(died);
-            if (player == null || player.isDead()) {
+            if (player == null || !player.isOnline()) {
+                diedPlayers.remove(died);
+                return;
+            }
+            if (player.isDead()) {
+                return;
+            }
+            if (player.getGameMode() == GameMode.SPECTATOR) {
+                diedPlayers.remove(died);
                 return;
             }
 
-            plugin.getNametagManager().showToTrackedPlayers(player);
             diedPlayers.remove(died);
+            cancelRespawnShow(died);
+            plugin.getNametagManager().showToTrackedPlayers(player);
         }), 1, 1);
     }
 
@@ -73,11 +89,39 @@ public class PlayerListener implements PackSendHandler {
         return Optional.ofNullable(plugin.getServer().getPlayer(player));
     }
 
+    /**
+     * Runs first so PDC-backed preference flags are in memory before tracker / entity events.
+     * Tick 1: packet hide for {@code seeothers false}. Tick 12: once {@code addPlayer} has usually
+     * created rows, packet fix for hide-own-from-others and hide-own-from-self.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onJoinSyncPreferences(@NotNull PlayerJoinEvent event) {
+        final Player player = event.getPlayer();
+        plugin.getNametagManager().syncPlayerPreferenceSetsFromPdc(player);
+        plugin.getTaskScheduler().runTaskLater(() -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            if (plugin.getNametagManager().isHiddenOtherNametags(player)) {
+                plugin.getNametagManager().hideAllOthersNametagsFromViewer(player);
+            }
+        }, 1L);
+        plugin.getTaskScheduler().runTaskLater(() -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            plugin.getNametagManager().reconcileJoinNametagPacketsForOwner(player);
+        }, 12L);
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(@NotNull PlayerJoinEvent event) {
         onlinePlayers.put(event.getPlayer().getUniqueId(), event.getPlayer());
+        playerNameId.put(event.getPlayer().getName(), event.getPlayer().getUniqueId());
         plugin.getTaskScheduler()
                 .runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), true), 6);
+        plugin.getTaskScheduler().runTaskLater(
+                () -> plugin.getNametagManager().applyPreferencesFromPersistentData(event.getPlayer()), 22L);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
@@ -86,6 +130,8 @@ public class PlayerListener implements PackSendHandler {
         plugin.getPacketEventsListener().removePlayerData(event.getPlayer());
         playerNameId.remove(event.getPlayer().getName());
         diedPlayers.remove(event.getPlayer().getUniqueId());
+        cancelTeleportSync(event.getPlayer().getUniqueId());
+        cancelRespawnShow(event.getPlayer().getUniqueId());
         plugin.getTaskScheduler().runTaskAsynchronously(() -> {
             plugin.getNametagManager().removePlayer(event.getPlayer());
             plugin.getNametagManager().clearCache(event.getPlayer().getUniqueId());
@@ -155,12 +201,44 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
-        diedPlayers.remove(event.getPlayer().getUniqueId());
-        if (event.getPlayer().getGameMode() == GameMode.SPECTATOR) {
+        final Player player = event.getPlayer();
+        diedPlayers.remove(player.getUniqueId());
+        if (player.getGameMode() == GameMode.SPECTATOR) {
+            cancelRespawnShow(player.getUniqueId());
             return;
         }
 
-        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToTrackedPlayers(event.getPlayer()), 5);
+        scheduleRespawnShow(player);
+    }
+
+    /**
+     * Schedules the post-respawn show after 5 ticks, cancelling any previous pending show task.
+     * <p>
+     * Guards against a death/respawn race: if the player dies again before the task runs, {@link #cancelRespawnShow}
+     * is called from a new respawn, or the task itself skips the show when the player is once again dead. This prevents
+     * the nametag from reappearing during a second death's screen when death+respawn happened in the same tick.
+     */
+    private void scheduleRespawnShow(@NotNull Player player) {
+        final UUID uuid = player.getUniqueId();
+        cancelRespawnShow(uuid);
+        final MyScheduledTask task = plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            respawnShowTasks.remove(uuid);
+            if (!player.isOnline() || player.isDead() || diedPlayers.contains(uuid)) {
+                return;
+            }
+            if (player.getGameMode() == GameMode.SPECTATOR) {
+                return;
+            }
+            plugin.getNametagManager().showToTrackedPlayers(player);
+        }, 5);
+        respawnShowTasks.put(uuid, task);
+    }
+
+    private void cancelRespawnShow(@NotNull UUID uuid) {
+        final MyScheduledTask task = respawnShowTasks.remove(uuid);
+        if (task != null) {
+            task.cancel();
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -191,28 +269,25 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleport(@NotNull PlayerTeleportEvent event) {
-        if (event.getFrom().getWorld() != event.getTo().getWorld()) {
+        final boolean worldChange = event.getFrom().getWorld() != event.getTo().getWorld();
+
+        if (worldChange) {
             plugin.getTrackerManager().forceUntrack(event.getPlayer());
-        }
-
-        if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
-            return;
-        }
-
-        if (event.getFrom().getWorld() == event.getTo().getWorld() && event.getFrom().distance(event.getTo()) <= 80) {
-            return;
         }
 
         if (event.getPlayer().getGameMode() == GameMode.SPECTATOR) {
             return;
         }
 
-        plugin.getTaskScheduler()
-                .runTaskLaterAsynchronously(() -> plugin.getNametagManager().showToOwner(event.getPlayer()), 5);
+        if (!worldChange && event.getFrom().distance(event.getTo()) <= 80) {
+            return;
+        }
+
+        scheduleTeleportSync(event.getPlayer());
     }
 
     public void logicElytra(Player player) {
-        if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (!plugin.getNametagManager().isEffectiveShowOwnNametag(player)) {
             return;
         }
 
@@ -223,6 +298,32 @@ public class PlayerListener implements PackSendHandler {
         });
     }
     
+    private void scheduleTeleportSync(@NotNull Player player) {
+        final UUID uuid = player.getUniqueId();
+        cancelTeleportSync(uuid);
+
+        final MyScheduledTask task = plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            if (!player.isOnline()) {
+                teleportSyncTasks.remove(uuid);
+                return;
+            }
+            plugin.getNametagManager().showToTrackedPlayers(player);
+            if (plugin.getNametagManager().isEffectiveShowOwnNametag(player)) {
+                plugin.getNametagManager().showToOwner(player);
+            }
+            teleportSyncTasks.remove(uuid);
+        }, 5);
+
+        teleportSyncTasks.put(uuid, task);
+    }
+
+    private void cancelTeleportSync(@NotNull UUID uuid) {
+        final MyScheduledTask task = teleportSyncTasks.remove(uuid);
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
     @Nullable
     public Player getPlayer(@NotNull UUID uuid) {
         return onlinePlayers.get(uuid);
@@ -233,6 +334,10 @@ public class PlayerListener implements PackSendHandler {
         playerEntityId.clear();
         playerNameId.clear();
         onlinePlayers.clear();
+        teleportSyncTasks.values().forEach(MyScheduledTask::cancel);
+        teleportSyncTasks.clear();
+        respawnShowTasks.values().forEach(MyScheduledTask::cancel);
+        respawnShowTasks.clear();
     }
 
 }

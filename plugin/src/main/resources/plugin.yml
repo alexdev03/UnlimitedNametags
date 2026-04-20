@@ -28,4 +28,26 @@ permissions:
     default: true
   unt.showownnametag:
     default: true
+  unt.reload:
+    default: op
+  unt.debug:
+    default: op
+  unt.hide:
+    default: op
+  unt.show:
+    default: op
+  unt.refresh:
+    default: op
+  unt.billboard:
+    default: op
+  unt.formatter:
+    default: op
+  unt.hideOtherNametags:
+    default: true
+  unt.showOtherNametags:
+    default: true
+  unt.preferences:
+    default: true
+  unt.preferences.others:
+    default: op
 compiled: ${compiled}

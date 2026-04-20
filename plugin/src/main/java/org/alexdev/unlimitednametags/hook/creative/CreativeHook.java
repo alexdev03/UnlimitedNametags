@@ -88,10 +88,13 @@ public interface CreativeHook {
                 }
             }
 
-            return optionalOverride.map(override -> {
+            return optionalOverride.flatMap(override -> {
                 final Model model = pack.model(override.model());
+                if (model == null) {
+                    return Optional.empty();
+                }
                 cmdCache.put(customModelData, model);
-                return model;
+                return Optional.of(model);
             });
         }
 

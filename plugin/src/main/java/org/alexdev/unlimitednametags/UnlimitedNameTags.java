@@ -6,15 +6,13 @@ import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.jonahseguin.drink.CommandService;
-import com.jonahseguin.drink.Drink;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.api.NametagCustomAnimationHandler;
 import org.alexdev.unlimitednametags.api.UNTAPI;
 import org.alexdev.unlimitednametags.api.UnlimitedNameTagsPlugin;
-import org.alexdev.unlimitednametags.commands.MainCommand;
+import org.alexdev.unlimitednametags.commands.UntBrigadierCommands;
 import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.hook.*;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
@@ -278,10 +276,7 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
     }
 
     private void loadCommands() {
-        final CommandService drink = Drink.get(this);
-
-        drink.register(new MainCommand(this), "unt", "unlimitednametags");
-        drink.registerCommands();
+        UntBrigadierCommands.register(this);
     }
 
     private void loadStats() {

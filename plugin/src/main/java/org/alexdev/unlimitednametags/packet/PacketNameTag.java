@@ -70,6 +70,12 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
     private boolean sneaking;
 
     private float baseTranslationY;
+    /**
+     * Extra vertical offset (in blocks) added to compensate tall cosmetic helmets.
+     * See {@link org.alexdev.unlimitednametags.hook.hat.HatHook} and issue #49: previously the plugin injected
+     * empty newlines into the text component which stretched the background; now we push the display up instead.
+     */
+    private float helmetExtraOffset;
     private float animationTx;
     private float animationTy;
     private float animationTz;
@@ -274,7 +280,20 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
     }
 
     private void recomputeBaseTranslationY() {
-        this.baseTranslationY = offset + increasedOffset + displayGroup.yOffset();
+        this.baseTranslationY = offset + increasedOffset + displayGroup.yOffset() + helmetExtraOffset;
+    }
+
+    /**
+     * Updates the helmet-height compensation (in blocks). No-op if the value is unchanged.
+     * Must be called on the refresh path after the owner's helmet changes; see {@link #recomputeBaseTranslationY}.
+     */
+    public void setHelmetExtraOffset(float extra) {
+        if (Math.abs(this.helmetExtraOffset - extra) < 1e-4f) {
+            return;
+        }
+        this.helmetExtraOffset = extra;
+        recomputeBaseTranslationY();
+        applyDisplayTransform();
     }
 
     /**
@@ -447,7 +466,7 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
 
         spawn(player);
 
-        if (isOwner(player) && plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (isOwner(player) && plugin.getNametagManager().isEffectiveShowOwnNametag(owner)) {
             setOwnerPosition();
         } else {
             setPosition();
@@ -532,6 +551,14 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
             return false;
         }
 
+        if (!player.getUniqueId().equals(owner.getUniqueId())
+                && plugin.getNametagManager().isHidingOwnNametagFromOthers(owner)) {
+            if (plugin.getNametagManager().isDebug()) {
+                plugin.getLogger().info("Owner " + owner.getName() + " hides their nametag from others.");
+            }
+            return false;
+        }
+
         if (plugin.getConfigManager().getSettings().isShowWhileLooking() &&
                 !plugin.getNametagManager().isPlayerPointingAt(player, owner)) {
             if (plugin.getNametagManager().isDebug()) {
@@ -540,11 +567,11 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
             return false;
         }
 
-        if (plugin.getConfigManager().getSettings().isShowCurrentNameTag()
-                && player.getUniqueId() == owner.getUniqueId()) {
+        if (player.getUniqueId().equals(owner.getUniqueId())
+                && plugin.getNametagManager().isEffectiveShowOwnNametag(owner)) {
             if (plugin.getNametagManager().isDebug()) {
                 plugin.getLogger()
-                        .info("Player " + player.getName() + " is the owner and show current nametag is enabled.");
+                        .info("Player " + player.getName() + " is the owner and their own nametag is shown.");
             }
             return true;
         }
@@ -841,6 +868,7 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
         properties.put("displayGroupYOffset", String.valueOf(displayGroup.yOffset()));
         properties.put("scale", String.valueOf(meta.getScale()));
         properties.put("increasedOffset", String.valueOf(increasedOffset));
+        properties.put("helmetExtraOffset", String.valueOf(helmetExtraOffset));
         properties.put("viewRange", String.valueOf(meta.getViewRange()));
         appendTypeProperties(properties, meta);
         return properties;

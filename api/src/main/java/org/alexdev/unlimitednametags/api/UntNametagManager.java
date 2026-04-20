@@ -89,6 +89,25 @@ public interface UntNametagManager {
 
     boolean isHiddenOtherNametags(@NotNull Player player);
 
+    boolean isEffectiveShowOwnNametag(@NotNull Player player);
+
+    boolean isShowingOwnNametagToSelf(@NotNull Player player);
+
+    void setShowingOwnNametagToSelf(@NotNull Player player, boolean show);
+
+    boolean isShowingOwnNametagToOthers(@NotNull Player player);
+
+    void setShowingOwnNametagToOthers(@NotNull Player player, boolean show);
+
+    void applyPreferencesFromPersistentData(@NotNull Player player);
+
+    /**
+     * Loads nametag UI preferences from the player's PDC into runtime sets only (no packets).
+     * Call as early as possible on join so {@link #isHiddenOtherNametags} and related checks are correct
+     * before any nametag packets are sent to this player.
+     */
+    void syncPlayerPreferenceSetsFromPdc(@NotNull Player player);
+
     void swapNametag(@NotNull Player player, @NotNull Settings.NameTag nameTag);
 
     void setNametagOverride(@NotNull Player player, @NotNull Settings.NameTag nameTag);

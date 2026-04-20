@@ -42,7 +42,6 @@ public class PlaceholderManager {
     private static final String ELSE_PLACEHOLDER = "ELSE";
     private static final int maxIndex = 16777215;
     private static final int maxMIndex = 10;
-    private static final int MORE_LINES = 14;
     private final UnlimitedNameTags plugin;
     private final ExecutorService executorService;
     private final PAPIManager papiManager;
@@ -193,22 +192,9 @@ public class PlaceholderManager {
 
     @NotNull
     private Map<Player, Component> createComponent(@NotNull Player player, @NotNull List<String> strings, @NotNull List<Player> relationalPlayers) {
-        final double moreLines = plugin.getHatHooks().stream()
-                .mapToDouble(h -> h.getHigh(player))
-                .filter(h -> h > 0)
-                .findFirst()
-                .orElse(0d);
-
-        final int moreLinesInt = (int) Math.ceil(moreLines);
-        Component emptyLines = Component.empty();
-        if (moreLinesInt > 0) {
-            int linesCount = moreLinesInt / MORE_LINES;
-            for (int i = 0; i < linesCount; i++) {
-                emptyLines = emptyLines.append(Component.newline());
-            }
-        }
-
-        final Component hatLines = emptyLines;
+        // Issue #49: helmet height compensation used to be done by prepending empty newlines to the text component,
+        // which stretched the text-display background. The vertical offset is now applied via PacketNameTag#setHelmetExtraOffset
+        // in NameTagManager, so the component only carries the real text here.
         final Settings settings = plugin.getConfigManager().getSettings();
         final boolean removeEmptyLines = settings.isRemoveEmptyLines();
         final boolean enableRelationalPlaceholders = settings.isEnableRelationalPlaceholders();
@@ -229,8 +215,7 @@ public class PlaceholderManager {
                         .map(line -> format(line, player))
                         .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
                         .toList();
-                Component finalComponent = joinLines(processedLines).append(hatLines);
-                result.put(viewer, finalComponent);
+                result.put(viewer, joinLines(processedLines));
             }
             return result;
         } else {
@@ -242,7 +227,7 @@ public class PlaceholderManager {
                     .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
                     .toList();
 
-            Component finalComponent = joinLines(processedLines).append(hatLines);
+            final Component finalComponent = joinLines(processedLines);
 
             final Map<Player, Component> result = Maps.newHashMapWithExpectedSize(relationalPlayers.size());
             for (Player viewer : relationalPlayers) {
@@ -250,6 +235,24 @@ public class PlaceholderManager {
             }
             return result;
         }
+    }
+
+    /**
+     * Computes the vertical translation (in blocks) to apply to a nametag display in order to clear the player's
+     * cosmetic helmet. Returns 0 when no hat hook reports a height. Replaces the old newline-based stretching
+     * to keep text-display backgrounds tight around the actual text (issue #49).
+     */
+    public float computeHelmetExtraOffset(@NotNull Player player) {
+        final double rawHeight = plugin.getHatHooks().stream()
+                .mapToDouble(h -> h.getHigh(player))
+                .filter(h -> h > 0)
+                .findFirst()
+                .orElse(0d);
+        if (rawHeight <= 0) {
+            return 0f;
+        }
+        final float multiplier = plugin.getConfigManager().getAdvanced().getHelmetHeightYOffsetMultiplier();
+        return (float) rawHeight * multiplier;
     }
 
     private Component joinLines(List<Component> lines) {

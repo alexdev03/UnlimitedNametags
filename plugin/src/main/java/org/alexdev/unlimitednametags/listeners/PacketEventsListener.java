@@ -18,7 +18,6 @@ import com.google.common.collect.Maps;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.data.TeamData;
 import org.alexdev.unlimitednametags.packet.PacketNameTag;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -60,7 +59,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
-        if (!plugin.getConfigManager().getSettings().isShowCurrentNameTag()) {
+        if (!plugin.getNametagManager().isEffectiveShowOwnNametag(player)) {
             return;
         }
 
@@ -288,8 +287,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     public boolean existsPlayer(@NotNull String name) {
-//        return plugin.getPlayerListener().getPlayerNameId().containsKey(name);
-        return Bukkit.getPlayer(name) != null;
+        return plugin.getPlayerListener().getPlayerNameId().containsKey(name);
     }
 
     public void onDisable() {

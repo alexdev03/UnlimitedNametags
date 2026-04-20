@@ -88,7 +88,7 @@ public class TrackerManager {
      * @param target The target player being observed.
      */
     public void handleRemove(@NotNull Player player, @NotNull Player target) {
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> removePlayerInternal(player, target));
+        removePlayerInternal(player, target);
     }
 
     private void removePlayerInternal(@NotNull Player player, @NotNull Player target) {
