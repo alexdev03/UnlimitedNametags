@@ -26,16 +26,16 @@ public class Settings {
 
     @Comment({
             "Schema version for settings.yml (managed by the plugin; do not lower).",
-            "1 = flat NameTag (lines on tag), 2 = displayGroups / DisplayGroup (current)."
+            "1 = flat NameTag, 2 = displayGroups with string lines, 3 = displayGroups with structured lines (current)."
     })
     private int configVersion = SettingsConfigVersion.CURRENT;
 
     private Map<String, NameTag> nameTags = new LinkedHashMap<>() {{
-        put("staffer", new NameTag("nametag.staffer", List.of(new DisplayGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"),
-                new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f, null, null, null, null, null, null, null, null))));
-        put("default", new NameTag("nametag.default", List.of(new DisplayGroup(List.of("%luckperms_prefix% %player_name% %luckperms_suffix%"),
-                        new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f, null, null, null, null, null, null, null, null),
-                new DisplayGroup(List.of("Rich Player"), new HexBackground(false, "#ffffff", 255, false, false), 1f, 1.0f, "%vault_eco_balance% > 1000", null, null, null, null, null, null, null))));
+        put("staffer", new NameTag("nametag.staffer", List.of(new DisplayGroup(List.of(NametagLine.plain("%luckperms_prefix% %player_name% %luckperms_suffix%")),
+                new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f, null, false, null, null, null, null, null, null, null))));
+        put("default", new NameTag("nametag.default", List.of(new DisplayGroup(List.of(NametagLine.plain("%luckperms_prefix% %player_name% %luckperms_suffix%")),
+                        new IntegerBackground(false, 255, 0, 0, 255, true, false), 1f, 1.0f, null, false, null, null, null, null, null, null, null),
+                new DisplayGroup(List.of(NametagLine.plain("Rich Player")), new HexBackground(false, "#ffffff", 255, false, false), 1f, 1.0f, "%vault_eco_balance% > 1000", false, null, null, null, null, null, null, null))));
     }};
 
     @Setter
@@ -66,6 +66,19 @@ public class Settings {
             "Similar to the background, the text rendering is discarded when it is less than 26. Defaults to -1, which represents 255 and is completely opaque."})
     private int sneakOpacity = 70;
     private float yOffset = 0.3f;
+
+    @Comment({
+            "When true, displayGroups are laid out as a compact vertical stack after placeholders are resolved.",
+            "Empty text groups and inactive groups do not reserve vertical space, while each group can still keep its own background/style.",
+            "Relational placeholders use the owner's resolved text for the shared stack position."
+    })
+    private boolean compactDisplayGroupStack = false;
+
+    @Comment({
+            "Estimated height, in blocks, consumed by one resolved text line when compactDisplayGroupStack is enabled.",
+            "This is an approximation because clients render font/resource-pack heights locally."
+    })
+    private float displayGroupLineHeightBlocks = 0.25f;
 
     @Comment({
             "Divided by 160 and sent to clients as the display entity view_range (vanilla default metadata = 1.0).",
@@ -187,25 +200,43 @@ public class Settings {
 
     }
 
+    public record NametagLine(@NotNull String text, @Nullable String when) {
+
+        public NametagLine {
+            text = text == null ? "" : text;
+        }
+
+        @NotNull
+        public static NametagLine plain(@NotNull final String text) {
+            return new NametagLine(text, null);
+        }
+    }
+
     /**
-     * One stacked nametag display (text, item, or block). Visibility is controlled only by optional {@code when} (JEXL).
+     * One stacked nametag display (text, item, or block). Visibility is controlled by optional group {@code when} (JEXL)
+     * and optional {@link NametagLine#when()} for each text line.
      * <p>
      * {@code background} may be omitted in YAML (null): same as a disabled transparent background — useful for {@link NametagDisplayType#ITEM}
      * and {@link NametagDisplayType#BLOCK} rows where text styling does not apply.
      * <p>
-     * <b>Lines</b>: used only for {@link NametagDisplayType#TEXT} (default). For {@link NametagDisplayType#ITEM} / {@link NametagDisplayType#BLOCK},
-     * {@code lines} in YAML are ignored; set {@code itemMaterial} / {@code blockMaterial} (required for content).
+     * <b>Lines</b>: used only for {@link NametagDisplayType#TEXT} (default). Each line is an object with {@code text}
+     * and optional {@code when}. For {@link NametagDisplayType#ITEM} / {@link NametagDisplayType#BLOCK}, {@code lines}
+     * in YAML are ignored; set {@code itemMaterial} / {@code blockMaterial} (required for content).
      * <p>
      * Optional {@code animation} (rotate, bob, dvd_bounce, pulse_scale, wiggle, orbit); optional {@code animation_interval}
      * (ticks between pose updates) overrides root {@code displayAnimationInterval} (or {@code taskInterval} when that is 0).
      * Optional {@code billboard} ({@code CENTER}, {@code HORIZONTAL}, {@code VERTICAL}, {@code FIXED}) overrides {@link Settings#getDefaultBillboard()} for this row only.
+     * <p>
+     * When {@code relationalConditions} is true, group and line {@code when} conditions and text for this row are evaluated with relational placeholders
+     * per viewer (viewer → owner). Requires PlaceholderAPI. Item/block rows still resolve {@code when} on the owner only.
      */
     public record DisplayGroup(
-            List<String> lines,
+            List<NametagLine> lines,
             @Nullable Background background,
             float scale,
             float yOffset,
             @Nullable String when,
+            boolean relationalConditions,
             @Nullable NametagDisplayType displayType,
             @Nullable String itemMaterial,
             @Nullable String blockMaterial,
@@ -219,7 +250,9 @@ public class Settings {
             if (resolved != NametagDisplayType.TEXT) {
                 lines = List.of();
             } else {
-                lines = lines == null ? List.of() : List.copyOf(lines);
+                lines = lines == null ? List.of() : lines.stream()
+                        .map(line -> line == null ? NametagLine.plain("") : line)
+                        .toList();
             }
             background = isRedundantOmittedStyleIntegerBackground(background) ? null : background;
         }
@@ -278,16 +311,16 @@ public class Settings {
         }
 
         public DisplayGroup withBackground(@NotNull Background background) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
         }
 
         public DisplayGroup withScale(float scale) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
         }
 
         @NotNull
         public DisplayGroup withAnimation(@Nullable DisplayAnimation animation) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
         }
 
     }

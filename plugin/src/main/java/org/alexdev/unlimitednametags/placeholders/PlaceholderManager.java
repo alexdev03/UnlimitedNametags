@@ -10,6 +10,7 @@ import org.alexdev.unlimitednametags.config.Settings;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -159,6 +160,16 @@ public class PlaceholderManager {
     @NotNull
     public CompletableFuture<Map<Player, Component>> applyPlaceholders(@NotNull Player player, @NotNull Settings.DisplayGroup group,
                                                                        @NotNull List<Player> relationalPlayers) {
+        if (group.relationalConditions()) {
+            return CompletableFuture.supplyAsync(() -> {
+                final Map<Player, Component> result = Maps.newHashMapWithExpectedSize(relationalPlayers.size());
+                for (Player viewer : relationalPlayers) {
+                    final List<String> strings = collectActiveLineTexts(player, viewer, group);
+                    result.put(viewer, buildComponentForViewer(player, viewer, strings));
+                }
+                return result;
+            }, executorService);
+        }
         return getCheckedLines(player, group).thenApplyAsync(strings -> createComponent(player, strings, relationalPlayers), executorService);
     }
 
@@ -172,22 +183,76 @@ public class PlaceholderManager {
 
     /**
      * Same visibility as checked lines resolution: when {@code false}, text lines are empty and item/block displays should hide content.
+     * When {@code relationalViewer} is non-null and the group has {@link Settings.DisplayGroup#relationalConditions()},
+     * the group {@code when} is evaluated with relational placeholders (viewer → owner).
+     */
+    public boolean isDisplayGroupActive(@NotNull Player owner, @NotNull Settings.DisplayGroup group, @Nullable Player relationalViewer) {
+        if (group.when() == null || group.when().isBlank()) {
+            return true;
+        }
+        final String expr = group.when().trim();
+        if (!group.relationalConditions() || relationalViewer == null) {
+            return plugin.getConditionalManager().evaluateCondition(expr, owner);
+        }
+        return plugin.getConditionalManager().evaluateCondition(expr, relationalViewer, owner);
+    }
+
+    /**
+     * Same as {@link #isDisplayGroupActive(Player, Settings.DisplayGroup, Player)} with {@code relationalViewer = null} (owner-based).
      */
     public boolean isDisplayGroupActive(@NotNull Player player, @NotNull Settings.DisplayGroup group) {
-        if (group.when() != null && !group.when().isBlank()) {
-            return plugin.getConditionalManager().evaluateCondition(group.when().trim(), player);
+        return isDisplayGroupActive(player, group, null);
+    }
+
+    @NotNull
+    private List<String> collectActiveLineTexts(@NotNull Player owner, @NotNull Player viewer, @NotNull Settings.DisplayGroup group) {
+        if (!isDisplayGroupActive(owner, group, group.relationalConditions() ? viewer : null)) {
+            return List.of();
         }
-        return true;
+        return group.lines().stream()
+                .filter(line -> line.when() == null
+                        || line.when().isBlank()
+                        || evaluateLineWhen(owner, viewer, line, group.relationalConditions()))
+                .map(Settings.NametagLine::text)
+                .toList();
+    }
+
+    private boolean evaluateLineWhen(@NotNull Player owner, @NotNull Player viewer, @NotNull Settings.NametagLine line, boolean relationalGroup) {
+        if (line.when() == null || line.when().isBlank()) {
+            return true;
+        }
+        final String expr = line.when().trim();
+        if (!relationalGroup) {
+            return plugin.getConditionalManager().evaluateCondition(expr, owner);
+        }
+        return plugin.getConditionalManager().evaluateCondition(expr, viewer, owner);
+    }
+
+    @NotNull
+    private Component buildComponentForViewer(@NotNull Player owner, @NotNull Player viewer, @NotNull List<String> strings) {
+        final Settings settings = plugin.getConfigManager().getSettings();
+        final boolean removeEmptyLines = settings.isRemoveEmptyLines();
+
+        final List<String> baseStrings = papiManager.isPapiEnabled() ?
+                strings.stream()
+                        .map(s -> replacePlaceholders(s, owner, null))
+                        .toList()
+                : strings;
+
+        List<Component> processedLines = baseStrings.stream()
+                .map(line -> replacePlaceholders(line, owner, viewer))
+                .filter(s -> !removeEmptyLines || !s.isEmpty())
+                .map(this::formatPhases)
+                .map(line -> format(line, owner))
+                .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
+                .toList();
+
+        return joinLines(processedLines);
     }
 
     @NotNull
     private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull Settings.DisplayGroup group) {
-        return CompletableFuture.supplyAsync(() -> {
-            if (!isDisplayGroupActive(player, group)) {
-                return List.of();
-            }
-            return group.lines();
-        }, executorService);
+        return CompletableFuture.supplyAsync(() -> collectActiveLineTexts(player, player, group), executorService);
     }
 
     @NotNull

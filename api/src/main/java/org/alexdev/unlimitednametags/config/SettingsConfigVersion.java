@@ -9,9 +9,14 @@ public final class SettingsConfigVersion {
     }
 
     /**
-     * Latest schema ({@code displayGroups}, {@link Settings.DisplayGroup}, {@code displayType}, etc.).
+     * Latest schema ({@code displayGroups}, {@link Settings.DisplayGroup}, structured {@code lines}, etc.).
      */
-    public static final int CURRENT = 2;
+    public static final int CURRENT = 3;
+
+    /**
+     * Display groups with {@code lines} represented as raw strings.
+     */
+    public static final int STRING_LINE_DISPLAY_GROUPS = 2;
 
     /**
      * Legacy: each {@code NameTag} had top-level {@code lines}, {@code background}, {@code scale} (and optional {@code yOffset}).

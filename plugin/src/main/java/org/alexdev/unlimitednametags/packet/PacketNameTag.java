@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -70,6 +71,11 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
     private boolean sneaking;
 
     private float baseTranslationY;
+    private boolean compactStackLayout;
+    private float compactStackYOffset;
+    private boolean compactStackHelmetOffset = true;
+    /** Per-viewer base translation Y (before animation offsets) when compact stacking is relational. */
+    private final ConcurrentHashMap<UUID, Float> perViewerStackBaseY = new ConcurrentHashMap<>();
     /**
      * Extra vertical offset (in blocks) added to compensate tall cosmetic helmets.
      * See {@link org.alexdev.unlimitednametags.hook.hat.HatHook} and issue #49: previously the plugin injected
@@ -279,8 +285,51 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
         applyDisplayTransform();
     }
 
+    public void setCompactStackYOffset(float yOffset, boolean includeHelmetOffset) {
+        perViewerStackBaseY.clear();
+        this.compactStackLayout = true;
+        this.compactStackYOffset = yOffset;
+        this.compactStackHelmetOffset = includeHelmetOffset;
+        recomputeBaseTranslationY();
+        applyDisplayTransform();
+    }
+
+    public void clearCompactStackYOffset() {
+        final boolean hadPerViewer = !perViewerStackBaseY.isEmpty();
+        perViewerStackBaseY.clear();
+        if (!compactStackLayout && compactStackHelmetOffset && !hadPerViewer) {
+            return;
+        }
+        this.compactStackLayout = false;
+        this.compactStackYOffset = 0f;
+        this.compactStackHelmetOffset = true;
+        recomputeBaseTranslationY();
+        applyDisplayTransform();
+    }
+
+    public void setPerViewerStackBaseY(@NotNull Map<UUID, Float> baseYByViewer) {
+        this.compactStackLayout = false;
+        this.compactStackYOffset = 0f;
+        this.compactStackHelmetOffset = true;
+        perViewerStackBaseY.clear();
+        perViewerStackBaseY.putAll(baseYByViewer);
+        recomputeBaseTranslationY();
+        applyDisplayTransform();
+    }
+
+    public void clearPerViewerStackLayout() {
+        if (perViewerStackBaseY.isEmpty()) {
+            return;
+        }
+        perViewerStackBaseY.clear();
+        recomputeBaseTranslationY();
+        applyDisplayTransform();
+    }
+
     private void recomputeBaseTranslationY() {
-        this.baseTranslationY = offset + increasedOffset + displayGroup.yOffset() + helmetExtraOffset;
+        final float rowOffset = compactStackLayout ? compactStackYOffset : displayGroup.yOffset();
+        final float helmetOffset = !compactStackLayout || compactStackHelmetOffset ? helmetExtraOffset : 0f;
+        this.baseTranslationY = offset + increasedOffset + rowOffset + helmetOffset;
     }
 
     /**
@@ -303,17 +352,41 @@ public abstract class PacketNameTag implements UntNametagDisplay, NametagAnimati
         if (removed) {
             return;
         }
-        final float y = baseTranslationY + animationTy;
         final float tx = animationTx;
         final float tz = animationTz;
         final Quaternion4f lq = new Quaternion4f(
                 animationLeftQuat.getX(), animationLeftQuat.getY(), animationLeftQuat.getZ(), animationLeftQuat.getW());
         final float sc = scale * animationScaleMul;
-        modifyAbstractAll(meta -> {
-            meta.setTranslation(new Vector3f(tx, y, tz));
-            meta.setLeftRotation(lq);
-            meta.setScale(new Vector3f(sc, sc, sc));
-        });
+        if (!perViewerStackBaseY.isEmpty()) {
+            for (final UUID viewerId : new ArrayList<>(perPlayerEntity.getEntities().keySet())) {
+                Player p = plugin.getPlayerListener().getPlayer(viewerId);
+                if (p == null) {
+                    p = Bukkit.getPlayer(viewerId);
+                }
+                if (p == null) {
+                    continue;
+                }
+                final User user = PacketEvents.getAPI().getPlayerManager().getUser(p);
+                if (user == null) {
+                    continue;
+                }
+                final float baseY = perViewerStackBaseY.getOrDefault(viewerId, baseTranslationY);
+                final float y = baseY + animationTy;
+                modifyEntity(user, w -> {
+                    final AbstractDisplayMeta meta = (AbstractDisplayMeta) w.getEntityMeta();
+                    meta.setTranslation(new Vector3f(tx, y, tz));
+                    meta.setLeftRotation(lq);
+                    meta.setScale(new Vector3f(sc, sc, sc));
+                });
+            }
+        } else {
+            final float y = baseTranslationY + animationTy;
+            modifyAbstractAll(meta -> {
+                meta.setTranslation(new Vector3f(tx, y, tz));
+                meta.setLeftRotation(lq);
+                meta.setScale(new Vector3f(sc, sc, sc));
+            });
+        }
         // EntityLib keeps notifyAboutChanges(false) on display meta; translation/rotation updates otherwise stay server-side only.
         refresh();
     }

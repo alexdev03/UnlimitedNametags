@@ -48,19 +48,19 @@ public final class SettingsYamlMigrator {
 
         int declared = parseDeclaredVersion(root);
         boolean changed = false;
-        if (declared == 3) {
-            log.info("settings.yml had unreleased configVersion 3; normalized to " + SettingsConfigVersion.CURRENT + ".");
-            root.put("configVersion", SettingsConfigVersion.CURRENT);
-            declared = SettingsConfigVersion.CURRENT;
-            changed = true;
-        }
-
         final boolean legacy = hasLegacyFlatNameTags(root);
+        final boolean stringLineDisplayGroups = hasStringLineDisplayGroups(root);
         final int from;
-        if (declared > 0) {
+        if (declared == SettingsConfigVersion.CURRENT && stringLineDisplayGroups) {
+            log.info("settings.yml has configVersion " + SettingsConfigVersion.CURRENT
+                    + " but still uses v2 string lines; migrating lines to structured rows.");
+            from = SettingsConfigVersion.STRING_LINE_DISPLAY_GROUPS;
+        } else if (declared > 0) {
             from = declared;
         } else if (legacy) {
             from = SettingsConfigVersion.LEGACY_FLAT_NAMETAG;
+        } else if (stringLineDisplayGroups) {
+            from = SettingsConfigVersion.STRING_LINE_DISPLAY_GROUPS;
         } else {
             from = SettingsConfigVersion.CURRENT;
         }
@@ -71,16 +71,19 @@ public final class SettingsYamlMigrator {
             return;
         }
 
+        changed |= renameObsoleteLinesGroupsKey(root, log);
         changed |= sanitizePlaceholdersReplacements(root, log);
         changed |= stripObsoleteDisplayGroupFields(root, log);
         changed |= stripRedundantDisplayBackgrounds(root, log);
-        changed |= renameObsoleteLinesGroupsKey(root, log);
         for (int v = from; v < SettingsConfigVersion.CURRENT; v++) {
             switch (v) {
                 case 1 -> changed |= migrateV1ToV2(root, log);
+                case 2 -> changed |= migrateV2ToV3(root, log);
                 default -> throw new IllegalStateException("Missing settings migrator from v" + v + " to v" + (v + 1));
             }
         }
+        changed |= stripObsoleteDisplayGroupFields(root, log);
+        changed |= stripRedundantDisplayBackgrounds(root, log);
 
         final Object currentDeclared = root.get("configVersion");
         final int currentInFile = currentDeclared instanceof Number n ? n.intValue() : 0;
@@ -185,6 +188,37 @@ public final class SettingsYamlMigrator {
                         && !tag.containsKey("linesGroups")
                         && !tag.containsKey("displayGroups")) {
                     return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasStringLineDisplayGroups(Map<String, Object> root) {
+        final Object nameTags = root.get("nameTags");
+        if (!(nameTags instanceof Map<?, ?> nt)) {
+            return false;
+        }
+        for (Object raw : nt.values()) {
+            if (!(raw instanceof Map<?, ?> tag)) {
+                continue;
+            }
+            final Object groupsObj = tag.containsKey("displayGroups") ? tag.get("displayGroups") : tag.get("linesGroups");
+            if (!(groupsObj instanceof List<?> groups)) {
+                continue;
+            }
+            for (Object groupObj : groups) {
+                if (!(groupObj instanceof Map<?, ?> group)) {
+                    continue;
+                }
+                final Object linesObj = group.get("lines");
+                if (!(linesObj instanceof List<?> lines)) {
+                    continue;
+                }
+                for (Object line : lines) {
+                    if (!(line instanceof Map<?, ?>)) {
+                        return true;
+                    }
                 }
             }
         }
@@ -413,6 +447,81 @@ public final class SettingsYamlMigrator {
 
             log.info("Migrated NameTag '" + key + "' from flat lines (v1) to displayGroups.");
             any = true;
+        }
+        return any;
+    }
+
+    /**
+     * Converts v2 text rows from {@code lines: [string, ...]} to structured rows:
+     * {@code lines: [{text: string}, ...]}. This keeps one text display per display group while allowing per-line metadata.
+     */
+    @SuppressWarnings("unchecked")
+    private static boolean migrateV2ToV3(Map<String, Object> root, Logger log) {
+        final Object nameTags = root.get("nameTags");
+        if (!(nameTags instanceof Map<?, ?> nt)) {
+            return false;
+        }
+        boolean any = false;
+        for (Map.Entry<?, ?> entry : nt.entrySet()) {
+            final String tagKey = String.valueOf(entry.getKey());
+            final Object rawTag = entry.getValue();
+            if (!(rawTag instanceof Map)) {
+                continue;
+            }
+            final Map<String, Object> tag = (Map<String, Object>) rawTag;
+            final Object dg = tag.get("displayGroups");
+            if (!(dg instanceof List<?> groups)) {
+                continue;
+            }
+            for (int groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
+                final Object rawGroup = groups.get(groupIndex);
+                if (!(rawGroup instanceof Map)) {
+                    continue;
+                }
+                final Map<String, Object> group = (Map<String, Object>) rawGroup;
+                final Object linesObj = group.get("lines");
+                if (!(linesObj instanceof List<?> rawLines)) {
+                    continue;
+                }
+
+                final List<Object> migratedLines = new ArrayList<>(rawLines.size());
+                boolean groupChanged = false;
+                for (Object rawLine : rawLines) {
+                    if (rawLine instanceof Map<?, ?> existingLine) {
+                        final Map<String, Object> line = new LinkedHashMap<>();
+                        for (Map.Entry<?, ?> lineEntry : existingLine.entrySet()) {
+                            line.put(String.valueOf(lineEntry.getKey()), lineEntry.getValue());
+                        }
+                        if (!line.containsKey("text") && line.containsKey("line")) {
+                            line.put("text", line.remove("line"));
+                            groupChanged = true;
+                        }
+                        if (!line.containsKey("text")) {
+                            log.warning("NameTag '" + tagKey + "' displayGroups[" + groupIndex + "] has a structured line without 'text'.");
+                            line.put("text", "");
+                            groupChanged = true;
+                        } else if (!(line.get("text") instanceof String)) {
+                            line.put("text", String.valueOf(line.get("text")));
+                            groupChanged = true;
+                        }
+                        migratedLines.add(line);
+                        continue;
+                    }
+
+                    final Map<String, Object> line = new LinkedHashMap<>();
+                    line.put("text", rawLine == null ? "" : String.valueOf(rawLine));
+                    migratedLines.add(line);
+                    groupChanged = true;
+                }
+
+                if (groupChanged) {
+                    group.put("lines", migratedLines);
+                    any = true;
+                }
+            }
+        }
+        if (any) {
+            log.info("Migrated displayGroups lines from raw strings (v2) to structured text rows (v3).");
         }
         return any;
     }

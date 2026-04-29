@@ -10,6 +10,7 @@ import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.api.UntNametagManager;
@@ -29,6 +30,7 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +40,9 @@ import java.util.stream.Collectors;
 
 @Getter
 public class NameTagManager implements UntNametagManager {
+
+    private static final float COMPACT_ITEM_DISPLAY_HEIGHT_BLOCKS = 0.35f;
+    private static final float COMPACT_BLOCK_DISPLAY_HEIGHT_BLOCKS = 0.5f;
 
     private final UnlimitedNameTags plugin;
     private final ConcurrentHashMap<UUID, CopyOnWriteArrayList<PacketNameTag>> nameTags;
@@ -58,6 +63,15 @@ public class NameTagManager implements UntNametagManager {
     @Setter
     private boolean debug = false;
     private final Attribute scaleAttribute;
+
+    private record ResolvedDisplayRow(
+            int index,
+            @NotNull Settings.DisplayGroup displayGroup,
+            @NotNull PacketNameTag display,
+            @NotNull List<Player> relationalPlayers,
+            @NotNull Map<Player, Component> components,
+            Component ownerComponent) {
+    }
 
     public NameTagManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
@@ -560,27 +574,31 @@ public class NameTagManager implements UntNametagManager {
         final int rowCount = nametag.displayGroups().size();
         pendingRowCreations.put(player.getUniqueId(), new AtomicInteger(rowCount));
 
+        final List<CompletableFuture<ResolvedDisplayRow>> futures = new ArrayList<>(rowCount);
         for (int i = 0; i < rowCount; i++) {
             final Settings.DisplayGroup displayGroup = nametag.displayGroups().get(i);
             final PacketNameTag display = createdTags.get(i);
-            plugin.getPlaceholderManager().applyPlaceholders(player, displayGroup, List.of(player))
-                    .thenAccept(lines -> {
-                        final Component resolved = lines.get(player);
-                        if (resolved == null) {
-                            plugin.getLogger().warning(
-                                    "No nametag component for owner " + player.getName() + "; skipping display row.");
-                            finishRowCreation(player.getUniqueId());
-                            return;
-                        }
-                        loadDisplay(player, resolved, displayGroup, display);
-                    })
-                    .exceptionally(throwable -> {
-                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                                "Failed to create nametag for " + player.getName(), throwable);
-                        finishRowCreation(player.getUniqueId());
-                        return null;
-                    });
+            futures.add(resolveDisplayRow(player, i, displayGroup, display, List.of(player), "create"));
         }
+
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenRun(() -> {
+            final List<ResolvedDisplayRow> rows = collectResolvedRows(futures);
+            for (ResolvedDisplayRow row : rows) {
+                final Component resolved = row.ownerComponent();
+                if (resolved == null) {
+                    plugin.getLogger().warning(
+                            "No nametag component for owner " + player.getName() + "; skipping display row.");
+                    finishRowCreation(player.getUniqueId());
+                    continue;
+                }
+                loadDisplay(player, resolved, row.displayGroup(), row.display());
+            }
+            applyDisplayGroupStackLayout(player, rows);
+            final int missingRows = rowCount - rows.size();
+            for (int i = 0; i < missingRows; i++) {
+                finishRowCreation(player.getUniqueId());
+            }
+        });
 
     }
     public void refresh(@NotNull Player player, boolean force) {
@@ -597,6 +615,7 @@ public class NameTagManager implements UntNametagManager {
             return;
         }
 
+        final List<CompletableFuture<ResolvedDisplayRow>> futures = new ArrayList<>(nametag.displayGroups().size());
         for (int i = 0; i < nametag.displayGroups().size(); i++) {
             final Settings.DisplayGroup displayGroup = nametag.displayGroups().get(i);
             replaceDisplayIfNeeded(player, i, displayGroup);
@@ -619,14 +638,13 @@ public class NameTagManager implements UntNametagManager {
 
             final List<Player> relationalPlayers = relationalPlayersForRefresh(player, display);
 
-            plugin.getPlaceholderManager().applyPlaceholders(player, displayGroup, relationalPlayers)
-                    .thenAccept(lines -> editDisplay(display, lines, displayGroup, force))
-                    .exceptionally(throwable -> {
-                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                                "Failed to edit nametag for " + player.getName(), throwable);
-                        return null;
-                    });
+            futures.add(resolveDisplayRow(player, i, displayGroup, display, relationalPlayers, "edit"));
         }
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenRun(() -> {
+            final List<ResolvedDisplayRow> rows = collectResolvedRows(futures);
+            rows.forEach(row -> editDisplay(row.display(), row.components(), row.displayGroup(), force));
+            applyDisplayGroupStackLayout(player, rows);
+        });
     }
 
     private void updateLineCount(Player player, Settings.NameTag nametag) {
@@ -817,6 +835,229 @@ public class NameTagManager implements UntNametagManager {
         handleVanish(player, neu);
         list.set(index, neu);
         entityIdToDisplay.put(neu.getEntityId(), neu);
+    }
+
+    @NotNull
+    private CompletableFuture<ResolvedDisplayRow> resolveDisplayRow(@NotNull Player player,
+            int index,
+            @NotNull Settings.DisplayGroup displayGroup,
+            @NotNull PacketNameTag display,
+            @NotNull List<Player> relationalPlayers,
+            @NotNull String action) {
+        final List<Player> layoutPlayers = relationalPlayersWithOwner(player, relationalPlayers);
+        return plugin.getPlaceholderManager().applyPlaceholders(player, displayGroup, layoutPlayers)
+                .thenApply(lines -> new ResolvedDisplayRow(index, displayGroup, display, layoutPlayers, lines, lines.get(player)))
+                .exceptionally(throwable -> {
+                    plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                            "Failed to " + action + " nametag for " + player.getName(), throwable);
+                    return null;
+                });
+    }
+
+    @NotNull
+    private List<Player> relationalPlayersWithOwner(@NotNull Player owner, @NotNull List<Player> relationalPlayers) {
+        if (relationalPlayers.contains(owner)) {
+            return relationalPlayers;
+        }
+        final ArrayList<Player> withOwner = new ArrayList<>(relationalPlayers.size() + 1);
+        withOwner.add(owner);
+        withOwner.addAll(relationalPlayers);
+        return withOwner;
+    }
+
+    @NotNull
+    private List<ResolvedDisplayRow> collectResolvedRows(@NotNull List<CompletableFuture<ResolvedDisplayRow>> futures) {
+        return futures.stream()
+                .map(CompletableFuture::join)
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparingInt(ResolvedDisplayRow::index))
+                .toList();
+    }
+
+    private void applyDisplayGroupStackLayout(@NotNull Player player, @NotNull List<ResolvedDisplayRow> rows) {
+        final Settings settings = plugin.getConfigManager().getSettings();
+        final float helmetExtraOffset = plugin.getPlaceholderManager().computeHelmetExtraOffset(player);
+        final float globalYOffset = settings.getYOffset();
+
+        if (!settings.isCompactDisplayGroupStack()) {
+            rows.forEach(row -> {
+                row.display().clearCompactStackYOffset();
+                row.display().setHelmetExtraOffset(helmetExtraOffset);
+            });
+            return;
+        }
+
+        final boolean perViewerNeeded = rows.stream().anyMatch(r -> r.displayGroup().relationalConditions());
+        final LinkedHashSet<Player> viewersUnion = new LinkedHashSet<>();
+        for (ResolvedDisplayRow row : rows) {
+            viewersUnion.addAll(row.relationalPlayers());
+        }
+
+        if (!perViewerNeeded) {
+            rows.forEach(row -> {
+                row.display().clearPerViewerStackLayout();
+                row.display().setHelmetExtraOffset(helmetExtraOffset);
+            });
+            final float lineHeight = Math.max(0.01f, settings.getDisplayGroupLineHeightBlocks());
+            boolean hasVisibleRow = false;
+            float nextYOffset = 0f;
+
+            for (ResolvedDisplayRow row : rows) {
+                if (!isCompactStackVisible(player, row)) {
+                    row.display().setCompactStackYOffset(hasVisibleRow ? nextYOffset : row.displayGroup().yOffset(), false);
+                    continue;
+                }
+
+                final float rowYOffset = hasVisibleRow ? nextYOffset : row.displayGroup().yOffset();
+                row.display().setCompactStackYOffset(rowYOffset, !hasVisibleRow);
+                nextYOffset = rowYOffset + estimateDisplayGroupHeight(row, lineHeight);
+                hasVisibleRow = true;
+            }
+            return;
+        }
+
+        rows.forEach(row -> {
+            row.display().clearCompactStackYOffset();
+            row.display().setHelmetExtraOffset(0f);
+        });
+
+        final float lineHeight = Math.max(0.01f, settings.getDisplayGroupLineHeightBlocks());
+        final List<Map<UUID, Float>> yByRow = new ArrayList<>(rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            yByRow.add(new HashMap<>());
+        }
+
+        for (Player viewer : viewersUnion) {
+            boolean hasVisibleRow = false;
+            float nextYOffset = 0f;
+            for (int i = 0; i < rows.size(); i++) {
+                final ResolvedDisplayRow row = rows.get(i);
+                final PacketNameTag display = row.display();
+                final float inc = stackIncreasedOffset(display);
+                final boolean visible = isCompactStackVisibleForViewer(player, viewer, row);
+                final float rowCompactY;
+                final boolean helmetForRow;
+                if (!visible) {
+                    rowCompactY = hasVisibleRow ? nextYOffset : row.displayGroup().yOffset();
+                    helmetForRow = false;
+                } else {
+                    rowCompactY = hasVisibleRow ? nextYOffset : row.displayGroup().yOffset();
+                    helmetForRow = !hasVisibleRow;
+                    nextYOffset = rowCompactY + estimateDisplayGroupHeightForViewer(player, viewer, row, lineHeight);
+                    hasVisibleRow = true;
+                }
+                final float baseY = globalYOffset + inc + rowCompactY + (helmetForRow ? helmetExtraOffset : 0f);
+                yByRow.get(i).put(viewer.getUniqueId(), baseY);
+            }
+        }
+
+        for (int i = 0; i < rows.size(); i++) {
+            rows.get(i).display().setPerViewerStackBaseY(yByRow.get(i));
+        }
+    }
+
+    private static float stackIncreasedOffset(@NotNull PacketNameTag display) {
+        final float sc = display.getScale();
+        return sc > 1f ? sc / 5f : 0f;
+    }
+
+    private boolean isCompactStackVisibleForViewer(
+            @NotNull Player owner, @NotNull Player viewer, @NotNull ResolvedDisplayRow row) {
+        final boolean relationalText = row.displayGroup().relationalConditions()
+                && row.displayGroup().resolvedDisplayType() == NametagDisplayType.TEXT;
+        if (!plugin.getPlaceholderManager().isDisplayGroupActive(owner, row.displayGroup(),
+                relationalText ? viewer : null)) {
+            return false;
+        }
+
+        return switch (row.displayGroup().resolvedDisplayType()) {
+            case TEXT -> hasRenderableText(row.components().get(viewer));
+            case ITEM -> isMaterialVisible(owner, row.displayGroup().itemMaterial(), true);
+            case BLOCK -> isMaterialVisible(owner, row.displayGroup().blockMaterial(), false);
+        };
+    }
+
+    private float estimateDisplayGroupHeightForViewer(
+            @NotNull Player owner, @NotNull Player viewer, @NotNull ResolvedDisplayRow row, float lineHeight) {
+        final float scale = row.display().getScale();
+        return switch (row.displayGroup().resolvedDisplayType()) {
+            case TEXT -> Math.max(1, estimateTextLineCount(row.components().get(viewer))) * lineHeight * scale;
+            case ITEM -> COMPACT_ITEM_DISPLAY_HEIGHT_BLOCKS * scale;
+            case BLOCK -> COMPACT_BLOCK_DISPLAY_HEIGHT_BLOCKS * scale;
+        };
+    }
+
+    private boolean isCompactStackVisible(@NotNull Player player, @NotNull ResolvedDisplayRow row) {
+        if (!plugin.getPlaceholderManager().isDisplayGroupActive(player, row.displayGroup())) {
+            return false;
+        }
+
+        return switch (row.displayGroup().resolvedDisplayType()) {
+            case TEXT -> hasRenderableText(row.ownerComponent());
+            case ITEM -> isMaterialVisible(player, row.displayGroup().itemMaterial(), true);
+            case BLOCK -> isMaterialVisible(player, row.displayGroup().blockMaterial(), false);
+        };
+    }
+
+    private boolean isMaterialVisible(@NotNull Player player, String rawMaterial, boolean item) {
+        String raw = rawMaterial;
+        if (raw == null || raw.isBlank()) {
+            raw = "STONE";
+        }
+        final String expanded = plugin.getPlaceholderManager().expandForOwner(player, raw).trim();
+        final Material material = Material.matchMaterial(expanded, false);
+        if (material == null) {
+            return false;
+        }
+        return item ? material.isItem() : material.isBlock() && !material.isAir();
+    }
+
+    private float estimateDisplayGroupHeight(@NotNull ResolvedDisplayRow row, float lineHeight) {
+        final float scale = row.display().getScale();
+        return switch (row.displayGroup().resolvedDisplayType()) {
+            case TEXT -> Math.max(1, estimateTextLineCount(row.ownerComponent())) * lineHeight * scale;
+            case ITEM -> COMPACT_ITEM_DISPLAY_HEIGHT_BLOCKS * scale;
+            case BLOCK -> COMPACT_BLOCK_DISPLAY_HEIGHT_BLOCKS * scale;
+        };
+    }
+
+    private int estimateTextLineCount(Component component) {
+        if (!hasRenderableText(component)) {
+            return 0;
+        }
+        return Math.max(1, countNewlines(component) + 1);
+    }
+
+    private boolean hasRenderableText(Component component) {
+        if (component == null) {
+            return false;
+        }
+        if (component instanceof TextComponent textComponent) {
+            if (textComponent.content().chars().anyMatch(c -> c != '\n' && c != '\r')) {
+                return true;
+            }
+            return component.children().stream().anyMatch(this::hasRenderableText);
+        }
+        return !component.equals(Component.empty()) || component.children().stream().anyMatch(this::hasRenderableText);
+    }
+
+    private int countNewlines(Component component) {
+        if (component == null) {
+            return 0;
+        }
+        int count = 0;
+        if (component instanceof TextComponent textComponent) {
+            final String content = textComponent.content();
+            for (int i = 0; i < content.length(); i++) {
+                if (content.charAt(i) == '\n') {
+                    count++;
+                }
+            }
+        }
+        for (Component child : component.children()) {
+            count += countNewlines(child);
+        }
+        return count;
     }
 
     @NotNull
@@ -1178,6 +1419,7 @@ public class NameTagManager implements UntNametagManager {
             return;
         }
 
+        final List<CompletableFuture<ResolvedDisplayRow>> futures = new ArrayList<>(nameTag.displayGroups().size());
         for (int i = 0; i < nameTag.displayGroups().size(); i++) {
             final Settings.DisplayGroup displayGroup = nameTag.displayGroups().get(i);
             replaceDisplayIfNeeded(player, i, displayGroup);
@@ -1185,30 +1427,29 @@ public class NameTagManager implements UntNametagManager {
 
             final List<Player> relationalPlayers = relationalPlayersForRefresh(player, display);
 
-            plugin.getPlaceholderManager().applyPlaceholders(player, displayGroup, relationalPlayers)
-                    .thenAccept(lines -> {
-                        final Component component = lines.get(player);
-                        if (component == null) {
-                            plugin.getLogger().warning(
-                                    "No nametag component for owner " + player.getName() + "; swap skipped for one row.");
-                            return;
-                        }
-                        loadDisplay(player, component, displayGroup, display);
-                        final NametagDisplayType dt = displayGroup.resolvedDisplayType();
-                        if (dt == NametagDisplayType.TEXT) {
-                            lines.forEach((p, c) -> {
-                                if (!p.equals(player) && c != null) {
-                                    display.text(p, c);
-                                }
-                            });
-                        }
-                    })
-                    .exceptionally(throwable -> {
-                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                                "Failed to swap nametag for " + player.getName(), throwable);
-                        return null;
-                    });
+            futures.add(resolveDisplayRow(player, i, displayGroup, display, relationalPlayers, "swap"));
         }
+
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenRun(() -> {
+            final List<ResolvedDisplayRow> rows = collectResolvedRows(futures);
+            for (ResolvedDisplayRow row : rows) {
+                final Component component = row.ownerComponent();
+                if (component == null) {
+                    plugin.getLogger().warning(
+                            "No nametag component for owner " + player.getName() + "; swap skipped for one row.");
+                    continue;
+                }
+                loadDisplay(player, component, row.displayGroup(), row.display());
+                if (row.displayGroup().resolvedDisplayType() == NametagDisplayType.TEXT) {
+                    row.components().forEach((p, c) -> {
+                        if (!p.equals(player) && c != null) {
+                            row.display().text(p, c);
+                        }
+                    });
+                }
+            }
+            applyDisplayGroupStackLayout(player, rows);
+        });
 
     }
 

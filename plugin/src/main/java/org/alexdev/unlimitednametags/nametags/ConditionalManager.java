@@ -54,6 +54,24 @@ public class ConditionalManager implements UntConditionalManager {
                 PlaceholderAPI.setPlaceholders(player, trimmed) :
                 trimmed;
 
+        return evaluateExpandedJexl(entireExpression);
+    }
+
+    @Override
+    public boolean evaluateCondition(@NotNull String expression, @NotNull Player viewer, @NotNull Player owner) {
+        final String trimmed = expression.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+
+        final String entireExpression = plugin.getPlaceholderManager().getPapiManager().isPapiEnabled() ?
+                PlaceholderAPI.setRelationalPlaceholders(viewer, owner, trimmed) :
+                trimmed;
+
+        return evaluateExpandedJexl(entireExpression);
+    }
+
+    private boolean evaluateExpandedJexl(@NotNull String entireExpression) {
         final Object cachedVal = cachedExpressions.get(entireExpression);
         if (cachedVal instanceof Boolean b) {
             return b;

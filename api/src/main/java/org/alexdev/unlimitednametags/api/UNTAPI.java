@@ -393,7 +393,7 @@ public class UNTAPI {
                 return group;
             }
             return new Settings.DisplayGroup(group.lines(), newBg, group.scale(), group.yOffset(), group.when(),
-                    group.displayType(), group.itemMaterial(), group.blockMaterial(), group.itemDisplayMode(), group.animation(), group.animationInterval(), group.billboard());
+                    group.relationalConditions(), group.displayType(), group.itemMaterial(), group.blockMaterial(), group.itemDisplayMode(), group.animation(), group.animationInterval(), group.billboard());
         });
 
         plugin.getNametagManager().setNametagOverride(player, modified);
@@ -418,7 +418,7 @@ public class UNTAPI {
                 return group;
             }
             return new Settings.DisplayGroup(group.lines(), newBg, group.scale(), group.yOffset(), group.when(),
-                    group.displayType(), group.itemMaterial(), group.blockMaterial(), group.itemDisplayMode(), group.animation(), group.animationInterval(), group.billboard());
+                    group.relationalConditions(), group.displayType(), group.itemMaterial(), group.blockMaterial(), group.itemDisplayMode(), group.animation(), group.animationInterval(), group.billboard());
         });
         plugin.getNametagManager().setNametagOverride(player, modified);
     }
