@@ -29,11 +29,13 @@ public class PacketEventsListener extends PacketListenerAbstract {
     private final UnlimitedNameTags plugin;
     private final Map<UUID, Map<String, TeamData>> teams;
     private final Map<UUID, Integer> healthRounded;
+    private float alwaysUpdateBelow;
 
     public PacketEventsListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.teams = Maps.newConcurrentMap();
         this.healthRounded = Maps.newConcurrentMap();
+        this.alwaysUpdateBelow = plugin.getConfigManager().getSettings().getHealthRefreshAlwaysUpdateBelow();
     }
 
     public void onEnable() {
@@ -87,7 +89,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
         final float health = packet.getHealth();
         final int roundedHealth = (int) health;
         final UUID uuid = player.getUniqueId();
-        if (health < 1.0f) {
+        if (health < alwaysUpdateBelow) {
             healthRounded.put(uuid, roundedHealth);
             plugin.getNametagManager().refresh(player, false);
             return;
@@ -318,6 +320,10 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     public boolean existsPlayer(@NotNull String name) {
         return plugin.getPlayerListener().getPlayerNameId().containsKey(name);
+    }
+
+    public void reload() {
+        this.alwaysUpdateBelow = plugin.getConfigManager().getSettings().getHealthRefreshAlwaysUpdateBelow();
     }
 
     public void onDisable() {

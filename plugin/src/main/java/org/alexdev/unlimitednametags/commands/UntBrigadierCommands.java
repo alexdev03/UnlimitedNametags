@@ -103,6 +103,7 @@ public final class UntBrigadierCommands {
                     plugin.getConfigManager().reload();
                     plugin.getNametagManager().reload();
                     plugin.getPlaceholderManager().reload();
+                    plugin.getPacketEventsListener().reload();
                     msg(plugin, ctx.getSource().getSender(), "<green>UnlimitedNameTags has been reloaded!</green>");
                     return Command.SINGLE_SUCCESS;
                 });

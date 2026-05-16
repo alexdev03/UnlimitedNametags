@@ -108,6 +108,9 @@ public class Settings {
     @Comment("When true, listens for health update packets and refreshes the nametag.")
     private boolean healthRefresh = true;
 
+    @Comment("If healthRefresh is enabled, the nametag will always refresh below this health value, regardless of rounding.")
+    private float healthRefreshAlwaysUpdateBelow = 2.0f;
+
     @Comment("Whether to see the NameTag of a user only while pointing at them")
     private boolean showWhileLooking = false;
 
