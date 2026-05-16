@@ -91,7 +91,7 @@ public class Settings {
     @Comment("""
             Which text formatter to use (MINIMESSAGE, MINEDOWN, LEGACY or UNIVERSAL)\s
             Take note that UNIVERSAL is the most resource intensive but it supports all formatting options (except for MINEDOWN)\s
-            
+
             (&x&0&8&4&c&f&bc LEGACY OF LEGACY - &#084cfbc LEGACY - &#084cfbc& MINEDOWN - <color:#084cfbc> MINIMESSAGE)""")
     @Setter
     private Formatter format = Formatter.MINIMESSAGE;
@@ -104,6 +104,9 @@ public class Settings {
     private boolean forceDisableDefaultNameTag = false;
 
     private boolean removeEmptyLines = true;
+
+    @Comment("When true, listens for health update packets and refreshes the nametag.")
+    private boolean healthRefresh = true;
 
     @Comment("Whether to see the NameTag of a user only while pointing at them")
     private boolean showWhileLooking = false;
