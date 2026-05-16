@@ -84,11 +84,19 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
         final WrapperPlayServerUpdateHealth packet = new WrapperPlayServerUpdateHealth(event);
-        final int roundedHealth = (int) packet.getHealth();
-        final Integer prev = healthRounded.put(player.getUniqueId(), roundedHealth);
+        final float health = packet.getHealth();
+        final int roundedHealth = (int) health;
+        final UUID uuid = player.getUniqueId();
+        if (health < 1.0f) {
+            healthRounded.put(uuid, roundedHealth);
+            plugin.getNametagManager().refresh(player, false);
+            return;
+        }
+        final Integer prev = healthRounded.get(uuid);
         if (prev != null && prev == roundedHealth) {
             return;
         }
+        healthRounded.put(uuid, roundedHealth);
         plugin.getNametagManager().refresh(player, false);
     }
 
