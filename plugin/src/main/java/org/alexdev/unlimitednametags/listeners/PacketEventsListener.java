@@ -14,6 +14,7 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerCa
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerUpdateHealth;
 import com.google.common.collect.Maps;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.data.TeamData;
@@ -27,10 +28,14 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     private final UnlimitedNameTags plugin;
     private final Map<UUID, Map<String, TeamData>> teams;
+    private final Map<UUID, Integer> healthRounded;
+    private float alwaysUpdateBelow;
 
     public PacketEventsListener(UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.teams = Maps.newConcurrentMap();
+        this.healthRounded = Maps.newConcurrentMap();
+        this.alwaysUpdateBelow = plugin.getConfigManager().getSettings().getHealthRefreshAlwaysUpdateBelow();
     }
 
     public void onEnable() {
@@ -51,6 +56,8 @@ public class PacketEventsListener extends PacketListenerAbstract {
             handleMetaData(event);
         } else if (event.getPacketType() == PacketType.Play.Server.CAMERA) {
             handleCamera(event);
+        } else if (event.getPacketType() == PacketType.Play.Server.UPDATE_HEALTH) {
+            handleHealthUpdate(event);
         }
     }
 
@@ -69,6 +76,30 @@ public class PacketEventsListener extends PacketListenerAbstract {
         } else {
             plugin.getNametagManager().getPacketDisplayText(player).forEach(PacketNameTag::hideForOwner);
         }
+    }
+
+    private void handleHealthUpdate(@NotNull PacketSendEvent event) {
+        if (!plugin.getConfigManager().getSettings().isHealthRefresh()) {
+            return;
+        }
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        final WrapperPlayServerUpdateHealth packet = new WrapperPlayServerUpdateHealth(event);
+        final float health = packet.getHealth();
+        final int roundedHealth = (int) health;
+        final UUID uuid = player.getUniqueId();
+        if (health < alwaysUpdateBelow) {
+            healthRounded.put(uuid, roundedHealth);
+            plugin.getNametagManager().refresh(player, false);
+            return;
+        }
+        final Integer prev = healthRounded.get(uuid);
+        if (prev != null && prev == roundedHealth) {
+            return;
+        }
+        healthRounded.put(uuid, roundedHealth);
+        plugin.getNametagManager().refresh(player, false);
     }
 
     @Override
@@ -256,6 +287,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     public void removePlayerData(@NotNull Player player) {
         teams.remove(player.getUniqueId());
+        healthRounded.remove(player.getUniqueId());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -290,7 +322,12 @@ public class PacketEventsListener extends PacketListenerAbstract {
         return plugin.getPlayerListener().getPlayerNameId().containsKey(name);
     }
 
+    public void reload() {
+        this.alwaysUpdateBelow = plugin.getConfigManager().getSettings().getHealthRefreshAlwaysUpdateBelow();
+    }
+
     public void onDisable() {
+        healthRounded.clear();
         PacketEvents.getAPI().getEventManager().unregisterListener(this);
     }
 }
