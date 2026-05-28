@@ -152,7 +152,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private boolean preTeamsChecks(@NotNull PacketSendEvent event) {
-        if (!plugin.getConfigManager().getSettings().isDisableDefaultNameTag()) {
+        if (!plugin.getConfigManager().getSettings().getBehavior().isDisableDefaultNameTag()) {
             return false;
         }
 
@@ -182,7 +182,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     private boolean handleForceDisableDefaultNameTag(@NotNull PacketSendEvent event, @NotNull WrapperPlayServerTeams packet) {
-        if (plugin.getConfigManager().getSettings().isForceDisableDefaultNameTag()) {
+        if (plugin.getConfigManager().getSettings().getBehavior().isForceDisableDefaultNameTag()) {
             if (packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.CREATE || packet.getTeamMode() == WrapperPlayServerTeams.TeamMode.UPDATE) {
                 packet.getTeamInfo().ifPresent(t -> t.setTagVisibility(WrapperPlayServerTeams.NameTagVisibility.NEVER));
                 event.markForReEncode(true);

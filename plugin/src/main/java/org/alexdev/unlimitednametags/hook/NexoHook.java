@@ -40,7 +40,15 @@ public class NexoHook extends Hook implements Listener, CreativeHook, HatHook {
 
     @Override
     public double getHigh(@NotNull Player player) {
-        return CreativeHook.super.getHigh(player);
+        final double v = CreativeHook.super.getHigh(player);
+        if (HelmetDebugContext.isVerbose()) {
+            final var helmet = player.getInventory().getHelmet();
+            final boolean empty = helmet == null || helmet.getType().isAir();
+            final Optional<Model> resolved = empty ? Optional.empty() : findModel(helmet);
+            plugin.getLogger().info("[UNT helmet dbg] NexoHook: super.getHigh=" + v
+                    + " findModelResolved=" + resolved.isPresent());
+        }
+        return v;
     }
 
     public Optional<Model> findModel(@NotNull ItemStack item) {

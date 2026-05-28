@@ -43,9 +43,9 @@
 
 **UnlimitedNameTags** is a **Paper-first** plugin (**1.20.1+**; Spigot **1.20.2+** also supported) that replaces vanilla name tags with **display entities** mounted on the player. Tags move smoothly with the player (client-side interpolation, not per-tick teleports).
 
-Each player can have several **stacked rows** (`displayGroups`): **TEXT**, **ITEM**, or **BLOCK**, each with its own scale, vertical offset, optional billboard, optional **`when`** (JEXL + PlaceholderAPI), and optional **animation**.
+Each player can have several **stacked rows** (`displayGroups`): **TEXT**, **ITEM**, or **BLOCK**, each with its own scale, vertical offset, optional billboard, optional **`when`** (JEXL + PlaceholderAPI), and optional **animation**. TEXT rows can also contain multiple structured `lines`, each with its own optional `when`, while still using one text display entity.
 
-> **Upgrading to 2.x?** See **[CHANGELOG.md](CHANGELOG.md)** for breaking changes (`displayGroups`, removal of `modifiers`, API return types, etc.).
+> **Upgrading to 3.x?** See **[CHANGELOG.md](CHANGELOG.md)** for breaking changes (`displayGroups`, structured `lines`, removal of `modifiers`, API return types, etc.).
 
 ---
 
@@ -65,12 +65,12 @@ Each player can have several **stacked rows** (`displayGroups`): **TEXT**, **ITE
 
 | | |
 |:---|:---|
-| **TEXT** | Multi-line Adventure components, per-row background / shadow / see-through |
+| **TEXT** | Multi-line Adventure components; each `lines` entry has `text` and optional `when` |
 | **ITEM** | `itemMaterial`, `itemDisplayMode`; **`lines` not used** — set material only |
 | **BLOCK** | `blockMaterial`; same as item — no text lines |
 | **Billboard** | Per-row **`billboard`** or global **`defaultBillboard`** (`CENTER`, `HORIZONTAL`, `VERTICAL`, `FIXED`) |
 | **Animations** | `rotate`, `bob`, `dvd_bounce`, `pulse_scale`, `wiggle`, `orbit`, plus **`custom`** via API; **`animationInterval`** / **`displayAnimationInterval`** / **`taskInterval`** control tick rate |
-| **Visibility** | Single **`when:`** per row (no `modifiers` in 2.x) |
+| **Visibility** | Group-level **`when:`** plus optional per-line **`when:`** for TEXT rows (no `modifiers`) |
 
 ### Config quality-of-life
 
@@ -78,7 +78,7 @@ Each player can have several **stacked rows** (`displayGroups`): **TEXT**, **ITE
 |:---|:---|
 | **Optional `background`** | Omit the key for a transparent default; redundant “disabled integer RGB 0” blocks are normalized away |
 | **Through-wall hint** *(optional)* | **`obscuredNametagThroughWalls`**: if a viewer has **no clear line of sight** to the player but is within range, the **text** row can appear **dimmer** so names behind walls are still noticeable. Tune **`obscuredNametagOpacity`**, **`obscuredNametagMaxDistance`**, **`obscuredNametagCheckInterval`**. *(TEXT only; sync task — uses `hasLineOfSight`.)* |
-| **Migration** | `configVersion` + **`SettingsYamlMigrator`** (backup, v1 → v2, YAML cleanup) |
+| **Migration** | `configVersion` + **`SettingsYamlMigrator`** (backup, v1 → v2 → v3, YAML cleanup) |
 
 ### Bedrock
 
@@ -114,6 +114,20 @@ Maven Central / publishing: **[MAVEN_CENTRAL_PUBLISHING.md](MAVEN_CENTRAL_PUBLIS
 2. Restart the server.
 3. Edit **`plugins/UnlimitedNameTags/settings.yml`** (generated on first run).
 
+### Example — conditional text lines
+
+```yaml
+displayGroups:
+  - lines:
+      - text: "%luckperms_prefix%%player_name%"
+      - text: "&a%player_ping%ms"
+        when: "%player_ping% < 70"
+      - text: "&6%player_ping%ms"
+        when: "%player_ping% >= 70"
+    scale: 1.0
+    yOffset: 1.0
+```
+
 ### Example — item row + animation
 
 ```yaml
@@ -145,10 +159,6 @@ obscuredNametagCheckInterval: 5
 
 - YAML: `animation.type: custom` + `id: your_key`
 - Register: `UNTAPI.registerNametagCustomAnimation(...)` and drive pose with **`NametagAnimationTarget`**.
-
-### Optional `advanced.yml`
-
-Copy **`advanced.example.yml`** → **`plugins/UnlimitedNameTags/advanced.yml`** for helmet-height rules (e.g. ItemsAdder / CMD). **`/unt reload`** reloads it when the file exists.
 
 ---
 

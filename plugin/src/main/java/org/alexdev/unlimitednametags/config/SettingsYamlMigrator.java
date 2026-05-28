@@ -48,19 +48,19 @@ public final class SettingsYamlMigrator {
 
         int declared = parseDeclaredVersion(root);
         boolean changed = false;
-        if (declared == 3) {
-            log.info("settings.yml had unreleased configVersion 3; normalized to " + SettingsConfigVersion.CURRENT + ".");
-            root.put("configVersion", SettingsConfigVersion.CURRENT);
-            declared = SettingsConfigVersion.CURRENT;
-            changed = true;
-        }
-
         final boolean legacy = hasLegacyFlatNameTags(root);
+        final boolean stringLineDisplayGroups = hasStringLineDisplayGroups(root);
         final int from;
-        if (declared > 0) {
+        if (declared == SettingsConfigVersion.CURRENT && stringLineDisplayGroups) {
+            log.info("settings.yml has configVersion " + SettingsConfigVersion.CURRENT
+                    + " but still uses v2 string lines; migrating lines to structured rows.");
+            from = SettingsConfigVersion.STRING_LINE_DISPLAY_GROUPS;
+        } else if (declared > 0) {
             from = declared;
         } else if (legacy) {
             from = SettingsConfigVersion.LEGACY_FLAT_NAMETAG;
+        } else if (stringLineDisplayGroups) {
+            from = SettingsConfigVersion.STRING_LINE_DISPLAY_GROUPS;
         } else {
             from = SettingsConfigVersion.CURRENT;
         }
@@ -71,16 +71,18 @@ public final class SettingsYamlMigrator {
             return;
         }
 
-        changed |= sanitizePlaceholdersReplacements(root, log);
-        changed |= stripObsoleteDisplayGroupFields(root, log);
-        changed |= stripRedundantDisplayBackgrounds(root, log);
         changed |= renameObsoleteLinesGroupsKey(root, log);
+        changed |= sanitizePlaceholdersReplacements(root, log);
         for (int v = from; v < SettingsConfigVersion.CURRENT; v++) {
             switch (v) {
                 case 1 -> changed |= migrateV1ToV2(root, log);
+                case 2 -> changed |= migrateV2ToV3(root, log);
+                case 3 -> changed |= migrateV3ToV4(root, log);
                 default -> throw new IllegalStateException("Missing settings migrator from v" + v + " to v" + (v + 1));
             }
         }
+        changed |= stripObsoleteDisplayGroupFields(root, log);
+        changed |= stripRedundantDisplayBackgrounds(root, log);
 
         final Object currentDeclared = root.get("configVersion");
         final int currentInFile = currentDeclared instanceof Number n ? n.intValue() : 0;
@@ -185,6 +187,37 @@ public final class SettingsYamlMigrator {
                         && !tag.containsKey("linesGroups")
                         && !tag.containsKey("displayGroups")) {
                     return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasStringLineDisplayGroups(Map<String, Object> root) {
+        final Object nameTags = root.get("nameTags");
+        if (!(nameTags instanceof Map<?, ?> nt)) {
+            return false;
+        }
+        for (Object raw : nt.values()) {
+            if (!(raw instanceof Map<?, ?> tag)) {
+                continue;
+            }
+            final Object groupsObj = tag.containsKey("displayGroups") ? tag.get("displayGroups") : tag.get("linesGroups");
+            if (!(groupsObj instanceof List<?> groups)) {
+                continue;
+            }
+            for (Object groupObj : groups) {
+                if (!(groupObj instanceof Map<?, ?> group)) {
+                    continue;
+                }
+                final Object linesObj = group.get("lines");
+                if (!(linesObj instanceof List<?> lines)) {
+                    continue;
+                }
+                for (Object line : lines) {
+                    if (!(line instanceof Map<?, ?>)) {
+                        return true;
+                    }
                 }
             }
         }
@@ -310,7 +343,7 @@ public final class SettingsYamlMigrator {
     private static boolean isRedundantIntegerBackgroundYaml(Map<String, Object> m) {
         final Object type = m.get("type");
         if (type != null && !"integer".equalsIgnoreCase(String.valueOf(type))) {
-            return false;
+            return false;  // hex type is never redundant-omitted
         }
         if (!yamlFalsy(m.get("enabled"))) {
             return false;
@@ -321,10 +354,36 @@ public final class SettingsYamlMigrator {
         if (!yamlFalsy(m.get("shadowed"))) {
             return false;
         }
+        // Post-v4 migration: color field instead of red/green/blue
+        if (m.containsKey("color")) {
+            final String color = String.valueOf(m.get("color")).trim();
+            return isBlackColorString(color);
+        }
+        // Pre-v4: red/green/blue fields
         if (yamlInt(m.get("red"), -1) != 0 || yamlInt(m.get("green"), -1) != 0 || yamlInt(m.get("blue"), -1) != 0) {
             return false;
         }
         return true;
+    }
+
+    private static boolean isBlackColorString(String color) {
+        if (color == null || color.isEmpty()) return true;
+        if (color.startsWith("#")) {
+            try {
+                return Integer.parseInt(color.substring(1), 16) == 0;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        final String[] parts = color.split(",");
+        if (parts.length != 3) return false;
+        try {
+            return Integer.parseInt(parts[0].trim()) == 0
+                    && Integer.parseInt(parts[1].trim()) == 0
+                    && Integer.parseInt(parts[2].trim()) == 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private static boolean yamlFalsy(Object o) {
@@ -413,6 +472,171 @@ public final class SettingsYamlMigrator {
 
             log.info("Migrated NameTag '" + key + "' from flat lines (v1) to displayGroups.");
             any = true;
+        }
+        return any;
+    }
+
+    /**
+     * Converts v3 (structured lines + polymorphic background) to v4:
+     * <ol>
+     *   <li>Background: removes {@code type}/{@code red}/{@code green}/{@code blue}/{@code hex} fields,
+     *       adds unified {@code color} field (RGB as {@code "R,G,B"} or hex as {@code "#RRGGBB"}).</li>
+     *   <li>Settings: moves known flat top-level fields into {@code behavior}, {@code visibility},
+     *       {@code performance} sub-maps.</li>
+     * </ol>
+     */
+    @SuppressWarnings("unchecked")
+    private static boolean migrateV3ToV4(Map<String, Object> root, Logger log) {
+        boolean changed = false;
+
+        // 1. Convert backgrounds
+        final Object nameTags = root.get("nameTags");
+        if (nameTags instanceof Map<?, ?> nt) {
+            for (Object rawTag : nt.values()) {
+                if (!(rawTag instanceof Map)) continue;
+                final Map<String, Object> tag = (Map<String, Object>) rawTag;
+                final Object dg = tag.get("displayGroups");
+                if (!(dg instanceof List<?> list)) continue;
+                for (Object gObj : list) {
+                    if (!(gObj instanceof Map)) continue;
+                    final Map<String, Object> g = (Map<String, Object>) gObj;
+                    final Object bg = g.get("background");
+                    if (!(bg instanceof Map)) continue;
+                    final Map<String, Object> bgMap = (Map<String, Object>) bg;
+                    final Object type = bgMap.get("type");
+                    if (type == null) continue;
+                    final String typeStr = String.valueOf(type).trim().toLowerCase(java.util.Locale.ROOT);
+                    if ("integer".equals(typeStr)) {
+                        final int r = yamlInt(bgMap.remove("red"), 0);
+                        final int gr = yamlInt(bgMap.remove("green"), 0);
+                        final int bl = yamlInt(bgMap.remove("blue"), 0);
+                        bgMap.remove("type");
+                        bgMap.put("color", r + "," + gr + "," + bl);
+                        changed = true;
+                    } else if ("hex".equals(typeStr)) {
+                        final Object hexVal = bgMap.remove("hex");
+                        bgMap.remove("type");
+                        bgMap.put("color", hexVal != null ? String.valueOf(hexVal) : "#000000");
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if (changed) {
+            log.info("Migrated backgrounds from polymorphic type:integer/hex to unified color field.");
+        }
+
+        // 2. Section flat settings
+        final List<String> behaviorKeys = List.of("taskInterval", "displayAnimationInterval", "yOffset", "viewDistance",
+                "compactDisplayGroupStack", "displayGroupLineHeightBlocks", "disableDefaultNameTag",
+                "forceDisableDefaultNameTag", "defaultBillboard", "format", "removeEmptyLines");
+        final List<String> visibilityKeys = List.of("sneakOpacity", "showWhileLooking", "showCurrentNameTag",
+                "allowPerPlayerShowOwnWhenGlobalDisabled", "obscuredNametagThroughWalls", "obscuredNametagOpacity",
+                "obscuredNametagMaxDistance", "obscuredNametagCheckInterval");
+        final List<String> performanceKeys = List.of("componentCaching", "placeholderCacheTime", "enableRelationalPlaceholders",
+                "placeholderUpdateRates");
+
+        changed |= sectionalizeSettings(root, "behavior", behaviorKeys, log);
+        changed |= sectionalizeSettings(root, "visibility", visibilityKeys, log);
+        changed |= sectionalizeSettings(root, "performance", performanceKeys, log);
+
+        return changed;
+    }
+
+    private static boolean sectionalizeSettings(Map<String, Object> root, String sectionName,
+                                                List<String> keys, Logger log) {
+        boolean any = false;
+        for (String key : keys) {
+            if (!root.containsKey(key)) continue;
+            if (!any) {
+                root.computeIfAbsent(sectionName, k -> new LinkedHashMap<String, Object>());
+                any = true;
+            }
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> section = (Map<String, Object>) root.get(sectionName);
+            if (!section.containsKey(key)) {
+                section.put(key, root.remove(key));
+            } else {
+                root.remove(key);
+            }
+        }
+        if (any) {
+            log.info("Moved settings fields to " + sectionName + " section.");
+        }
+        return any;
+    }
+
+    /**
+     * Converts v2 text rows from {@code lines: [string, ...]} to structured rows:
+     * {@code lines: [{text: string}, ...]}. This keeps one text display per display group while allowing per-line metadata.
+     */
+    @SuppressWarnings("unchecked")
+    private static boolean migrateV2ToV3(Map<String, Object> root, Logger log) {
+        final Object nameTags = root.get("nameTags");
+        if (!(nameTags instanceof Map<?, ?> nt)) {
+            return false;
+        }
+        boolean any = false;
+        for (Map.Entry<?, ?> entry : nt.entrySet()) {
+            final String tagKey = String.valueOf(entry.getKey());
+            final Object rawTag = entry.getValue();
+            if (!(rawTag instanceof Map)) {
+                continue;
+            }
+            final Map<String, Object> tag = (Map<String, Object>) rawTag;
+            final Object dg = tag.get("displayGroups");
+            if (!(dg instanceof List<?> groups)) {
+                continue;
+            }
+            for (int groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
+                final Object rawGroup = groups.get(groupIndex);
+                if (!(rawGroup instanceof Map)) {
+                    continue;
+                }
+                final Map<String, Object> group = (Map<String, Object>) rawGroup;
+                final Object linesObj = group.get("lines");
+                if (!(linesObj instanceof List<?> rawLines)) {
+                    continue;
+                }
+
+                final List<Object> migratedLines = new ArrayList<>(rawLines.size());
+                boolean groupChanged = false;
+                for (Object rawLine : rawLines) {
+                    if (rawLine instanceof Map<?, ?> existingLine) {
+                        final Map<String, Object> line = new LinkedHashMap<>();
+                        for (Map.Entry<?, ?> lineEntry : existingLine.entrySet()) {
+                            line.put(String.valueOf(lineEntry.getKey()), lineEntry.getValue());
+                        }
+                        if (!line.containsKey("text") && line.containsKey("line")) {
+                            line.put("text", line.remove("line"));
+                            groupChanged = true;
+                        }
+                        if (!line.containsKey("text")) {
+                            log.warning("NameTag '" + tagKey + "' displayGroups[" + groupIndex + "] has a structured line without 'text'.");
+                            line.put("text", "");
+                            groupChanged = true;
+                        } else if (!(line.get("text") instanceof String)) {
+                            line.put("text", String.valueOf(line.get("text")));
+                            groupChanged = true;
+                        }
+                        migratedLines.add(line);
+                        continue;
+                    }
+
+                    final Map<String, Object> line = new LinkedHashMap<>();
+                    line.put("text", rawLine == null ? "" : String.valueOf(rawLine));
+                    migratedLines.add(line);
+                    groupChanged = true;
+                }
+
+                if (groupChanged) {
+                    group.put("lines", migratedLines);
+                    any = true;
+                }
+            }
+        }
+        if (any) {
+            log.info("Migrated displayGroups lines from raw strings (v2) to structured text rows (v3).");
         }
         return any;
     }

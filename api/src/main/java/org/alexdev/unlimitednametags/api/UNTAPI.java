@@ -375,52 +375,27 @@ public class UNTAPI {
     }
 
     /**
-     * Sets the shadowed property of the player's nametag background by cloning the current nametag and applying the modification.
+     * Sets the shadowed property of the player's nametag background.
      *
      * @param player the player whose nametag shadowed property should be modified
      * @param shadowed the new shadowed value
      */
     public void setNametagShadowed(@NotNull Player player, boolean shadowed) {
-        final Settings.NameTag current = plugin.getNametagManager().getEffectiveNametag(player);
-        Settings.NameTag modified = current.withDisplayGroups(group -> {
-            final Settings.Background bg = group.effectiveBackground();
-            Settings.Background newBg;
-            if (bg instanceof Settings.IntegerBackground intBg) {
-                newBg = new Settings.IntegerBackground(bg.enabled(), intBg.getRed(), intBg.getGreen(), intBg.getBlue(), bg.opacity(), shadowed, bg.seeThrough());
-            } else if (bg instanceof Settings.HexBackground hexBg) {
-                newBg = new Settings.HexBackground(bg.enabled(), hexBg.getHex(), bg.opacity(), shadowed, bg.seeThrough());
-            } else {
-                return group;
-            }
-            return new Settings.DisplayGroup(group.lines(), newBg, group.scale(), group.yOffset(), group.when(),
-                    group.displayType(), group.itemMaterial(), group.blockMaterial(), group.itemDisplayMode(), group.animation(), group.animationInterval(), group.billboard());
-        });
-
-        plugin.getNametagManager().setNametagOverride(player, modified);
+        modifyNametagProperty(player, tag -> tag.withDisplayGroups(
+                group -> group.withBackground(group.effectiveBackground().withShadowed(shadowed))
+        ));
     }
 
     /**
-     * Sets the seeThrough property of the player's nametag background by cloning the current nametag and applying the modification.
+     * Sets the seeThrough property of the player's nametag background.
      *
      * @param player the player whose nametag seeThrough property should be modified
      * @param seeThrough the new seeThrough value
      */
     public void setNametagSeeThrough(@NotNull Player player, boolean seeThrough) {
-        final Settings.NameTag current = plugin.getNametagManager().getEffectiveNametag(player);
-        final Settings.NameTag modified = current.withDisplayGroups(group -> {
-            final Settings.Background bg = group.effectiveBackground();
-            Settings.Background newBg;
-            if (bg instanceof Settings.IntegerBackground intBg) {
-                newBg = new Settings.IntegerBackground(bg.enabled(), intBg.getRed(), intBg.getGreen(), intBg.getBlue(), bg.opacity(), bg.shadowed(), seeThrough);
-            } else if (bg instanceof Settings.HexBackground hexBg) {
-                newBg = new Settings.HexBackground(bg.enabled(), hexBg.getHex(), bg.opacity(), bg.shadowed(), seeThrough);
-            } else {
-                return group;
-            }
-            return new Settings.DisplayGroup(group.lines(), newBg, group.scale(), group.yOffset(), group.when(),
-                    group.displayType(), group.itemMaterial(), group.blockMaterial(), group.itemDisplayMode(), group.animation(), group.animationInterval(), group.billboard());
-        });
-        plugin.getNametagManager().setNametagOverride(player, modified);
+        modifyNametagProperty(player, tag -> tag.withDisplayGroups(
+                group -> group.withBackground(group.effectiveBackground().withSeeThrough(seeThrough))
+        ));
     }
 
     /**

@@ -247,7 +247,7 @@ public class PlayerListener implements PackSendHandler {
             return;
         }
 
-        if (plugin.getConfigManager().getSettings().isShowWhileLooking()) {
+        if (plugin.getConfigManager().getSettings().getVisibility().isShowWhileLooking()) {
             return;
         }
 

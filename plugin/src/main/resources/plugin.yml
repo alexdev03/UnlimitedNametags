@@ -21,7 +21,6 @@ softdepend:
   - ViaRewind
   - Oraxen
   - Nexo
-  - ItemsAdder
   - HMCCosmetics
 permissions:
   unt.shownametags:

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- **`settings.yml` schema v3**: TEXT `DisplayGroup.lines` is now a list of structured rows (`text` + optional `when`) instead of raw strings. This allows multiple conditional text lines to remain part of the same text display entity. Existing v2 YAML is migrated on load from `lines: ["foo"]` to `lines: [{text: "foo"}]`; Java API integrations that instantiate `Settings.DisplayGroup` must pass `List<Settings.NametagLine>`.
+
+### Added
+
+- **Per-line TEXT visibility**: each `NametagLine` can define `when` (JEXL, PlaceholderAPI-expanded) in addition to the group-level `DisplayGroup.when`. The group-level condition is evaluated first; then each line condition decides whether that line contributes to the final multi-line component.
+
 ## 2.0.0
 
 ### Breaking changes
@@ -28,7 +38,7 @@
 - **Through-wall nametag dimming** (optional): `obscuredNametagThroughWalls` uses the server’s line-of-sight check (`Player#hasLineOfSight`) on a configurable interval on the **main/region thread** (required for a correct ray trace). Viewers without clear sight to the nametag owner (within `obscuredNametagMaxDistance`) get `obscuredNametagOpacity` and forced text-display `seeThrough` so the tag can read through geometry. Tuning: `obscuredNametagCheckInterval` (ticks), `obscuredNametagMaxDistance`, `obscuredNametagOpacity` (same byte range as `sneakOpacity`).
 - **Cleaner YAML**: ConfigLib `outputNulls(false)` — optional fields are omitted instead of `key: null` (same for `advanced.yml`). Migrator dumps without null map entries.
 - **YAML robustness**: `placeholdersReplacements` entries are normalized before ConfigLib loads: YAML 1.1 parses unquoted `Yes`/`No` as booleans — they are rewritten as strings (`true`→`Yes`, `false`→`No`) to match `PlaceholderReplacement`. Prefer quoted keys in YAML, e.g. `placeholder: "Yes"`.
-- **`settings.yml` versioning**: root `configVersion` (see `SettingsConfigVersion.CURRENT`, **2** = structured nametags with **`displayGroups`**). On load/reload the plugin runs **`SettingsYamlMigrator`**: backs up to `settings.yml.backup-<epoch>.yml`, migrates **v1** (legacy flat `lines` / `background` / `scale`) → **`displayGroups`**, normalizes obsolete YAML key **`linesGroups`** → **`displayGroups`** when present, then rewrites the file if needed. Files without `configVersion` use legacy detection (flat `lines` on a tag).
+- **`settings.yml` versioning**: root `configVersion` was introduced (`2` = structured nametags with **`displayGroups`**). On load/reload the plugin runs **`SettingsYamlMigrator`**: backs up to `settings.yml.backup-<epoch>.yml`, migrates **v1** (legacy flat `lines` / `background` / `scale`) → **`displayGroups`**, normalizes obsolete YAML key **`linesGroups`** → **`displayGroups`** when present, then rewrites the file if needed. Files without `configVersion` use legacy detection (flat `lines` on a tag).
 - **`DisplayGroup.background` optional** in YAML: omit the key for a disabled transparent default (handy for item/block-only rows). Code uses `effectiveBackground()` when reading.
 - **Redundant default `background`**: A disabled **`type: integer`** block with RGB `0`, `opacity: 0`, and `shadowed: false` (any `seeThrough`) is treated like a missing key — `DisplayGroup`’s compact constructor clears it to `null`, and **`SettingsYamlMigrator`** removes that YAML block on load so the file stays minimal. The fallback **`effectiveBackground()`** for omitted rows now uses **`seeThrough: true`** (was `false`), matching typical “transparent text” configs.
 - **Implementation**: `PacketNameTag` is an abstract base class with package-private `TextPacketNameTag`, `ItemPacketNameTag`, and `BlockPacketNameTag`; use **`PacketNameTag.create(plugin, player, displayGroup)`** (not `new PacketNameTag(...)`) when instantiating from outside the packet package.
@@ -55,8 +65,16 @@ modifiers:
     value: "1000"
 ```
 
-**After (group-level `when` only):**
+**After (group-level `when`):**
 
 ```yaml
 when: "%vault_eco_balance% > 1000"
+```
+
+**After v3 (line-level `when` inside one text display):**
+
+```yaml
+lines:
+  - text: "Rich Player"
+    when: "%vault_eco_balance% > 1000"
 ```

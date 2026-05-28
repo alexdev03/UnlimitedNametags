@@ -20,6 +20,15 @@ public class Advanced {
     })
     private List<HelmetHeightRule> helmetHeightRules = new ArrayList<>();
 
+    @Comment("Log helmet-rule matching and hat-hook pipeline (throttled for each player; very noisy).")
+    private boolean helmetRulesDebug = false;
+
+    @Comment({
+            "Minimum milliseconds between full helmet debug bursts for each player when helmetRulesDebug is true.",
+            "Values below 1000 are treated as 1000."
+    })
+    private long helmetRulesDebugCooldownMs = 5000L;
+
     @Comment("Converts hat-hook helmet height into extra nametag yOffset. Increase if the nametag still clips tall hats.")
     private float helmetHeightYOffsetMultiplier = 0.25f / 14f;
 
@@ -45,8 +54,11 @@ public class Advanced {
 
         private Integer customModelDataMax;
 
-        @Comment("Equippable model key (1.21.3+), e.g. mypack:item/my_hat")
+        @Comment("Equippable component model key (1.21.3+). Not the same as item_model.")
         private String equippableModel;
+
+        @Comment("Item component minecraft:item_model key (1.20.5+), e.g. nexo:my_item_id")
+        private String itemModel;
 
         @Comment("If non-empty, the player must be in one of these world names.")
         private List<String> worlds = new ArrayList<>();
@@ -57,9 +69,10 @@ public class Advanced {
         public boolean definesItemMatch() {
             final boolean mat = material != null && !material.isEmpty();
             final boolean eq = equippableModel != null && !equippableModel.isEmpty();
+            final boolean itemMod = itemModel != null && !itemModel.isEmpty();
             final boolean cmdExact = customModelData != null;
             final boolean cmdRange = customModelDataMin != null && customModelDataMax != null;
-            return mat || eq || cmdExact || cmdRange;
+            return mat || eq || itemMod || cmdExact || cmdRange;
         }
     }
 }

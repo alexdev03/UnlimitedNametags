@@ -124,24 +124,6 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
                     .build());
         }
 
-        if (false && Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
-            libraries.add(Library.builder()
-                    .groupId("team.unnamed")
-                    .artifactId("creative-server")
-                    .version("1.8.3-SNAPSHOT")
-                    .build());
-            libraries.add(Library.builder()
-                    .groupId("team.unnamed")
-                    .artifactId("creative-serializer-minecraft")
-                    .version("1.8.3-SNAPSHOT")
-                    .build());
-            libraries.add(Library.builder()
-                    .groupId("team.unnamed")
-                    .artifactId("creative-api")
-                    .version("1.8.3-SNAPSHOT")
-                    .build());
-        }
-
         return CompletableFuture.runAsync(() -> libraries.forEach(bukkitLibraryManager::loadLibrary));
     }
 
@@ -221,14 +203,6 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
             hooks.put(OraxenHook.class, hook);
         }
 
-        if (false && Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")) {
-            getLogger().info("ItemsAdder found, hooking into it");
-            final ItemsAdderHook hook = new ItemsAdderHook(this);
-            hatHooks.add(hook);
-            hooks.put(ItemsAdderHook.class, hook);
-        }
-
-
         if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
             final ViaVersionHook hook = new ViaVersionHook(this);
             hooks.put(ViaVersionHook.class, hook);
@@ -291,8 +265,8 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
             return map;
         }));
         metrics.addCustomChart(new Metrics.SimplePie("compiled", () -> String.valueOf(configManager.isCompiled())));
-        metrics.addCustomChart(new Metrics.SimplePie("formatter", () -> configManager.getSettings().getFormat().getName()));
-        metrics.addCustomChart(new Metrics.SimplePie("default_billboard", () -> configManager.getSettings().getDefaultBillboard().name()));
+        metrics.addCustomChart(new Metrics.SimplePie("formatter", () -> configManager.getSettings().getBehavior().getFormat().getName()));
+        metrics.addCustomChart(new Metrics.SimplePie("default_billboard", () -> configManager.getSettings().getBehavior().getDefaultBillboard().name()));
         metrics.addCustomChart(new Metrics.AdvancedPie("hooks", () -> {
             final Map<String, Integer> map = Maps.newHashMap();
             hooks.values().forEach(hook -> map.put(hook.getClass().getSimpleName(), 1));

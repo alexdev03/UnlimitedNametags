@@ -68,7 +68,12 @@ public final class UntBrigadierCommands {
         msg(plugin, sender, "<green>/unt hide</green> <gray>- Hides the nametag (target player)</gray>");
         msg(plugin, sender, "<green>/unt show</green> <gray>- Shows the nametag (target player)</gray>");
         msg(plugin, sender, "<green>/unt refresh</green> <gray>- Re-applies nametag for everyone (target player)</gray>");
-        msg(plugin, sender, "<green>/unt debugger</green> <gray>- Toggle debugger (true or false)</gray>");
+        msg(plugin, sender, "<green>/unt debugger</green> <gray>- Toggle nametag debug logging</gray>");
+        msg(plugin, sender, "<green>/unt debugger</green> <gray><true|false></gray> <gray>- Set nametag debug logging</gray>");
+        msg(plugin, sender, "<green>/unt billboard</green> <gray><type></gray> <gray>- Set default billboard</gray>");
+        msg(plugin, sender, "<green>/unt formatter</green> <gray><name></gray> <gray>- Set default text formatter</gray>");
+        msg(plugin, sender, "<green>/unt hideOtherNametags</green> <gray>- Hide other players' nametags</gray>");
+        msg(plugin, sender, "<green>/unt showOtherNametags</green> <gray>- Show other players' nametags</gray>");
         msg(plugin, sender, "<green>/unt preferences …</green> <gray>- Per-player nametag visibility (see /unt preferences)");
     }
 
@@ -122,6 +127,14 @@ public final class UntBrigadierCommands {
             @NotNull UnlimitedNameTags plugin) {
         return Commands.literal("debugger")
                 .requires(stack -> stack.getSender().hasPermission("unt.debug"))
+                .executes(ctx -> {
+                    final boolean debug = !plugin.getNametagManager().isDebug();
+                    plugin.getNametagManager().setDebug(debug);
+                    msg(plugin, ctx.getSource().getSender(),
+                            "<green>UnlimitedNameTags debug mode set to <yellow><state></yellow></green>",
+                            Placeholder.unparsed("state", String.valueOf(debug)));
+                    return Command.SINGLE_SUCCESS;
+                })
                 .then(Commands.argument("enabled", BoolArgumentType.bool())
                         .executes(ctx -> {
                             final boolean debug = BoolArgumentType.getBool(ctx, "enabled");
@@ -213,7 +226,7 @@ public final class UntBrigadierCommands {
                             try {
                                 final AbstractDisplayMeta.BillboardConstraints c =
                                         AbstractDisplayMeta.BillboardConstraints.valueOf(raw.toUpperCase());
-                                plugin.getConfigManager().getSettings().setDefaultBillboard(c);
+                                plugin.getConfigManager().getSettings().getBehavior().setDefaultBillboard(c);
                                 plugin.getConfigManager().save();
                                 plugin.getNametagManager().reload();
                                 msg(plugin, ctx.getSource().getSender(),
@@ -244,7 +257,7 @@ public final class UntBrigadierCommands {
                             final String raw = StringArgumentType.getString(ctx, "name");
                             try {
                                 final Formatter f = Formatter.valueOf(raw.toUpperCase());
-                                plugin.getConfigManager().getSettings().setFormat(f);
+                                plugin.getConfigManager().getSettings().getBehavior().setFormat(f);
                                 plugin.getConfigManager().save();
                                 plugin.getNametagManager().reload();
                                 msg(plugin, ctx.getSource().getSender(),

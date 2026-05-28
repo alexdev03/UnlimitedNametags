@@ -2,11 +2,17 @@ package org.alexdev.unlimitednametags.placeholders;
 
 import com.google.common.collect.Maps;
 import lombok.Getter;
+import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringMap;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.config.Advanced;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.alexdev.unlimitednametags.hook.HelmetDebugContext;
+import org.alexdev.unlimitednametags.hook.HelmetRuleDebugThrottle;
+import org.alexdev.unlimitednametags.hook.HelmetRuleDiagnostics;
+import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,7 +60,8 @@ public class PlaceholderManager {
     private final BigDecimal one = new BigDecimal("1.0");
     private final BigDecimal minusOne = new BigDecimal("-1.0");
     private final Map<String, Component> cachedComponents;
-    private Map<UUID, Map<String, String>> cachedPlaceholders;
+    private Map<UUID, ExpiringMap<String, String>> cachedPlaceholders;
+    private Map<String, Long> perPlaceholderTtlMs;
     private final Map<String, String> formattedPhaseValues;
     private final Map<String, Map<String, String>> placeholdersReplacements;
 
@@ -79,10 +86,24 @@ public class PlaceholderManager {
     public void reload() {
         cachedComponents.clear();
         this.cachedPlaceholders = Maps.newConcurrentMap();
-        plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> cachedPlaceholders.put(p.getUniqueId(), ExpiringMap.builder()
-                .expiration(plugin.getConfigManager().getSettings().getPlaceholderCacheTime() * 50L, TimeUnit.MILLISECONDS) // Adjusted unit based on previous code
-                .build()));
+        plugin.getPlayerListener().getOnlinePlayers().values().forEach(p ->
+                cachedPlaceholders.put(p.getUniqueId(), buildExpiringMap()));
         reloadPlaceholdersReplacements();
+        reloadPerPlaceholderTtls();
+    }
+
+    private ExpiringMap<String, String> buildExpiringMap() {
+        return ExpiringMap.builder()
+                .variableExpiration()
+                .build();
+    }
+
+    private void reloadPerPlaceholderTtls() {
+        final Map<String, Long> map = Maps.newConcurrentMap();
+        final long taskMs = plugin.getConfigManager().getSettings().getBehavior().getTaskInterval() * 50L;
+        plugin.getConfigManager().getSettings().getPerformance().getPlaceholderUpdateRates()
+                .forEach((ph, ticks) -> map.put(ph.toLowerCase(Locale.ROOT), Math.max(taskMs, ticks * 50L)));
+        this.perPlaceholderTtlMs = map;
     }
 
     private void reloadPlaceholdersReplacements() {
@@ -96,6 +117,7 @@ public class PlaceholderManager {
 
     public void removePlayer(@NotNull Player player) {
         cachedPlaceholders.remove(player.getUniqueId());
+        HelmetRuleDebugThrottle.remove(player.getUniqueId());
     }
 
     private void createDecimalFormat() {
@@ -159,6 +181,16 @@ public class PlaceholderManager {
     @NotNull
     public CompletableFuture<Map<Player, Component>> applyPlaceholders(@NotNull Player player, @NotNull Settings.DisplayGroup group,
                                                                        @NotNull List<Player> relationalPlayers) {
+        if (group.relationalConditions()) {
+            return CompletableFuture.supplyAsync(() -> {
+                final Map<Player, Component> result = Maps.newHashMapWithExpectedSize(relationalPlayers.size());
+                for (Player viewer : relationalPlayers) {
+                    final List<String> strings = collectActiveLineTexts(player, viewer, group);
+                    result.put(viewer, buildComponentForViewer(player, viewer, strings));
+                }
+                return result;
+            }, executorService);
+        }
         return getCheckedLines(player, group).thenApplyAsync(strings -> createComponent(player, strings, relationalPlayers), executorService);
     }
 
@@ -172,22 +204,76 @@ public class PlaceholderManager {
 
     /**
      * Same visibility as checked lines resolution: when {@code false}, text lines are empty and item/block displays should hide content.
+     * When {@code relationalViewer} is non-null and the group has {@link Settings.DisplayGroup#relationalConditions()},
+     * the group {@code when} is evaluated with relational placeholders (viewer → owner).
+     */
+    public boolean isDisplayGroupActive(@NotNull Player owner, @NotNull Settings.DisplayGroup group, @Nullable Player relationalViewer) {
+        if (group.when() == null || group.when().isBlank()) {
+            return true;
+        }
+        final String expr = group.when().trim();
+        if (!group.relationalConditions() || relationalViewer == null) {
+            return plugin.getConditionalManager().evaluateCondition(expr, owner);
+        }
+        return plugin.getConditionalManager().evaluateCondition(expr, relationalViewer, owner);
+    }
+
+    /**
+     * Same as {@link #isDisplayGroupActive(Player, Settings.DisplayGroup, Player)} with {@code relationalViewer = null} (owner-based).
      */
     public boolean isDisplayGroupActive(@NotNull Player player, @NotNull Settings.DisplayGroup group) {
-        if (group.when() != null && !group.when().isBlank()) {
-            return plugin.getConditionalManager().evaluateCondition(group.when().trim(), player);
+        return isDisplayGroupActive(player, group, null);
+    }
+
+    @NotNull
+    private List<String> collectActiveLineTexts(@NotNull Player owner, @NotNull Player viewer, @NotNull Settings.DisplayGroup group) {
+        if (!isDisplayGroupActive(owner, group, group.relationalConditions() ? viewer : null)) {
+            return List.of();
         }
-        return true;
+        return group.lines().stream()
+                .filter(line -> line.when() == null
+                        || line.when().isBlank()
+                        || evaluateLineWhen(owner, viewer, line, group.relationalConditions()))
+                .map(Settings.NametagLine::text)
+                .toList();
+    }
+
+    private boolean evaluateLineWhen(@NotNull Player owner, @NotNull Player viewer, @NotNull Settings.NametagLine line, boolean relationalGroup) {
+        if (line.when() == null || line.when().isBlank()) {
+            return true;
+        }
+        final String expr = line.when().trim();
+        if (!relationalGroup) {
+            return plugin.getConditionalManager().evaluateCondition(expr, owner);
+        }
+        return plugin.getConditionalManager().evaluateCondition(expr, viewer, owner);
+    }
+
+    @NotNull
+    private Component buildComponentForViewer(@NotNull Player owner, @NotNull Player viewer, @NotNull List<String> strings) {
+        final Settings settings = plugin.getConfigManager().getSettings();
+        final boolean removeEmptyLines = settings.getBehavior().isRemoveEmptyLines();
+
+        final List<String> baseStrings = papiManager.isPapiEnabled() ?
+                strings.stream()
+                        .map(s -> replacePlaceholders(s, owner, null))
+                        .toList()
+                : strings;
+
+        List<Component> processedLines = baseStrings.stream()
+                .map(line -> replacePlaceholders(line, owner, viewer))
+                .filter(s -> !removeEmptyLines || !s.isEmpty())
+                .map(this::formatPhases)
+                .map(line -> format(line, owner))
+                .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
+                .toList();
+
+        return joinLines(processedLines);
     }
 
     @NotNull
     private CompletableFuture<List<String>> getCheckedLines(@NotNull Player player, @NotNull Settings.DisplayGroup group) {
-        return CompletableFuture.supplyAsync(() -> {
-            if (!isDisplayGroupActive(player, group)) {
-                return List.of();
-            }
-            return group.lines();
-        }, executorService);
+        return CompletableFuture.supplyAsync(() -> collectActiveLineTexts(player, player, group), executorService);
     }
 
     @NotNull
@@ -196,8 +282,8 @@ public class PlaceholderManager {
         // which stretched the text-display background. The vertical offset is now applied via PacketNameTag#setHelmetExtraOffset
         // in NameTagManager, so the component only carries the real text here.
         final Settings settings = plugin.getConfigManager().getSettings();
-        final boolean removeEmptyLines = settings.isRemoveEmptyLines();
-        final boolean enableRelationalPlaceholders = settings.isEnableRelationalPlaceholders();
+        final boolean removeEmptyLines = settings.getBehavior().isRemoveEmptyLines();
+        final boolean enableRelationalPlaceholders = settings.getPerformance().isEnableRelationalPlaceholders();
 
         final List<String> baseStrings = papiManager.isPapiEnabled() ?
                 strings.stream()
@@ -243,16 +329,52 @@ public class PlaceholderManager {
      * to keep text-display backgrounds tight around the actual text (issue #49).
      */
     public float computeHelmetExtraOffset(@NotNull Player player) {
-        final double rawHeight = plugin.getHatHooks().stream()
-                .mapToDouble(h -> h.getHigh(player))
-                .filter(h -> h > 0)
-                .findFirst()
-                .orElse(0d);
-        if (rawHeight <= 0) {
-            return 0f;
+        final Advanced advanced = plugin.getConfigManager().getAdvanced();
+        final boolean dbgEnabled = advanced.isHelmetRulesDebug();
+        final boolean verbose = dbgEnabled && HelmetRuleDebugThrottle.tryConsume(player.getUniqueId(), advanced.getHelmetRulesDebugCooldownMs());
+
+        try {
+            HelmetDebugContext.setVerbose(verbose);
+            if (verbose) {
+                HelmetRuleDiagnostics.logEquippedHelmet(plugin, player);
+                plugin.getLogger().info("[UNT helmet dbg] computing offset (hat hooks=" + plugin.getHatHooks().size() + ")");
+            }
+
+            double rawHeight = 0d;
+            HatHook winner = null;
+            for (final HatHook hook : plugin.getHatHooks()) {
+                final double v = hook.getHigh(player);
+                if (verbose) {
+                    plugin.getLogger().info("[UNT helmet dbg]   " + hook.getClass().getSimpleName() + ".getHigh -> " + v);
+                }
+                if (v > 0d && rawHeight <= 0d) {
+                    rawHeight = v;
+                    winner = hook;
+                    break;
+                }
+            }
+
+            if (verbose) {
+                plugin.getLogger().info("[UNT helmet dbg] first hook with height>0: "
+                        + (winner == null ? "<none>" : winner.getClass().getSimpleName())
+                        + " rawHeight=" + rawHeight);
+            }
+
+            if (rawHeight <= 0d) {
+                if (verbose) {
+                    plugin.getLogger().info("[UNT helmet dbg] final helmetExtraOffset=0 (no positive raw height)");
+                }
+                return 0f;
+            }
+            final float multiplier = advanced.getHelmetHeightYOffsetMultiplier();
+            final float offset = (float) rawHeight * multiplier;
+            if (verbose) {
+                plugin.getLogger().info("[UNT helmet dbg] multiplier=" + multiplier + " final helmetExtraOffset=" + offset);
+            }
+            return offset;
+        } finally {
+            HelmetDebugContext.clear();
         }
-        final float multiplier = plugin.getConfigManager().getAdvanced().getHelmetHeightYOffsetMultiplier();
-        return (float) rawHeight * multiplier;
     }
 
     private Component joinLines(List<Component> lines) {
@@ -294,13 +416,13 @@ public class PlaceholderManager {
 
     @NotNull
     private Component format(@NotNull String value, @NotNull Player player) {
-        if (plugin.getConfigManager().getSettings().isComponentCaching()) {
+        if (plugin.getConfigManager().getSettings().getPerformance().isComponentCaching()) {
             return cachedComponents.computeIfAbsent(value, v ->
-                    plugin.getConfigManager().getSettings().getFormat().format(plugin, player, v)
+                    plugin.getConfigManager().getSettings().getBehavior().getFormat().format(plugin, player, v)
             );
         }
 
-        return plugin.getConfigManager().getSettings().getFormat().format(plugin, player, value);
+        return plugin.getConfigManager().getSettings().getBehavior().getFormat().format(plugin, player, value);
     }
 
     @NotNull
@@ -351,16 +473,27 @@ public class PlaceholderManager {
     }
 
 
-    private Map<String, String> getCachedPlaceholders(@NotNull Player player) {
-        return cachedPlaceholders.computeIfAbsent(player.getUniqueId(), u -> ExpiringMap.builder()
-                .expiration(plugin.getConfigManager().getSettings().getPlaceholderCacheTime() * 50L, TimeUnit.MILLISECONDS)
-                .build());
+    private ExpiringMap<String, String> getCachedPlaceholders(@NotNull Player player) {
+        return cachedPlaceholders.computeIfAbsent(player.getUniqueId(), u -> buildExpiringMap());
+    }
+
+    private long effectiveTtlMs(@NotNull String placeholder) {
+        final Map<String, Long> rates = perPlaceholderTtlMs;
+        if (rates != null) {
+            final Long custom = rates.get(placeholder.toLowerCase(Locale.ROOT));
+            if (custom != null) return custom;
+        }
+        return Math.max(1L, plugin.getConfigManager().getSettings().getPerformance().getPlaceholderCacheTime()) * 50L;
     }
 
     @NotNull
     public String getCachedPlaceholder(@NotNull Player player, @NotNull String placeholder) {
-        final Map<String, String> playerCache = getCachedPlaceholders(player);
-        return playerCache.computeIfAbsent(placeholder, p -> papiManager.setPlaceholders(player, p));
+        final ExpiringMap<String, String> playerCache = getCachedPlaceholders(player);
+        final String cached = playerCache.get(placeholder);
+        if (cached != null) return cached;
+        final String fresh = papiManager.setPlaceholders(player, placeholder);
+        playerCache.put(placeholder, fresh, ExpirationPolicy.CREATED, effectiveTtlMs(placeholder), TimeUnit.MILLISECONDS);
+        return fresh;
     }
 
 }

@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.google.common.collect.Maps;
 import net.kyori.adventure.key.Key;
+import org.alexdev.unlimitednametags.hook.HelmetDebugContext;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -18,8 +19,11 @@ import team.unnamed.creative.model.Model;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 public interface CreativeHook {
+
+    Logger HELMET_CREATIVE_DBG = Logger.getLogger("UnlimitedNameTags");
 
     double MULTIPLIER = 1.1;
 
@@ -32,12 +36,31 @@ public interface CreativeHook {
     Map<Key, Map<Integer, Model>> getCmdCache();
 
     default double getHigh(@NotNull ItemStack helmet) {
-        if (!helmet.hasItemMeta() || !helmet.getItemMeta().hasCustomModelData()) {
+        if (!helmet.hasItemMeta()) {
+            return 0;
+        }
+        final ItemMeta meta = helmet.getItemMeta();
+        final boolean hasCmd = meta.hasCustomModelData();
+        // Without CMD, still allow 1.21.3+ equippable models or item_model (matches findModel tail).
+        final boolean mayUseEquippable = !PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_3)
+                && meta.hasEquippable()
+                && meta.getEquippable().getModel() != null;
+        final boolean mayUseItemModel = meta.hasItemModel() && meta.getItemModel() != null;
+        if (!hasCmd && !mayUseEquippable && !mayUseItemModel) {
+            if (HelmetDebugContext.isVerbose()) {
+                HELMET_CREATIVE_DBG.info("[UNT helmet dbg] CreativeHook.getHigh(stack): bail early hasCmd=" + hasCmd
+                        + " mayUseEquippable=" + mayUseEquippable + " mayUseItemModel=" + mayUseItemModel);
+            }
             return 0;
         }
 
         final Optional<Model> optionalModel = findModel(helmet);
-        return optionalModel.map(this::getHighFromModel).orElse(0.0);
+        final double out = optionalModel.map(this::getHighFromModel).orElse(0.0);
+        if (HelmetDebugContext.isVerbose()) {
+            HELMET_CREATIVE_DBG.info("[UNT helmet dbg] CreativeHook.getHigh(stack): modelResolved=" + optionalModel.isPresent()
+                    + " metric=" + out);
+        }
+        return out;
     }
 
     default double getHigh(@NotNull Player player) {
@@ -53,6 +76,9 @@ public interface CreativeHook {
     default Optional<Model> findModel(@NotNull ItemStack item) {
         final ResourcePack pack = getResourcePack();
         if (pack == null) {
+            if (HelmetDebugContext.isVerbose()) {
+                HELMET_CREATIVE_DBG.info("[UNT helmet dbg] CreativeHook.findModel: getResourcePack() is null");
+            }
             return Optional.empty();
         }
         final Map<Integer, Model> cmdCache = getCmdCache().computeIfAbsent(item.getType().getKey(), k -> Maps.newConcurrentMap());
@@ -98,16 +124,35 @@ public interface CreativeHook {
             });
         }
 
-        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_3)) {
-            return Optional.empty();
+        if (!PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_3)
+                && itemMeta.hasEquippable()) {
+            final NamespacedKey model = itemMeta.getEquippable().getModel();
+            if (model != null) {
+                final Model resolved = pack.model(model);
+                if (resolved != null) {
+                    return Optional.of(resolved);
+                }
+                if (HelmetDebugContext.isVerbose()) {
+                    HELMET_CREATIVE_DBG.info("[UNT helmet dbg] CreativeHook.findModel: equippable.model=" + model + " not in pack");
+                }
+            }
         }
 
-        if (itemMeta.hasEquippable()) {
-            final NamespacedKey model = itemMeta.getEquippable().getModel();
-            if (model == null) {
-                return Optional.empty();
+        if (itemMeta.hasItemModel()) {
+            final NamespacedKey itemModelKey = itemMeta.getItemModel();
+            if (itemModelKey != null) {
+                final Model im = pack.model(itemModelKey);
+                if (im != null) {
+                    return Optional.of(im);
+                }
+                if (HelmetDebugContext.isVerbose()) {
+                    HELMET_CREATIVE_DBG.info("[UNT helmet dbg] CreativeHook.findModel: item_model=" + itemModelKey + " not in pack");
+                }
             }
-            return Optional.ofNullable(pack.model(model));
+        }
+
+        if (HelmetDebugContext.isVerbose()) {
+            HELMET_CREATIVE_DBG.info("[UNT helmet dbg] CreativeHook.findModel: giving up (see prior lines)");
         }
         return Optional.empty();
     }

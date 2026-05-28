@@ -8,12 +8,14 @@ import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,7 +34,7 @@ public class ConfigManager {
 
     private final UnlimitedNameTags plugin;
     private Settings settings;
-    private Advanced advanced = new Advanced();
+    private volatile Advanced advanced = new Advanced();
     private boolean compiled;
 
     public ConfigManager(@NotNull final UnlimitedNameTags plugin) {
@@ -91,18 +93,29 @@ public class ConfigManager {
         final File file = new File(plugin.getDataFolder(), "advanced.yml");
         if (!file.exists()) {
             advanced = new Advanced();
+            sortHelmetHeightRules();
             return;
         }
         try {
             advanced = YamlConfigurations.load(file.toPath(), Advanced.class, PROPERTIES);
             validateAdvancedRules();
+            sortHelmetHeightRules();
             plugin.getLogger().info("Loaded optional advanced.yml");
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "Failed to load advanced.yml", e);
             if (!keepPreviousOnFailure) {
                 advanced = new Advanced();
+                sortHelmetHeightRules();
             }
         }
+    }
+
+    private void sortHelmetHeightRules() {
+        final List<Advanced.HelmetHeightRule> rules = advanced.getHelmetHeightRules();
+        if (rules == null || rules.size() < 2) {
+            return;
+        }
+        rules.sort(Comparator.comparingInt(Advanced.HelmetHeightRule::getPriority).reversed());
     }
 
     private void validateAdvancedRules() {
@@ -130,6 +143,16 @@ public class ConfigManager {
                     && Material.matchMaterial(rule.getMaterial(), false) == null) {
                 plugin.getLogger().warning("advanced.yml helmetHeightRules[" + i + "] unknown material: " + rule.getMaterial());
             }
+            if (rule.getEquippableModel() != null && !rule.getEquippableModel().isEmpty()
+                    && NamespacedKey.fromString(rule.getEquippableModel()) == null) {
+                plugin.getLogger().warning("advanced.yml helmetHeightRules[" + i + "] equippableModel is not a valid resource location: "
+                        + rule.getEquippableModel());
+            }
+            if (rule.getItemModel() != null && !rule.getItemModel().isEmpty()
+                    && NamespacedKey.fromString(rule.getItemModel()) == null) {
+                plugin.getLogger().warning("advanced.yml helmetHeightRules[" + i + "] itemModel is not a valid resource location: "
+                        + rule.getItemModel());
+            }
         }
     }
 
@@ -147,17 +170,17 @@ public class ConfigManager {
             throw new IllegalStateException("Default name tag is empty");
         }
 
-        final Map<String, Settings.NameTag> nameTags = Maps.newLinkedHashMap();
+        Map<String, Settings.NameTag> nameTagFixes = null;
         boolean save = false;
 
-        if (settings.getObscuredNametagCheckInterval() < 1) {
+        if (settings.getVisibility().getObscuredNametagCheckInterval() < 1) {
             plugin.getLogger().warning("obscuredNametagCheckInterval must be >= 1; resetting to 1.");
-            settings.setObscuredNametagCheckInterval(1);
+            settings.getVisibility().setObscuredNametagCheckInterval(1);
             save = true;
         }
-        if (settings.getObscuredNametagMaxDistance() <= 0.0) {
+        if (settings.getVisibility().getObscuredNametagMaxDistance() <= 0.0) {
             plugin.getLogger().warning("obscuredNametagMaxDistance must be > 0; resetting to 48.");
-            settings.setObscuredNametagMaxDistance(48.0);
+            settings.getVisibility().setObscuredNametagMaxDistance(48.0);
             save = true;
         }
 
@@ -166,28 +189,54 @@ public class ConfigManager {
             boolean entryFixed = false;
             final ArrayList<Settings.DisplayGroup> fixedGroups = new ArrayList<>(nameTag.displayGroups().size());
             for (final Settings.DisplayGroup group : nameTag.displayGroups()) {
+                Settings.DisplayGroup fixed = group;
                 if (group.scale() <= 0f) {
                     plugin.getLogger().warning("NameTag '" + entry.getKey() + "': display group scale is <= 0; persisted as 1.0.");
-                    fixedGroups.add(group.withScale(1f));
+                    fixed = fixed.withScale(1f);
                     entryFixed = true;
-                } else {
-                    fixedGroups.add(group);
                 }
+                if (group.background() != null) {
+                    final String color = group.background().color();
+                    if (!isValidBackgroundColor(color)) {
+                        plugin.getLogger().warning("NameTag '" + entry.getKey() + "': background color '" + color
+                                + "' is invalid; expected #RRGGBB or R,G,B. Will render as transparent.");
+                    }
+                }
+                fixedGroups.add(fixed);
             }
             if (entryFixed) {
-                nameTags.put(entry.getKey(), new Settings.NameTag(nameTag.permission(), List.copyOf(fixedGroups)));
+                if (nameTagFixes == null) {
+                    nameTagFixes = Maps.newLinkedHashMap();
+                }
+                nameTagFixes.put(entry.getKey(), new Settings.NameTag(nameTag.permission(), List.copyOf(fixedGroups)));
                 save = true;
-            } else {
-                nameTags.put(entry.getKey(), nameTag);
             }
         }
 
         if (save) {
-            settings.getNameTags().clear();
-            settings.getNameTags().putAll(nameTags);
+            if (nameTagFixes != null) {
+                settings.getNameTags().putAll(nameTagFixes);
+            }
             save();
         }
+    }
 
+    private static boolean isValidBackgroundColor(@org.jetbrains.annotations.Nullable String color) {
+        if (color == null) return false;
+        final String c = color.trim();
+        if (c.startsWith("#")) {
+            try { Integer.parseInt(c.substring(1), 16); return true; } catch (NumberFormatException e) { return false; }
+        }
+        final String[] p = c.split(",");
+        if (p.length < 3) return false;
+        try {
+            Integer.parseInt(p[0].trim());
+            Integer.parseInt(p[1].trim());
+            Integer.parseInt(p[2].trim());
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     public void save() {
