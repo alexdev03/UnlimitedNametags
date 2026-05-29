@@ -4,4 +4,4 @@ plugins {
 
 rootProject.name = "UnlimitedNametags"
 
-include("common", "api", "plugin")
+include("common", "api", "api-paper", "paper")

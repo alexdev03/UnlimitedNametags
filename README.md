@@ -91,18 +91,32 @@ Limited support via **Geyser** (text displays may fall back to armor stands on t
 | Module | Role |
 |:---|:---|
 | **`common`** | Shared internals |
-| **`api`** | `UNTAPI`, `Settings`, `UntNametagDisplay`, animations — depend on this for integrations |
-| **`plugin`** | Runnable plugin + shadow jar |
+| **`api`** | `UNTAPI` (abstract), `Settings`, `UntNametagDisplayCore`, animations |
+| **`api-paper`** | `UNTPaperAPI`, `UntNametagDisplay`, `Formatter` — Paper/`Player` integrations |
+| **`paper`** | Runnable plugin + shadow jar |
 
 **Build the server jar**
 
 ```bash
-./gradlew :plugin:shadowJar
+./gradlew :paper:shadowJar
 ```
 
-On Windows: `gradlew.bat :plugin:shadowJar`
+On Windows: `gradlew.bat :paper:shadowJar`
 
 **Output:** `target/UnlimitedNametags.jar`
+
+**Addon dependencies** (compile-only; match your server plugin version):
+
+```kotlin
+dependencies {
+    // Paper/Bukkit addons (Player, UNTPaperAPI, Formatter)
+    compileOnly("org.alexdev:unlimitednametags-api-paper:2.0.0")
+    // UUID-only / headless integrations
+    // compileOnly("org.alexdev:unlimitednametags-api:2.0.0")
+}
+```
+
+`NametagAnimationTarget` (custom animation pose API) is in **`api-paper`**; register handlers via **`UNTPaperAPI`**.
 
 Maven Central / publishing: **[MAVEN_CENTRAL_PUBLISHING.md](MAVEN_CENTRAL_PUBLISHING.md)**.
 
@@ -158,7 +172,7 @@ obscuredNametagCheckInterval: 5
 ### Custom animations (API)
 
 - YAML: `animation.type: custom` + `id: your_key`
-- Register: `UNTAPI.registerNametagCustomAnimation(...)` and drive pose with **`NametagAnimationTarget`**.
+- Register: `UNTPaperAPI.registerNametagCustomAnimation(...)` and drive pose with **`NametagAnimationTarget`** (`api-paper`).
 
 ---
 
@@ -196,7 +210,7 @@ obscuredNametagCheckInterval: 5
 - **TypeWriter** — cinematic / cutscene hooks  
 - **Nexo / Oraxen** — helmet / model compatibility  
 - **MiniPlaceholders** — when using MiniMessage  
-- **Custom plugins** — via **`api`** artifact and **`UNTAPI`**
+- **Custom plugins** — via **`api-paper`** (`UNTPaperAPI`) or **`api`** (UUID/`UNTAPI`)
 
 ---
 

@@ -1,0 +1,54 @@
+name: UnlimitedNameTags
+version: ${version}
+main: org.alexdev.unlimitednametags.UnlimitedNameTags
+api-version: '1.19'
+author: AlexDev_
+folia-supported: true
+libraries:
+#  - de.exlll:configlib-yaml:${configlibVersion}
+#  - de.exlll:configlib-paper:${configlibVersion}
+  - net.jodah:expiringmap:${expiringMapVersion}
+  - org.apache.commons:commons-jexl3:${commonsJexl3Version}
+  # SnakeYAML Engine — used by shaded ConfigLib + SettingsYamlMigrator (not in fat jar)
+  - org.snakeyaml:snakeyaml-engine:${snakeyamlEngineVersion}
+
+depend:
+  - packetevents
+softdepend:
+  - PlaceholderAPI
+  - ProtocolLib
+  - ProtocolSupport
+  - ViaVersion
+  - ViaBackwards
+  - ViaRewind
+  - Oraxen
+  - Nexo
+  - HMCCosmetics
+permissions:
+  unt.shownametags:
+    default: true
+  unt.showownnametag:
+    default: true
+  unt.reload:
+    default: op
+  unt.debug:
+    default: op
+  unt.hide:
+    default: op
+  unt.show:
+    default: op
+  unt.refresh:
+    default: op
+  unt.billboard:
+    default: op
+  unt.formatter:
+    default: op
+  unt.hideOtherNametags:
+    default: true
+  unt.showOtherNametags:
+    default: true
+  unt.preferences:
+    default: true
+  unt.preferences.others:
+    default: op
+compiled: ${compiled}

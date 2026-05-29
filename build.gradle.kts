@@ -27,10 +27,10 @@ subprojects {
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
         maven("https://repo.oraxen.com/releases")
         maven("https://repo.oraxen.com/snapshots")
+        maven("https://maven.pvphub.me/tofaa")
         maven("https://jitpack.io")
         maven("https://repo.alessiodp.com/snapshots/")
         maven("https://maven.typewritermc.com/beta")
-        maven("https://repo.nexomc.com/snapshots/")
         maven("https://repo.nexomc.com/releases")
         maven("https://repo.md-5.net/content/groups/public/")
         maven("https://mvn.lib.co.nz/public")
@@ -43,7 +43,6 @@ subprojects {
             url = uri("https://dist.labymod.net/api/v1/maven/release/")
         }
         maven("https://repo.hibiscusmc.com/releases")
-        maven("https://maven.pvphub.me/tofaa")
     }
 
     tasks.withType<JavaCompile>().configureEach {
@@ -56,5 +55,52 @@ subprojects {
     extensions.configure<JavaPluginExtension>("java") {
         toolchain.languageVersion.set(JavaLanguageVersion.of(21))
         disableAutoTargetJvm()
+    }
+}
+
+val publishableLibraryModules = mapOf(
+    ":common" to "unlimitednametags-common",
+    ":api" to "unlimitednametags-api",
+    ":api-paper" to "unlimitednametags-api-paper",
+)
+
+configure(publishableLibraryModules.keys.map { project(it) }) {
+    apply(plugin = "maven-publish")
+
+    extensions.configure<JavaPluginExtension>("java") {
+        withJavadocJar()
+        withSourcesJar()
+    }
+
+    tasks.named<Javadoc>("javadoc") {
+        isFailOnError = false
+    }
+
+    extensions.configure<PublishingExtension>("publishing") {
+        publications {
+            create<MavenPublication>("maven") {
+                from(components["java"])
+                groupId = rootProject.group.toString()
+                artifactId = publishableLibraryModules[path]!!
+            }
+        }
+        repositories {
+            mavenLocal()
+            val centralUrl = findProperty("mavenCentralUrl") as String?
+            val centralUsername = findProperty("mavenCentralUsername") as String?
+                ?: System.getenv("MAVEN_CENTRAL_USERNAME")
+            val centralPassword = findProperty("mavenCentralPassword") as String?
+                ?: System.getenv("MAVEN_CENTRAL_PASSWORD")
+            if (centralUrl != null && centralUsername != null && centralPassword != null) {
+                maven {
+                    name = "mavenCentral"
+                    url = uri(centralUrl)
+                    credentials {
+                        username = centralUsername
+                        password = centralPassword
+                    }
+                }
+            }
+        }
     }
 }

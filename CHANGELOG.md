@@ -5,10 +5,13 @@
 ### Breaking changes
 
 - **`settings.yml` schema v3**: TEXT `DisplayGroup.lines` is now a list of structured rows (`text` + optional `when`) instead of raw strings. This allows multiple conditional text lines to remain part of the same text display entity. Existing v2 YAML is migrated on load from `lines: ["foo"]` to `lines: [{text: "foo"}]`; Java API integrations that instantiate `Settings.DisplayGroup` must pass `List<Settings.NametagLine>`.
+- **Gradle / Maven modules**: new **`api-paper`** artifact (`unlimitednametags-api-paper`) for Paper/Bukkit API (`UNTPaperAPI`, `Formatter`, `UnlimitedNameTagsInstancePaper`, `UntNametagManagerPaper`, …). **`api`** is UUID + Adventure only (no Paper). Addon projects should use **`compileOnly`** on **`unlimitednametags-api-paper`** instead of **`unlimitednametags-api`** alone when using `Player` or `UNTPaperAPI`.
+- **Service interfaces** on **`api`** use **`UUID`** instead of **`Player`** (`UntNametagManager`, `UntVanishManager`, `UntConditionalManager`, `VanishIntegration`, `HatHook`). Paper convenience overloads live on **`api-paper`** (`*Paper` interfaces with `default` methods).
 
 ### Added
 
 - **Per-line TEXT visibility**: each `NametagLine` can define `when` (JEXL, PlaceholderAPI-expanded) in addition to the group-level `DisplayGroup.when`. The group-level condition is evaluated first; then each line condition decides whether that line contributes to the final multi-line component.
+- **`common` packet core**: `PacketNameTag`, package-private `TextPacketNameTag`, `ItemPacketNameTag`, `BlockPacketNameTag`, `TextNametagSupport` (UUID + PacketEvents/EntityLib, no Bukkit). Platform bridges: `NametagRuntime`, `NametagPlatformBridge`, `NametagMaterialBridge` with Bukkit implementations in **`paper`**. **`paper`** exposes thin `PaperTextPacketNameTag` / `PaperItemPacketNameTag` / `PaperBlockPacketNameTag` (extend common types, implement `PaperNametagRow`) and **`PacketNameTags.create(...)`** for `UNTPaperAPI` / `Player` APIs.
 
 ## 2.0.0
 
@@ -19,8 +22,8 @@
 - Merged [PR #61](https://github.com/alexdev03/UnlimitedNametags/pull/61): one text-display entity per **lines group** (per-group background, scale, `yOffset`).
 - **Config**: `NameTag` no longer has a single `background` / `scale`; each **`DisplayGroup`** carries `background`, `scale`, and `yOffset`. YAML list key is **`displayGroups`**. Update `settings.yml` accordingly; **`SettingsYamlMigrator`** renames the obsolete dev-only key `linesGroups` → `displayGroups` on load (same **`configVersion` 2**).
 - **`UNTAPI.getPacketDisplayText(Player)`** returns `Collection<? extends UntNametagDisplay>` (was `Optional<PacketNameTag>` before 1.x multi-entity work).
-- **Gradle**: multi-module layout — `common`, `api`, `plugin`. The runnable jar is `:plugin:shadowJar` → `target/UnlimitedNametags.jar`.
-- **`UNTAPI`** and **`Settings`** types use **`UnlimitedNameTagsPlugin`** where applicable; **`Formatter`** / **`TriFunction`** use the same type.
+- **Gradle**: multi-module layout — `common`, `api`, `api-paper`, `paper`. The runnable jar is `:paper:shadowJar` → `target/UnlimitedNametags.jar`.
+- **`UNTAPI`** / **`UNTPaperAPI`** and **`Settings`** types use **`UnlimitedNameTagsInstance`** / **`UnlimitedNameTagsInstancePaper`** where applicable; **`Formatter`** lives in **`api-paper`**.
 - **Forced nametag** API applies only to the **first** line-group display (avoids duplicating text on every stacked entity).
 
 ### Fixes (vs. raw PR branch)
@@ -41,7 +44,7 @@
 - **`settings.yml` versioning**: root `configVersion` was introduced (`2` = structured nametags with **`displayGroups`**). On load/reload the plugin runs **`SettingsYamlMigrator`**: backs up to `settings.yml.backup-<epoch>.yml`, migrates **v1** (legacy flat `lines` / `background` / `scale`) → **`displayGroups`**, normalizes obsolete YAML key **`linesGroups`** → **`displayGroups`** when present, then rewrites the file if needed. Files without `configVersion` use legacy detection (flat `lines` on a tag).
 - **`DisplayGroup.background` optional** in YAML: omit the key for a disabled transparent default (handy for item/block-only rows). Code uses `effectiveBackground()` when reading.
 - **Redundant default `background`**: A disabled **`type: integer`** block with RGB `0`, `opacity: 0`, and `shadowed: false` (any `seeThrough`) is treated like a missing key — `DisplayGroup`’s compact constructor clears it to `null`, and **`SettingsYamlMigrator`** removes that YAML block on load so the file stays minimal. The fallback **`effectiveBackground()`** for omitted rows now uses **`seeThrough: true`** (was `false`), matching typical “transparent text” configs.
-- **Implementation**: `PacketNameTag` is an abstract base class with package-private `TextPacketNameTag`, `ItemPacketNameTag`, and `BlockPacketNameTag`; use **`PacketNameTag.create(plugin, player, displayGroup)`** (not `new PacketNameTag(...)`) when instantiating from outside the packet package.
+- **Implementation**: `PacketNameTag` is an abstract base in **`common`**; text/item/block subclasses are package-private there. On the server, use **`PacketNameTags.create(plugin, player, displayGroup)`** in the **`paper`** module (not `new PacketNameTag(...)`).
 - **Item display** and **block display** per display group: set `displayType` to `ITEM` or `BLOCK` on a **`DisplayGroup`**, with optional `itemMaterial`, `blockMaterial`, and `itemDisplayMode` (e.g. `HEAD`, `GROUND`, `FIXED`). Material strings support PlaceholderAPI; if `itemMaterial` / `blockMaterial` is omitted, defaults to **`STONE`**. When **`when`** hides the group, item/block content is cleared like empty text.
 - **API**: **`UNTAPI.setNametagDisplayGroups`** replaces **`setNametagLines`** (deprecated, removal in a future release).
 - **`UnlimitedNameTagsPlugin`**, **`UntNametagManager`**, **`UntVanishManager`**, **`UntConditionalManager`**, **`UntNametagDisplay`** for compile-only integration against the `api` artifact.
@@ -49,7 +52,7 @@
 - **Row conditions**: optional **`when`** on each **`displayGroups`** entry (single JEXL string; PAPI-expanded).
 - **Per-`displayGroups` entry animations** (optional `animation`): **`rotate`** (axis `Y` / `X` / `Z` / `XYZ`), **`bob`** (vertical sine), **`dvd_bounce`** (2D box bounce in local XZ), **`pulse_scale`**, **`wiggle`**, **`orbit`**. Each type has tunable fields plus shared **`enabled`**, **`speed`**, and optional **`customProperties`** (`Map<String, String>` for add-ons). Applies to text, item, and block display rows.
 - **Animation tick interval**: root **`displayAnimationInterval`** (ticks between pose updates; default **1**). Set to **0** to use **`taskInterval`** (same cadence as placeholder refresh). Per row, optional **`animationInterval`** overrides the global value.
-- **Custom animations (API)**: YAML **`animation.type: custom`** + **`id`**, or **`NametagDisplayAnimations.custom(id)`** from code. Register **`NametagCustomAnimationHandler`** with **`UNTAPI.registerNametagCustomAnimation`** / **`UnlimitedNameTagsPlugin`**. Pose via **`NametagAnimationTarget`** (implemented by packet displays; use **`instanceof`** on **`UntNametagDisplay`**).
+- **Custom animations (API)**: YAML **`animation.type: custom`** + **`id`**, or **`NametagDisplayAnimations.custom(id)`** from code. Register **`NametagCustomAnimationHandler`** with **`UNTPaperAPI.registerNametagCustomAnimation`**. Pose via **`NametagAnimationTarget`** in **`api-paper`** (on packet rows; use **`instanceof`** on **`UntNametagDisplay`**).
 - **`DisplayGroup.lines`**: only for **TEXT** rows. **`NametagDisplayAnimations`** + **`UNTAPI.setNametagDisplayGroupAnimation`** / **`clearNametagDisplayGroupAnimation`** for programmatic animation changes.
 - **Optional `billboard` per `DisplayGroup`**: **`CENTER`**, **`HORIZONTAL`**, **`VERTICAL`**, **`FIXED`** — overrides root **`defaultBillboard`** for that stacked row only. **`DisplayGroup#effectiveBillboard(Settings)`** resolves the constraint.
 

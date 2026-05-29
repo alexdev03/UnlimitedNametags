@@ -1,9 +1,6 @@
 package org.alexdev.unlimitednametags.api;
 
 import org.alexdev.unlimitednametags.config.Settings;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
@@ -11,116 +8,103 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Nametag operations exposed to {@link UNTAPI} and integrators.
+ * Nametag operations (platform-neutral, keyed by player UUID).
+ * Paper overloads: {@code UntNametagManagerPaper} (api-paper module).
  */
 @SuppressWarnings("unused")
 public interface UntNametagManager {
 
-    boolean isPlayerPointingAt(Player player1, Player player2);
-
     boolean isScalePresent();
 
-    float getScale(@NotNull Player player);
+    float getScale(@NotNull UUID playerId);
 
-    void blockPlayer(@NotNull Player player);
+    void blockPlayer(@NotNull UUID playerId);
 
-    void unblockPlayer(@NotNull Player player);
+    void unblockPlayer(@NotNull UUID playerId);
 
-    void clearCache(@NotNull UUID uuid);
+    void clearCache(@NotNull UUID playerId);
 
-    boolean hasNametagOverride(@NotNull Player player);
-
-    @NotNull
-    Optional<Settings.NameTag> getNametagOverride(@NotNull Player player);
+    boolean hasNametagOverride(@NotNull UUID playerId);
 
     @NotNull
-    Settings.NameTag getEffectiveNametag(@NotNull Player player);
+    Optional<Settings.NameTag> getNametagOverride(@NotNull UUID playerId);
 
     @NotNull
-    Settings.NameTag getConfigNametag(@NotNull Player player);
+    Settings.NameTag getEffectiveNametag(@NotNull UUID playerId);
 
-    void addPlayer(@NotNull Player player, boolean canBlock);
+    @NotNull
+    Settings.NameTag getConfigNametag(@NotNull UUID playerId);
 
-    void refresh(@NotNull Player player, boolean force);
+    void addPlayer(@NotNull UUID playerId, boolean canBlock);
 
-    void removePlayer(@NotNull Player player);
+    void refresh(@NotNull UUID playerId, boolean force);
 
-    void removeAllViewers(@NotNull Player player);
+    void removePlayer(@NotNull UUID playerId);
 
-    void showToTrackedPlayers(@NotNull Player player);
+    void removeAllViewers(@NotNull UUID playerId);
 
-    void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<Player> tracked);
+    void showToTrackedPlayers(@NotNull UUID playerId);
 
-    void hideAllDisplays(@NotNull Player player);
+    void showToTrackedPlayers(@NotNull UUID playerId, @NotNull Collection<UUID> tracked);
+
+    void hideAllDisplays(@NotNull UUID playerId);
 
     void removeAll();
 
-    void updateSneaking(@NotNull Player player, boolean sneaking);
+    void updateSneaking(@NotNull UUID playerId, boolean sneaking);
 
     void reload();
 
-    void debug(@NotNull CommandSender audience);
+    void vanishPlayer(@NotNull UUID playerId);
 
-    void vanishPlayer(@NotNull Player player);
-
-    void unVanishPlayer(@NotNull Player player);
+    void unVanishPlayer(@NotNull UUID playerId);
 
     @NotNull
-    Collection<? extends UntNametagDisplay> getPacketDisplayText(@NotNull Player player);
+    Optional<? extends UntNametagDisplayCore> getPacketDisplayText(int entityId);
 
-    @NotNull
-    Optional<? extends UntNametagDisplay> getPacketDisplayText(int id);
+    void updateDisplay(@NotNull UUID ownerId, @NotNull UUID targetId);
 
-    void updateDisplay(@NotNull Player player, @NotNull Player target);
+    void showToOwner(@NotNull UUID ownerId);
 
-    void showToOwner(@NotNull Player player);
+    void removeDisplay(@NotNull UUID ownerId, @NotNull UUID targetId);
 
-    void removeDisplay(@NotNull Player player, @NotNull Player target);
+    void updateDisplaysForPlayer(@NotNull UUID playerId);
 
-    void updateDisplaysForPlayer(@NotNull Player player);
+    void refreshDisplaysForPlayer(@NotNull UUID playerId);
 
-    void refreshDisplaysForPlayer(@NotNull Player player);
+    void unBlockForAllPlayers(@NotNull UUID playerId);
 
-    void unBlockForAllPlayers(@NotNull Player player);
+    void hideOtherNametags(@NotNull UUID playerId);
 
-    void hideOtherNametags(@NotNull Player player);
+    void showOtherNametags(@NotNull UUID playerId);
 
-    void showOtherNametags(@NotNull Player player);
+    boolean isHiddenOtherNametags(@NotNull UUID playerId);
 
-    boolean isHiddenOtherNametags(@NotNull Player player);
+    boolean isEffectiveShowOwnNametag(@NotNull UUID playerId);
 
-    boolean isEffectiveShowOwnNametag(@NotNull Player player);
+    boolean isShowingOwnNametagToSelf(@NotNull UUID playerId);
 
-    boolean isShowingOwnNametagToSelf(@NotNull Player player);
+    void setShowingOwnNametagToSelf(@NotNull UUID playerId, boolean show);
 
-    void setShowingOwnNametagToSelf(@NotNull Player player, boolean show);
+    boolean isShowingOwnNametagToOthers(@NotNull UUID playerId);
 
-    boolean isShowingOwnNametagToOthers(@NotNull Player player);
+    void setShowingOwnNametagToOthers(@NotNull UUID playerId, boolean show);
 
-    void setShowingOwnNametagToOthers(@NotNull Player player, boolean show);
+    void applyPreferencesFromPersistentData(@NotNull UUID playerId);
 
-    void applyPreferencesFromPersistentData(@NotNull Player player);
+    void syncPlayerPreferenceSetsFromPdc(@NotNull UUID playerId);
 
-    /**
-     * Loads nametag UI preferences from the player's PDC into runtime sets only (no packets).
-     * Call as early as possible on join so {@link #isHiddenOtherNametags} and related checks are correct
-     * before any nametag packets are sent to this player.
-     */
-    void syncPlayerPreferenceSetsFromPdc(@NotNull Player player);
+    void swapNametag(@NotNull UUID playerId, @NotNull Settings.NameTag nameTag);
 
-    void swapNametag(@NotNull Player player, @NotNull Settings.NameTag nameTag);
+    void setNametagOverride(@NotNull UUID playerId, @NotNull Settings.NameTag nameTag);
 
-    void setNametagOverride(@NotNull Player player, @NotNull Settings.NameTag nameTag);
+    void removeNametagOverride(@NotNull UUID playerId);
 
-    void removeNametagOverride(@NotNull Player player);
+    void setShiftSystemBlocked(@NotNull UUID playerId, boolean blocked);
 
-    void setShiftSystemBlocked(@NotNull Player player, boolean blocked);
-
-    boolean isShiftSystemBlocked(@NotNull Player player);
+    boolean isShiftSystemBlocked(@NotNull UUID playerId);
 
     boolean isDebug();
 
     void setDebug(boolean debug);
-
-    Attribute getScaleAttribute();
 }

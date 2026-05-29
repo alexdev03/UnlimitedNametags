@@ -1,8 +1,9 @@
 package org.alexdev.unlimitednametags.api;
 
 import org.alexdev.unlimitednametags.vanish.VanishIntegration;
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.UUID;
 
 public interface UntVanishManager {
 
@@ -11,11 +12,11 @@ public interface UntVanishManager {
     @NotNull
     VanishIntegration getIntegration();
 
-    boolean canSee(@NotNull Player name, @NotNull Player other);
+    boolean canSee(@NotNull UUID viewerId, @NotNull UUID otherId);
 
-    boolean isVanished(@NotNull Player name);
+    boolean isVanished(@NotNull UUID playerId);
 
-    void vanishPlayer(@NotNull Player player);
+    void vanishPlayer(@NotNull UUID playerId);
 
-    void unVanishPlayer(@NotNull Player player);
+    void unVanishPlayer(@NotNull UUID playerId);
 }

@@ -4,11 +4,15 @@ plugins {
 
 dependencies {
     api(project(":common"))
-    compileOnly(libs.paperApi)
-    compileOnly(libs.adventureApi)
-    compileOnly(libs.packeteventsSpigot)
-    compileOnly(libs.configlib)
-    compileOnly(libs.entityLib)
+
+    // Types appear in public API signatures; compileOnlyApi publishes them for Maven consumers (like EntityLib)
+    compileOnlyApi(libs.entityLib) {
+        exclude(group = "com.github.retrooper", module = "packetevents-spigot")
+        exclude(group = "com.github.retrooper", module = "packetevents-api")
+    }
+    compileOnlyApi(libs.adventureApi)
+
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
+    compileOnly("org.jetbrains:annotations:26.0.2")
 }

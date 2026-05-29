@@ -1,12 +1,12 @@
 package org.alexdev.unlimitednametags.vanish;
 
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.UUID;
 
 public interface VanishIntegration {
 
-    boolean canSee(@NotNull Player name, @NotNull Player other);
+    boolean canSee(@NotNull UUID viewerId, @NotNull UUID otherId);
 
-    boolean isVanished(@NotNull Player name);
-
+    boolean isVanished(@NotNull UUID playerId);
 }
