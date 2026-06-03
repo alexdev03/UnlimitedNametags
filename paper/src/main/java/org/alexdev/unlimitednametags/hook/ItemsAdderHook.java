@@ -12,11 +12,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Optional;
 import java.util.UUID;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.model.Model;
+import dev.lone.itemsadder.api.CustomStack;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -43,6 +46,21 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
             return 0;
         }
         return CreativeHook.super.getHigh(player);
+    }
+
+    public Optional<Model> findModel(@NotNull ItemStack item) {
+        final CustomStack stack = CustomStack.byItemStack(item);
+        if (stack != null) {
+            final String modelPath = stack.getModelPath();
+            if (modelPath != null) {
+                final net.kyori.adventure.key.Key key = net.kyori.adventure.key.Key.key(stack.getNamespace(), modelPath);
+                final Model model = resourcePack.model(key);
+                if (model != null) {
+                    return Optional.of(model);
+                }
+            }
+        }
+        return CreativeHook.super.findModel(item);
     }
 
     @EventHandler

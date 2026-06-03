@@ -118,3 +118,5 @@ run/
 !gradle-wrapper.jar
 
 license.txt
+.claude/settings.local.json
+.vscode/settings.json

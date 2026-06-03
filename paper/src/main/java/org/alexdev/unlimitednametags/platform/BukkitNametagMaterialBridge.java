@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.protocol.item.ItemStack;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -23,6 +24,12 @@ public final class BukkitNametagMaterialBridge implements NametagMaterialBridge 
     @Override
     public @Nullable Object resolveItemStack(@NotNull UUID ownerId, @NotNull String materialKey) {
         final String expanded = expand(ownerId, materialKey);
+
+        final org.bukkit.inventory.ItemStack itemStack = resolveItemFromRegistry(expanded);
+        if (itemStack != null) {
+            return SpigotConversionUtil.fromBukkitItemStack(itemStack);
+        }
+
         final Material material = Material.matchMaterial(expanded, false);
         if (material == null || !material.isItem()) {
             return null;
@@ -33,11 +40,47 @@ public final class BukkitNametagMaterialBridge implements NametagMaterialBridge 
     @Override
     public @Nullable Object resolveBlockState(@NotNull UUID ownerId, @NotNull String materialKey) {
         final String expanded = expand(ownerId, materialKey);
+
+        final org.bukkit.block.data.BlockData data = resolveBlockFromRegistry(expanded);
+        if (data != null) {
+            return SpigotConversionUtil.fromBukkitBlockData(data);
+        }
+
         final Material material = Material.matchMaterial(expanded, false);
         if (material == null || !material.isBlock()) {
             return null;
         }
         return SpigotConversionUtil.fromBukkitBlockData(material.createBlockData());
+    }
+
+    public static org.bukkit.inventory.ItemStack resolveItemFromRegistry(String key) {
+        try {
+            final org.bukkit.NamespacedKey namespacedKey = org.bukkit.NamespacedKey.fromString(key);
+            if (namespacedKey != null) {
+                final org.bukkit.inventory.ItemType itemType = org.bukkit.Registry.ITEM.get(namespacedKey);
+                if (itemType != null) {
+                    return itemType.createItemStack();
+                }
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
+    public static org.bukkit.block.data.BlockData resolveBlockFromRegistry(String key) {
+        try {
+            final org.bukkit.NamespacedKey namespacedKey = org.bukkit.NamespacedKey.fromString(key);
+            if (namespacedKey != null) {
+                final org.bukkit.block.BlockType blockType = org.bukkit.Registry.BLOCK.get(namespacedKey);
+                if (blockType != null) {
+                    return blockType.createBlockData();
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            return org.bukkit.Bukkit.createBlockData(key);
+        } catch (Throwable ignored) {}
+        return null;
     }
 
     @NotNull

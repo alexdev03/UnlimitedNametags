@@ -6,6 +6,7 @@ import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringMap;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.TextReplacementConfig;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Advanced;
 import org.alexdev.unlimitednametags.config.Formatter;
@@ -42,6 +43,8 @@ public class PlaceholderManager {
     public static final String NEG_PHASE_MD_KEY = "-phase-md";
     public static final String NEG_PHASE_MM_KEY = "-phase-mm";
     public static final String NEG_PHASE_MM_G_KEY = "-phase-mm-g";
+
+    private static final Pattern RELATIONAL_PATTERN = Pattern.compile("%(rel|relational)_[a-zA-Z0-9_]+%");
 
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("%.*?%", Pattern.DOTALL);
     private static final JoinConfiguration JOIN_CONFIGURATION = JoinConfiguration.separator(Component.newline());
@@ -182,7 +185,7 @@ public class PlaceholderManager {
     @NotNull
     public CompletableFuture<Map<Player, Component>> applyPlaceholders(@NotNull Player player, @NotNull Settings.DisplayGroup group,
                                                                        @NotNull List<Player> relationalPlayers) {
-        if (group.relationalConditions()) {
+        if (requiresRelationalEvaluation(group)) {
             return CompletableFuture.supplyAsync(() -> {
                 final Map<Player, Component> result = Maps.newHashMapWithExpectedSize(relationalPlayers.size());
                 for (Player viewer : relationalPlayers) {
@@ -213,7 +216,8 @@ public class PlaceholderManager {
             return true;
         }
         final String expr = group.when().trim();
-        if (!group.relationalConditions() || relationalViewer == null) {
+        final boolean isRelational = group.relationalConditions() || containsRelationalPlaceholders(expr);
+        if (!isRelational || relationalViewer == null) {
             return plugin.getConditionalManager().evaluateCondition(expr, owner);
         }
         return plugin.getConditionalManager().evaluateCondition(expr, relationalViewer, owner);
@@ -228,13 +232,14 @@ public class PlaceholderManager {
 
     @NotNull
     private List<String> collectActiveLineTexts(@NotNull Player owner, @NotNull Player viewer, @NotNull Settings.DisplayGroup group) {
-        if (!isDisplayGroupActive(owner, group, group.relationalConditions() ? viewer : null)) {
+        final boolean isGroupRelational = requiresRelationalEvaluation(group);
+        if (!isDisplayGroupActive(owner, group, isGroupRelational ? viewer : null)) {
             return List.of();
         }
         return group.lines().stream()
                 .filter(line -> line.when() == null
                         || line.when().isBlank()
-                        || evaluateLineWhen(owner, viewer, line, group.relationalConditions()))
+                        || evaluateLineWhen(owner, viewer, line, isGroupRelational))
                 .map(Settings.NametagLine::text)
                 .toList();
     }
@@ -244,7 +249,8 @@ public class PlaceholderManager {
             return true;
         }
         final String expr = line.when().trim();
-        if (!relationalGroup) {
+        final boolean isRelational = relationalGroup || containsRelationalPlaceholders(expr);
+        if (!isRelational) {
             return plugin.getConditionalManager().evaluateCondition(expr, owner);
         }
         return plugin.getConditionalManager().evaluateCondition(expr, viewer, owner);
@@ -261,15 +267,32 @@ public class PlaceholderManager {
                         .toList()
                 : strings;
 
-        List<Component> processedLines = baseStrings.stream()
-                .map(line -> replacePlaceholders(line, owner, viewer))
-                .filter(s -> !removeEmptyLines || !s.isEmpty())
+        final List<Component> baseComponents = baseStrings.stream()
                 .map(this::formatPhases)
                 .map(line -> format(line, owner))
+                .toList();
+
+        final List<Component> processedLines = baseComponents.stream()
+                .map(component -> resolveRelationalPlaceholdersInComponent(component, owner, viewer))
                 .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
                 .toList();
 
         return joinLines(processedLines);
+    }
+
+    @NotNull
+    private Component resolveRelationalPlaceholdersInComponent(@NotNull Component component, @NotNull Player owner, @NotNull Player viewer) {
+        if (!papiManager.isPapiEnabled()) {
+            return component;
+        }
+        return component.replaceText(TextReplacementConfig.builder()
+                .match(RELATIONAL_PATTERN)
+                .replacement((matchResult, builder) -> {
+                    final String placeholder = matchResult.group();
+                    final String resolved = papiManager.setRelationalPlaceholders(viewer, owner, placeholder);
+                    return format(resolved, owner);
+                })
+                .build());
     }
 
     @NotNull
@@ -292,25 +315,23 @@ public class PlaceholderManager {
                         .toList()
                 : strings;
 
+        final List<Component> baseComponents = baseStrings.stream()
+                .map(this::formatPhases)
+                .map(line -> format(line, player))
+                .toList();
+
         if (enableRelationalPlaceholders) {
             final Map<Player, Component> result = Maps.newHashMapWithExpectedSize(relationalPlayers.size());
             for (Player viewer : relationalPlayers) {
-                List<Component> processedLines = baseStrings.stream()
-                        .map(line -> replacePlaceholders(line, player, viewer))
-                        .filter(s -> !removeEmptyLines || !s.isEmpty())
-                        .map(this::formatPhases)
-                        .map(line -> format(line, player))
+                final List<Component> processedLines = baseComponents.stream()
+                        .map(component -> resolveRelationalPlaceholdersInComponent(component, player, viewer))
                         .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
                         .toList();
                 result.put(viewer, joinLines(processedLines));
             }
             return result;
         } else {
-            List<Component> processedLines = baseStrings.stream()
-                    .map(line -> replacePlaceholders(line, player, null))
-                    .filter(s -> !removeEmptyLines || !s.isEmpty())
-                    .map(this::formatPhases)
-                    .map(line -> format(line, player))
+            final List<Component> processedLines = baseComponents.stream()
                     .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
                     .toList();
 
@@ -409,6 +430,28 @@ public class PlaceholderManager {
     @NotNull
     public String getFormattedPhases(@NotNull String text) {
         return formattedPhaseValues.getOrDefault(text, "");
+    }
+
+    public static boolean containsRelationalPlaceholders(@Nullable String text) {
+        if (text == null) {
+            return false;
+        }
+        return text.contains("%rel_") || text.contains("%relational_");
+    }
+
+    public boolean requiresRelationalEvaluation(@NotNull Settings.DisplayGroup group) {
+        if (group.relationalConditions()) {
+            return true;
+        }
+        if (containsRelationalPlaceholders(group.when())) {
+            return true;
+        }
+        for (Settings.NametagLine line : group.lines()) {
+            if (containsRelationalPlaceholders(line.when())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean containsAnyPlaceholders(String text) {

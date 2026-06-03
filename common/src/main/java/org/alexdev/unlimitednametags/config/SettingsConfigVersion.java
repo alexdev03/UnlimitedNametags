@@ -9,10 +9,9 @@ public final class SettingsConfigVersion {
     }
 
     /**
-     * Latest schema: unified {@link Settings.Background} (no {@code type:} discriminator) + sectioned settings
-     * ({@code behavior}, {@code visibility}, {@code performance}).
+     * Latest schema: version 5 introduces throughWallMode and nested throughWallSettings.
      */
-    public static final int CURRENT = 4;
+    public static final int CURRENT = 5;
 
     /**
      * {@code displayGroups} with {@link Settings.DisplayGroup}, structured {@code lines} as {@code {text, when?}} objects.

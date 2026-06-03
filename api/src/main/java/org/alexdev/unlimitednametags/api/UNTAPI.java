@@ -161,14 +161,6 @@ public abstract class UNTAPI {
         plugin.getNametagManager().setNametagOverride(playerId, current.withDisplayGroups(displayGroups));
     }
 
-    /**
-     * @deprecated Renamed to {@link #setNametagDisplayGroups(UUID, List)}.
-     */
-    @Deprecated(forRemoval = true, since = "2.0.0")
-    public void setNametagLines(@NotNull UUID playerId, @NotNull List<Settings.DisplayGroup> displayGroups) {
-        setNametagDisplayGroups(playerId, displayGroups);
-    }
-
     protected static final class NotRegisteredException extends IllegalStateException {
 
         private static final String MESSAGE = """

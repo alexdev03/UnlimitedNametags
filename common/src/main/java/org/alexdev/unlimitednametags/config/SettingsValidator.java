@@ -60,14 +60,14 @@ public final class SettingsValidator {
     Map<String, Settings.NameTag> nameTagFixes = null;
     boolean save = false;
 
-    if (settings.getVisibility().getObscuredNametagCheckInterval() < 1) {
-      warning.accept("obscuredNametagCheckInterval must be >= 1; resetting to 1.");
-      settings.getVisibility().setObscuredNametagCheckInterval(1);
+    if (settings.getVisibility().getThroughWallSettings().getCheckInterval() < 1) {
+      warning.accept("throughWallCheckInterval must be >= 1; resetting to 1.");
+      settings.getVisibility().getThroughWallSettings().setCheckInterval(1);
       save = true;
     }
-    if (settings.getVisibility().getObscuredNametagMaxDistance() <= 0.0) {
-      warning.accept("obscuredNametagMaxDistance must be > 0; resetting to 48.");
-      settings.getVisibility().setObscuredNametagMaxDistance(48.0);
+    if (settings.getVisibility().getThroughWallSettings().getMaxDistance() <= 0.0) {
+      warning.accept("throughWallMaxDistance must be > 0; resetting to 48.");
+      settings.getVisibility().getThroughWallSettings().setMaxDistance(48.0);
       save = true;
     }
 

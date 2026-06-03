@@ -81,6 +81,7 @@ public final class SettingsYamlMigrator {
                 case 1 -> changed |= migrateV1ToV2(root, log);
                 case 2 -> changed |= migrateV2ToV3(root, log);
                 case 3 -> changed |= migrateV3ToV4(root, log);
+                case 4 -> changed |= migrateV4ToV5(root, log);
                 default -> throw new IllegalStateException("Missing settings migrator from v" + v + " to v" + (v + 1));
             }
         }
@@ -682,6 +683,51 @@ public final class SettingsYamlMigrator {
         if (changed) {
             log.info("Normalized placeholdersReplacements (boolean or non-string placeholder/replacement → string). "
                     + "Quote values in YAML, e.g. placeholder: \"Yes\", to avoid YAML 1.1 boolean parsing.");
+        }
+        return changed;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean migrateV4ToV5(Map<String, Object> root, Logger log) {
+        final Object visibilityObj = root.get("visibility");
+        if (!(visibilityObj instanceof Map)) {
+            return false;
+        }
+        final Map<String, Object> visibility = (Map<String, Object>) visibilityObj;
+        boolean changed = false;
+
+        final Object obscuredEnabled = visibility.remove("obscuredNametagThroughWalls");
+        final Object opacity = visibility.remove("obscuredNametagOpacity");
+        final Object maxDistance = visibility.remove("obscuredNametagMaxDistance");
+        final Object checkInterval = visibility.remove("obscuredNametagCheckInterval");
+
+        if (obscuredEnabled != null) {
+            final boolean enabled = !yamlFalsy(obscuredEnabled);
+            visibility.put("throughWallMode", enabled ? "OBSCURED" : "SEE_THROUGH");
+            changed = true;
+        }
+
+        final Map<String, Object> settings = new LinkedHashMap<>();
+        if (opacity != null) {
+            settings.put("opacity", opacity);
+            changed = true;
+        }
+        if (maxDistance != null) {
+            settings.put("maxDistance", maxDistance);
+            changed = true;
+        }
+        if (checkInterval != null) {
+            settings.put("checkInterval", checkInterval);
+            changed = true;
+        }
+
+        if (!settings.isEmpty() || obscuredEnabled != null) {
+            visibility.put("throughWallSettings", settings);
+            changed = true;
+        }
+
+        if (changed) {
+            log.info("Migrated visibility settings to throughWallMode and throughWallSettings (v5).");
         }
         return changed;
     }

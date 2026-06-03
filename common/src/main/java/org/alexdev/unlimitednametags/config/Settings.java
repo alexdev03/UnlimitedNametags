@@ -175,22 +175,38 @@ public class Settings {
         private boolean allowPerPlayerShowOwnWhenGlobalDisabled = false;
 
         @Comment({
-                "When true, viewers without direct line of sight still see the text with reduced opacity within obscuredNametagMaxDistance blocks.",
-                "Through-wall visibility uses seeThrough on the text display for those viewers.",
-                "Runs asynchronously every obscuredNametagCheckInterval ticks."
+                "How to handle nametag visibility when there is no direct line of sight between players.",
+                "Modes:",
+                " - SEE_THROUGH: Nametags are fully visible through walls (vanilla behavior).",
+                " - OBSCURED: Nametags are visible through walls but with reduced opacity (dimmed).",
+                " - HIDE: Nametags are completely hidden and despawned behind walls (anti-wallhack)."
         })
-        private boolean obscuredNametagThroughWalls = false;
+        private ThroughWallMode throughWallMode = ThroughWallMode.SEE_THROUGH;
 
-        @Comment("Text opacity when the viewer has no clear line of sight (-128–127; same semantics as sneakOpacity).")
-        private int obscuredNametagOpacity = 55;
+        @Comment("Settings applied when throughWallMode is set to OBSCURED or HIDE.")
+        private ThroughWallSettings throughWallSettings = new ThroughWallSettings();
+    }
 
-        @Setter
-        @Comment("Maximum distance (blocks) from viewer to owner for obscured-through-walls styling.")
-        private double obscuredNametagMaxDistance = 48.0;
+    @Configuration
+    @Getter
+    @Setter
+    @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
+    public static class ThroughWallSettings {
 
-        @Setter
-        @Comment("How often to re-check line of sight for obscuredNametagThroughWalls (server tick interval).")
-        private int obscuredNametagCheckInterval = 5;
+        @Comment("Text opacity when the viewer has no clear line of sight and mode is OBSCURED (-128 to 127).")
+        private int opacity = 55;
+
+        @Comment("Maximum distance (blocks) from viewer to owner for through-walls checks.")
+        private double maxDistance = 48.0;
+
+        @Comment("How often to re-check line of sight on the main/region thread (server tick interval).")
+        private int checkInterval = 5;
+    }
+
+    public enum ThroughWallMode {
+        SEE_THROUGH,
+        OBSCURED,
+        HIDE
     }
 
     @Configuration
