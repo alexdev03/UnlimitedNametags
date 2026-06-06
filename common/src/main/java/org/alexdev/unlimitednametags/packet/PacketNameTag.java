@@ -82,6 +82,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     private long glowEpochMs = System.currentTimeMillis();
     @Nullable
     private Integer lastAppliedGlowRgb;
+    private boolean glowActiveOnEntity;
 
     /** DVD bounce state for {@link DisplayAnimationComputer}. */
     private boolean animDvdInitialized;
@@ -91,6 +92,9 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     private float animDvdVz;
 
     private final NametagDisplayType createdDisplayType;
+
+    /** When true, metadata modifications accumulate without network flush until batch end. */
+    private volatile boolean deferMetadataFlush;
 
     protected PacketNameTag(@NotNull NametagRuntime runtime, @NotNull NametagPlatformBridge platform,
             @NotNull NametagMaterialBridge materials, @NotNull UUID ownerId,
@@ -392,8 +396,77 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
                 meta.setScale(new Vector3f(sc, sc, sc));
             });
         }
-        // EntityLib keeps notifyAboutChanges(false) on display meta; translation/rotation updates otherwise stay server-side only.
-        refresh();
+        flushMetadataIfNeeded();
+    }
+
+    public void setDeferMetadataFlush(final boolean deferMetadataFlush) {
+        this.deferMetadataFlush = deferMetadataFlush;
+    }
+
+    public boolean isDeferMetadataFlush() {
+        return deferMetadataFlush;
+    }
+
+    public void runWithDeferredFlush(@NotNull final Runnable action) {
+        final boolean previous = deferMetadataFlush;
+        deferMetadataFlush = true;
+        try {
+            action.run();
+        } finally {
+            deferMetadataFlush = previous;
+        }
+    }
+
+    private void flushMetadataIfNeeded() {
+        if (deferMetadataFlush) {
+            return;
+        }
+        flushAllViewers(false);
+    }
+
+    /**
+     * Pushes pending metadata to one viewer. Delta flush when {@code force} is false; full resync when true.
+     *
+     * @return {@code true} if a packet was sent
+     */
+    public boolean flushViewerMetadata(@NotNull final UUID viewerId, final boolean force) {
+        if (removed || blocked.contains(viewerId)) {
+            return false;
+        }
+
+        final User user = platform.resolveUser(viewerId);
+        if (user == null) {
+            return false;
+        }
+
+        final WrapperEntity entity = perPlayerEntity.getEntityOf(user);
+        if (entity == null || !entity.isSpawned()) {
+            return false;
+        }
+
+        if (force) {
+            entity.refresh();
+            MetadataFlushHelper.clearPending(entity.getEntityMeta().getMetadata());
+            return true;
+        }
+
+        return MetadataFlushHelper.flushPending(entity);
+    }
+
+    public void flushAllViewers(final boolean force) {
+        perPlayerEntity.getEntities().forEach((viewerId, entity) -> {
+            if (blocked.contains(viewerId)) {
+                return;
+            }
+            if (force) {
+                if (entity.isSpawned()) {
+                    entity.refresh();
+                    MetadataFlushHelper.clearPending(entity.getEntityMeta().getMetadata());
+                }
+            } else {
+                MetadataFlushHelper.flushPending(entity);
+            }
+        });
     }
 
     @Override
@@ -493,15 +566,18 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     private static final int NO_GLOW_COLOR_OVERRIDE = -1;
 
     public void clearGlow() {
+        if (!glowActiveOnEntity && lastAppliedGlowRgb == null) {
+            return;
+        }
         lastAppliedGlowRgb = null;
+        glowActiveOnEntity = false;
         modifyEntity(entity -> {
             entity.getEntityMeta().setGlowing(false);
             if (entity.getEntityMeta() instanceof AbstractDisplayMeta displayMeta) {
                 displayMeta.setGlowColorOverride(NO_GLOW_COLOR_OVERRIDE);
             }
         });
-        // notifyAboutChanges(false) on display meta — same as applyDisplayTransform().
-        refresh();
+        flushMetadataIfNeeded();
     }
 
     public void applyGlow(int rgb) {
@@ -510,21 +586,20 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             return;
         }
         lastAppliedGlowRgb = normalized;
+        glowActiveOnEntity = true;
         modifyEntity(entity -> {
             entity.getEntityMeta().setGlowing(true);
             if (entity.getEntityMeta() instanceof AbstractDisplayMeta displayMeta) {
                 displayMeta.setGlowColorOverride(normalized);
             }
         });
-        refresh();
+        flushMetadataIfNeeded();
     }
 
     public void applyGlowNow(long monotonicTick) {
         final GlowOverride glow = effectiveGlow();
         if (glow == null || !glow.isActive()) {
-            if (lastAppliedGlowRgb != null) {
-                clearGlow();
-            }
+            clearGlow();
             return;
         }
         final int interval = displayGroup.effectiveGlowTickInterval(runtime.settings());
@@ -546,9 +621,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         }
         final GlowOverride glow = effectiveGlow();
         if (glow == null || !glow.isActive()) {
-            if (lastAppliedGlowRgb != null) {
-                clearGlow();
-            }
+            clearGlow();
             return;
         }
         final int interval = displayGroup.effectiveGlowTickInterval(runtime.settings());
@@ -788,19 +861,11 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     }
 
     public void refreshForViewer(@NotNull UUID viewerId) {
-        final User user = platform.resolveUser(viewerId);
-        if (user == null) {
-            return;
-        }
+        refreshForViewer(viewerId, false);
+    }
 
-        if (blocked.contains(viewerId)) {
-            return;
-        }
-
-        final WrapperEntity entity = perPlayerEntity.getEntityOf(user);
-        if (entity != null) {
-            entity.refresh();
-        }
+    public void refreshForViewer(@NotNull UUID viewerId, final boolean force) {
+        flushViewerMetadata(viewerId, force);
     }
 
     public void hideFromViewerSilently(@NotNull UUID viewerId) {
@@ -833,13 +898,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     }
 
     public void refresh() {
-        perPlayerEntity.getEntities().forEach((u, e) -> {
-            if (blocked.contains(u)) {
-                return;
-            }
-
-            e.refresh();
-        });
+        flushAllViewers(false);
     }
 
     public void remove() {

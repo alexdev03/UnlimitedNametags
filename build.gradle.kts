@@ -2,7 +2,7 @@ import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 allprojects {
-    group = "org.alexdev"
+    group = "io.github.alexdev03"
     version = property("version") as String
 }
 
@@ -64,8 +64,15 @@ val publishableLibraryModules = mapOf(
     ":api-paper" to "unlimitednametags-api-paper",
 )
 
+val publishableLibraryDescriptions = mapOf(
+    ":common" to "Shared config, JEXL, animations, and platform bridges for UnlimitedNametags",
+    ":api" to "UUID and Adventure service interfaces for UnlimitedNametags (no Paper)",
+    ":api-paper" to "Paper/Bukkit API for UnlimitedNametags addons (UNTPaperAPI, Formatter, Player overloads)",
+)
+
 configure(publishableLibraryModules.keys.map { project(it) }) {
     apply(plugin = "maven-publish")
+    apply(plugin = "signing")
 
     extensions.configure<JavaPluginExtension>("java") {
         withJavadocJar()
@@ -82,16 +89,44 @@ configure(publishableLibraryModules.keys.map { project(it) }) {
                 from(components["java"])
                 groupId = rootProject.group.toString()
                 artifactId = publishableLibraryModules[path]!!
+                pom {
+                    name.set(publishableLibraryModules[path]!!)
+                    description.set(publishableLibraryDescriptions[path]!!)
+                    url.set("https://github.com/alexdev03/UnlimitedNametags")
+                    licenses {
+                        license {
+                            name.set("GNU General Public License v3.0")
+                            url.set("https://www.gnu.org/licenses/gpl-3.0.html")
+                        }
+                    }
+                    developers {
+                        developer {
+                            id.set("alexdev03")
+                            name.set("Alex")
+                        }
+                    }
+                    scm {
+                        connection.set("scm:git:git://github.com/alexdev03/UnlimitedNametags.git")
+                        developerConnection.set("scm:git:ssh://github.com:alexdev03/UnlimitedNametags.git")
+                        url.set("https://github.com/alexdev03/UnlimitedNametags")
+                    }
+                }
             }
         }
         repositories {
             mavenLocal()
+            val projectVersion = version.toString()
             val centralUrl = findProperty("mavenCentralUrl") as String?
+                ?: if (projectVersion.endsWith("SNAPSHOT")) {
+                    "https://central.sonatype.com/repository/maven-snapshots/"
+                } else {
+                    "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
+                }
             val centralUsername = findProperty("mavenCentralUsername") as String?
                 ?: System.getenv("MAVEN_CENTRAL_USERNAME")
             val centralPassword = findProperty("mavenCentralPassword") as String?
                 ?: System.getenv("MAVEN_CENTRAL_PASSWORD")
-            if (centralUrl != null && centralUsername != null && centralPassword != null) {
+            if (centralUsername != null && centralPassword != null) {
                 maven {
                     name = "mavenCentral"
                     url = uri(centralUrl)
@@ -102,5 +137,10 @@ configure(publishableLibraryModules.keys.map { project(it) }) {
                 }
             }
         }
+    }
+
+    extensions.configure<SigningExtension> {
+        useGpgCmd()
+        sign(extensions.getByType<PublishingExtension>().publications.getByName("maven"))
     }
 }

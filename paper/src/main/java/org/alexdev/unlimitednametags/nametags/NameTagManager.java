@@ -613,6 +613,8 @@ public class NameTagManager implements UntNametagManagerPaper {
         final GlowOverride resolved = resolveDisplayGroupGlow(owner.getUniqueId(), groupIndex, group);
         if (!java.util.Objects.equals(display.getGlowOverride(), resolved)) {
             display.setGlowOverride(resolved);
+        } else if (resolved == null) {
+            display.clearGlow();
         } else {
             display.applyGlowNow(displayAnimationMonotonicTick.get());
         }
@@ -715,18 +717,20 @@ public class NameTagManager implements UntNametagManagerPaper {
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenRun(() -> {
             final List<ResolvedDisplayRow> rows = collectResolvedRows(futures);
             final float helmetExtraOffset = plugin.getPlaceholderManager().computeHelmetExtraOffset(player);
-            for (ResolvedDisplayRow row : rows) {
-                final Component resolved = row.ownerComponent();
-                if (resolved == null) {
-                    plugin.getLogger().warning(
-                            "No nametag component for owner " + player.getName() + "; skipping display row.");
-                    finishRowCreation(player.getUniqueId());
-                    continue;
+            runDeferredDisplayBatch(rows, false, () -> {
+                for (ResolvedDisplayRow row : rows) {
+                    final Component resolved = row.ownerComponent();
+                    if (resolved == null) {
+                        plugin.getLogger().warning(
+                                "No nametag component for owner " + player.getName() + "; skipping display row.");
+                        finishRowCreation(player.getUniqueId());
+                        continue;
+                    }
+                    loadDisplay(player, row.index(), resolved, row.displayGroup(), row.display(), helmetExtraOffset);
                 }
-                loadDisplay(player, row.index(), resolved, row.displayGroup(), row.display(), helmetExtraOffset);
-            }
-            applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
-            applyPersistentGlowOverrides(player);
+                applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
+                applyPersistentGlowOverrides(player);
+            });
             final int missingRows = rowCount - rows.size();
             for (int i = 0; i < missingRows; i++) {
                 finishRowCreation(player.getUniqueId());
@@ -776,8 +780,11 @@ public class NameTagManager implements UntNametagManagerPaper {
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenRun(() -> {
             final List<ResolvedDisplayRow> rows = collectResolvedRows(futures);
             final float helmetExtraOffset = plugin.getPlaceholderManager().computeHelmetExtraOffset(player);
-            rows.forEach(row -> editDisplay(player, row.index(), row.display(), row.components(), row.displayGroup(), force, helmetExtraOffset));
-            applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
+            runDeferredDisplayBatch(rows, force, () -> {
+                rows.forEach(row -> editDisplay(player, row.index(), row.display(), row.components(),
+                        row.displayGroup(), force, helmetExtraOffset));
+                applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
+            });
         });
     }
 
@@ -843,9 +850,6 @@ public class NameTagManager implements UntNametagManagerPaper {
             if (force) {
                 packetNameTag.updateYOOffset();
             }
-            for (Player p : components.keySet()) {
-                paperRow(packetNameTag).refreshForPlayer(p);
-            }
             return;
         }
         if (force && isScalePresent()) {
@@ -865,13 +869,12 @@ public class NameTagManager implements UntNametagManagerPaper {
             if (c == null) {
                 return;
             }
-            final boolean[] updateRef = { row.text(p, c) || force };
+            row.text(p, c);
             final User user = PacketEvents.getAPI().getPlayerManager().getUser(p);
             if (user == null) {
                 return;
             }
             packetNameTag.modifyTextForViewer(user, m -> {
-
                 if (force) {
                     m.setShadow(shadowed);
                     if (!wallOpacity) {
@@ -881,23 +884,15 @@ public class NameTagManager implements UntNametagManagerPaper {
                 } else {
                     if (m.isShadow() != shadowed) {
                         m.setShadow(shadowed);
-                        updateRef[0] = true;
                     }
                     if (m.getBackgroundColor() != backgroundColor) {
                         m.setBackgroundColor(backgroundColor);
-                        updateRef[0] = true;
                     }
                     if (!wallOpacity && m.isSeeThrough() != seeThrough) {
                         m.setSeeThrough(seeThrough);
-                        updateRef[0] = true;
                     }
                 }
-
             });
-
-            if (updateRef[0]) {
-                row.refreshForPlayer(p);
-            }
         });
     }
 
@@ -940,11 +935,9 @@ public class NameTagManager implements UntNametagManagerPaper {
             if (dt == NametagDisplayType.TEXT) {
                 plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
                     display.modifyTextForOwner(meta -> meta.setText(component));
-                    display.refresh();
+                    display.flushViewerMetadata(player.getUniqueId(), false);
                 }, 1);
             }
-
-            display.refresh();
 
             handleVanish(player, display);
 
@@ -1013,6 +1006,38 @@ public class NameTagManager implements UntNametagManagerPaper {
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingInt(ResolvedDisplayRow::index))
                 .toList();
+    }
+
+    private void runDeferredDisplayBatch(@NotNull List<ResolvedDisplayRow> rows, final boolean force,
+            @NotNull Runnable action) {
+        for (final ResolvedDisplayRow row : rows) {
+            row.display().setDeferMetadataFlush(true);
+        }
+        try {
+            action.run();
+            flushDirtyForRows(rows, force);
+        } finally {
+            for (final ResolvedDisplayRow row : rows) {
+                row.display().setDeferMetadataFlush(false);
+            }
+        }
+    }
+
+    private void flushDirtyForRows(@NotNull List<ResolvedDisplayRow> rows, final boolean force) {
+        final LinkedHashSet<UUID> viewerIds = new LinkedHashSet<>();
+        for (final ResolvedDisplayRow row : rows) {
+            for (final Player viewer : row.relationalPlayers()) {
+                viewerIds.add(viewer.getUniqueId());
+            }
+        }
+        for (final ResolvedDisplayRow row : rows) {
+            final PaperNametagRow paperRow = paperRow(row.display());
+            for (final UUID viewerId : viewerIds) {
+                if (row.display().flushViewerMetadata(viewerId, force)) {
+                    paperRow.notifyRefreshedForViewer(viewerId);
+                }
+            }
+        }
     }
 
     private void applyDisplayGroupStackLayout(@NotNull Player player, @NotNull List<ResolvedDisplayRow> rows,
@@ -1548,7 +1573,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 return;
             }
 
-            row.refreshForPlayer(player);
+            row.refreshForPlayer(player, true);
         }));
     }
 
@@ -1603,23 +1628,25 @@ public class NameTagManager implements UntNametagManagerPaper {
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenRun(() -> {
             final List<ResolvedDisplayRow> rows = collectResolvedRows(futures);
             final float helmetExtraOffset = plugin.getPlaceholderManager().computeHelmetExtraOffset(player);
-            for (ResolvedDisplayRow row : rows) {
-                final Component component = row.ownerComponent();
-                if (component == null) {
-                    plugin.getLogger().warning(
-                            "No nametag component for owner " + player.getName() + "; swap skipped for one row.");
-                    continue;
+            runDeferredDisplayBatch(rows, false, () -> {
+                for (ResolvedDisplayRow row : rows) {
+                    final Component component = row.ownerComponent();
+                    if (component == null) {
+                        plugin.getLogger().warning(
+                                "No nametag component for owner " + player.getName() + "; swap skipped for one row.");
+                        continue;
+                    }
+                    loadDisplay(player, row.index(), component, row.displayGroup(), row.display(), helmetExtraOffset);
+                    if (row.displayGroup().resolvedDisplayType() == NametagDisplayType.TEXT) {
+                        row.components().forEach((p, c) -> {
+                            if (!p.equals(player) && c != null) {
+                                paperRow(row.display()).text(p, c);
+                            }
+                        });
+                    }
                 }
-                loadDisplay(player, row.index(), component, row.displayGroup(), row.display(), helmetExtraOffset);
-                if (row.displayGroup().resolvedDisplayType() == NametagDisplayType.TEXT) {
-                    row.components().forEach((p, c) -> {
-                        if (!p.equals(player) && c != null) {
-                            paperRow(row.display()).text(p, c);
-                        }
-                    });
-                }
-            }
-            applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
+                applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
+            });
         });
 
     }

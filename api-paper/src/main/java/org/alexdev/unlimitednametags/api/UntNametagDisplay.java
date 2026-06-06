@@ -13,7 +13,11 @@ import java.util.stream.Collectors;
 public interface UntNametagDisplay extends UntNametagDisplayCore {
 
     default void refreshForPlayer(@NotNull Player player) {
-        refreshForViewer(player.getUniqueId());
+        refreshForViewer(player.getUniqueId(), false);
+    }
+
+    default void refreshForPlayer(@NotNull Player player, boolean force) {
+        refreshForViewer(player.getUniqueId(), force);
     }
 
     default void showToPlayer(@NotNull Player player) {

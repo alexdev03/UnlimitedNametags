@@ -280,28 +280,28 @@ public final class UNTPaperAPI extends UNTAPI {
     public void setForcedNametag(@NotNull Player player, @NotNull Component component) {
         nametagManagerPaper().getPacketDisplayText(player).stream().findFirst().ifPresent(packetNameTag -> {
             packetNameTag.setForcedNameTag(component);
-            packetNameTag.refresh();
+            packetNameTag.refreshAllViewers(true);
         });
     }
 
     public void setForcedNametag(@NotNull Player player, @NotNull Player viewer, @NotNull Component component) {
         nametagManagerPaper().getPacketDisplayText(player).stream().findFirst().ifPresent(packetNameTag -> {
             packetNameTag.setForcedNameTag(viewer.getUniqueId(), component);
-            packetNameTag.refreshForPlayer(viewer);
+            packetNameTag.refreshForPlayer(viewer, true);
         });
     }
 
     public void clearForcedNametag(@NotNull Player player) {
         nametagManagerPaper().getPacketDisplayText(player).stream().findFirst().ifPresent(packetNameTag -> {
             packetNameTag.clearForcedNameTag();
-            packetNameTag.refresh();
+            packetNameTag.refreshAllViewers(true);
         });
     }
 
     public void clearForcedNametag(@NotNull Player player, @NotNull Player viewer) {
         nametagManagerPaper().getPacketDisplayText(player).stream().findFirst().ifPresent(packetNameTag -> {
             packetNameTag.clearForcedNameTag(viewer.getUniqueId());
-            packetNameTag.refreshForPlayer(viewer);
+            packetNameTag.refreshForPlayer(viewer, true);
         });
     }
 }

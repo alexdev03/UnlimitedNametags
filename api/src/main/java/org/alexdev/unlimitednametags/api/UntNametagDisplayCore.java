@@ -18,6 +18,9 @@ public interface UntNametagDisplayCore {
 
     void refresh();
 
+    /** Flushes metadata to every current viewer; full resync when {@code force} is true. */
+    void refreshAllViewers(boolean force);
+
     void setForcedNameTag(@NotNull Component component);
 
     void setForcedNameTag(@NotNull UUID viewerId, @NotNull Component component);
@@ -27,6 +30,8 @@ public interface UntNametagDisplayCore {
     void clearForcedNameTag(@NotNull UUID viewerId);
 
     void refreshForViewer(@NotNull UUID viewerId);
+
+    void refreshForViewer(@NotNull UUID viewerId, boolean force);
 
     void showToViewer(@NotNull UUID viewerId);
 

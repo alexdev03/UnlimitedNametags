@@ -17,6 +17,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Paper/Bukkit-facing {@link PacketNameTag} with {@link Player} convenience methods and public API interfaces.
@@ -124,9 +125,36 @@ public interface PaperNametagRow extends UntNametagDisplay, NametagAnimationTarg
     }
 
     @Override
-    default void refreshForPlayer(@NotNull Player player) {
-        packet().refreshForViewer(player.getUniqueId());
+    default void refreshForViewer(@NotNull UUID viewerId) {
+        refreshForViewer(viewerId, false);
+    }
+
+    @Override
+    default void refreshForViewer(@NotNull UUID viewerId, final boolean force) {
+        if (packet().flushViewerMetadata(viewerId, force)) {
+            notifyRefreshedForViewer(viewerId);
+        }
+    }
+
+    default void notifyRefreshedForViewer(@NotNull UUID viewerId) {
+        final Player viewer = getPlugin().getPlayerListener().getPlayer(viewerId);
+        if (viewer == null) {
+            return;
+        }
+        notifyRefreshedForPlayer(viewer);
+    }
+
+    default void notifyRefreshedForPlayer(@NotNull Player player) {
         fireLifecycleEvent(new PlayerNametagRefreshEvent(getOwner(), player, this, !getPlugin().getServer().isPrimaryThread()));
+    }
+
+    default void refreshForPlayer(@NotNull Player player, final boolean force) {
+        refreshForViewer(player.getUniqueId(), force);
+    }
+
+    @Override
+    default void refreshAllViewers(final boolean force) {
+        packet().flushAllViewers(force);
     }
 
 
