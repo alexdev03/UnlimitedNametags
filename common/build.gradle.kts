@@ -3,17 +3,12 @@ plugins {
 }
 
 dependencies {
-    // implementation: Shadow minimize() strips unused EntityLib classes (api-scoped deps are never minimized)
+    // implementation: shaded into the plugin JAR (relocated by :paper shadowJar)
     implementation(libs.entityLib) {
         exclude(group = "com.github.retrooper", module = "packetevents-spigot")
         exclude(group = "com.github.retrooper", module = "packetevents-api")
     }
-    // Settings/DisplayGroup expose AbstractDisplayMeta to dependents of :common / :api
-    compileOnlyApi(libs.entityLib) {
-        exclude(group = "com.github.retrooper", module = "packetevents-spigot")
-        exclude(group = "com.github.retrooper", module = "packetevents-api")
-    }
-    compileOnlyApi(libs.packeteventsSpigot)
+    compileOnly(libs.packeteventsSpigot)
     api(libs.adventureApi)
     compileOnly("net.kyori:adventure-text-minimessage:${libs.versions.adventureApiVersion.get()}")
     // implementation so Shadow can minimize ConfigLib + snakeyaml-engine (api deps are kept whole)

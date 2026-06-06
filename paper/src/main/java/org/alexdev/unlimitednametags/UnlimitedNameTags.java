@@ -180,7 +180,7 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
         }
 
         final int major = Integer.parseInt(split[1]);
-        final int minor = Integer.parseInt(split[2]);
+        final int minor = split.length >= 3 ? Integer.parseInt(split[2]) : 0;
 
         if (major < 20) {
             return false;

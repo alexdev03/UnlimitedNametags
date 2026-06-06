@@ -5,7 +5,7 @@ plugins {
 dependencies {
     api(project(":api"))
     compileOnly(libs.paperApi)
-    compileOnlyApi(libs.entityLib) {
+    compileOnly(libs.entityLib) {
         exclude(group = "com.github.retrooper", module = "packetevents-spigot")
         exclude(group = "com.github.retrooper", module = "packetevents-api")
     }

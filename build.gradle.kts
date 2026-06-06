@@ -1,3 +1,4 @@
+import groovy.util.Node
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
@@ -109,6 +110,20 @@ configure(publishableLibraryModules.keys.map { project(it) }) {
                         connection.set("scm:git:git://github.com/alexdev03/UnlimitedNametags.git")
                         developerConnection.set("scm:git:ssh://github.com:alexdev03/UnlimitedNametags.git")
                         url.set("https://github.com/alexdev03/UnlimitedNametags")
+                    }
+                    withXml {
+                        @Suppress("UNCHECKED_CAST")
+                        val dependencies = (asNode().get("dependencies") as? groovy.util.NodeList)
+                            ?.firstOrNull() as? Node ?: return@withXml
+                        dependencies.children().toList().forEach { dependency ->
+                            if (dependency !is Node) return@forEach
+                            @Suppress("UNCHECKED_CAST")
+                            val version = (dependency.get("version") as? groovy.util.NodeList)
+                                ?.firstOrNull() as? Node
+                            if (version?.text()?.contains("SNAPSHOT") == true) {
+                                dependencies.remove(dependency)
+                            }
+                        }
                     }
                 }
             }

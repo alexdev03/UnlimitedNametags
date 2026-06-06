@@ -25,6 +25,10 @@ dependencies {
     compileOnly(libs.commonsLang)
     compileOnly(libs.configlib)
     compileOnly(libs.configlibPaper)
+    compileOnly(libs.entityLib) {
+        exclude(group = "com.github.retrooper", module = "packetevents-spigot")
+        exclude(group = "com.github.retrooper", module = "packetevents-api")
+    }
     compileOnly(libs.packeteventsSpigot)
     compileOnly(libs.viaVersionApi)
     compileOnly(libs.bstatsBukkit)

@@ -5,8 +5,8 @@ plugins {
 dependencies {
     api(project(":common"))
 
-    // Types appear in public API signatures; compileOnlyApi publishes them for Maven consumers (like EntityLib)
-    compileOnlyApi(libs.entityLib) {
+    // compileOnly: EntityLib is SNAPSHOT — addons declare it themselves; not published on Central POM
+    compileOnly(libs.entityLib) {
         exclude(group = "com.github.retrooper", module = "packetevents-spigot")
         exclude(group = "com.github.retrooper", module = "packetevents-api")
     }

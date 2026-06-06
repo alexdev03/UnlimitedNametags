@@ -1,134 +1,70 @@
 <div align="center">
 
-# **UnlimitedNameTags**
+# UnlimitedNameTags
 
-*Custom stacked name tags — text, items, and blocks — with placeholders, animations, and a clean API.*
-
-<br>
+Custom stacked nametags for Paper servers: text, item, and block display rows with placeholders, animations, visibility rules, and a developer API.
 
 [![GitHub Release](https://img.shields.io/github/release/alexdev03/unlimitednametags.svg)](https://github.com/alexdev03/UnlimitedNameTags/releases)
 [![CodeFactor](https://www.codefactor.io/repository/github/alexdev03/unlimitednametags/badge)](https://www.codefactor.io/repository/github/alexdev03/unlimitednametags)
-
-<br>
-
-[![SpigotMC](https://img.shields.io/badge/SpigotMC-117526-blue?style=for-the-badge)](https://www.spigotmc.org/resources/unlimitednametags.117526/)
 [![BuiltByBit](https://img.shields.io/badge/BuiltByBit-resource-lightblue?style=for-the-badge)](https://builtbybit.com/resources/unlimitednametags.46172/)
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/W4Fu8fqCKs)
 
-<br>
-
-<img alt="Unlimited Name Tags in action" src="https://i.imgur.com/w7zlGaO.gif" width="640">
+<img alt="UnlimitedNameTags in action" src="https://i.imgur.com/w7zlGaO.gif" width="640">
 
 </div>
 
----
+## Requirements
 
-## Contents
-
-| | |
-|:---|:---|
-| [Overview](#overview) | What it is and what you need |
-| [Features](#features) | Behaviour and config highlights |
-| [Build & API](#build--api) | Gradle modules and developer jar |
-| [Getting started](#getting-started) | Install, deps, first config |
-| [Commands](#commands) | Slash commands |
-| [Permissions](#permissions) | Defaults |
-| [Integrations](#integrations) | Plugins and platforms |
-| [Supported versions](#supported-versions) | Server & client notes |
-| [Support](#support) | Discord |
-
----
-
-## Overview
-
-**UnlimitedNameTags** is a **Paper-first** plugin (**1.20.1+**; Spigot **1.20.2+** also supported) that replaces vanilla name tags with **display entities** mounted on the player. Tags move smoothly with the player (client-side interpolation, not per-tick teleports).
-
-Each player can have several **stacked rows** (`displayGroups`): **TEXT**, **ITEM**, or **BLOCK**, each with its own scale, vertical offset, optional billboard, optional **`when`** (JEXL + PlaceholderAPI), and optional **animation**. TEXT rows can also contain multiple structured `lines`, each with its own optional `when`, while still using one text display entity.
-
-> **Upgrading to 3.x?** See **[CHANGELOG.md](CHANGELOG.md)** for breaking changes (`displayGroups`, structured `lines`, removal of `modifiers`, API return types, etc.).
-
----
+- Paper 1.21.4+ or a compatible Paper fork such as Purpur or Folia.
+- PacketEvents installed on the server.
+- Spigot and other non-Paper servers are not supported.
 
 ## Features
 
-### Core
+- Multiple stacked `displayGroups` per player.
+- TEXT rows with structured lines and optional per-line `when` conditions.
+- ITEM and BLOCK rows with configurable material, scale, offset, billboard, glow, and animations.
+- PlaceholderAPI, MiniPlaceholders, vanish integrations, Geyser support notes, and hook support for common cosmetic plugins.
+- Config migration through `configVersion` and `SettingsYamlMigrator`.
 
-| | |
-|:---|:---|
-| **Placeholders** | [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI); relational placeholders optional |
-| **Vanish** | Hides tags for vanished players when your vanish plugin integrates |
-| **Formatters** | MiniMessage, MineDown, Legacy, or Universal (see config comments) |
-| **Own nametag** | Optional “see your own tag” (Lunar-style) |
-| **Sneak** | Configurable text opacity while crouching |
+## Install
 
-### Display rows (`displayGroups`)
+1. Put PacketEvents and `UnlimitedNametags.jar` in `plugins/`.
+2. Restart the server.
+3. Edit `plugins/UnlimitedNameTags/settings.yml`.
 
-| | |
-|:---|:---|
-| **TEXT** | Multi-line Adventure components; each `lines` entry has `text` and optional `when` |
-| **ITEM** | `itemMaterial`, `itemDisplayMode`; **`lines` not used** — set material only |
-| **BLOCK** | `blockMaterial`; same as item — no text lines |
-| **Billboard** | Per-row **`billboard`** or global **`defaultBillboard`** (`CENTER`, `HORIZONTAL`, `VERTICAL`, `FIXED`) |
-| **Animations** | `rotate`, `bob`, `dvd_bounce`, `pulse_scale`, `wiggle`, `orbit`, plus **`custom`** via API; **`animationInterval`** / **`displayAnimationInterval`** / **`taskInterval`** control tick rate |
-| **Visibility** | Group-level **`when:`** plus optional per-line **`when:`** for TEXT rows (no `modifiers`) |
-
-### Config quality-of-life
-
-| | |
-|:---|:---|
-| **Optional `background`** | Omit the key for a transparent default; redundant “disabled integer RGB 0” blocks are normalized away |
-| **Through-wall hint** *(optional)* | **`obscuredNametagThroughWalls`**: if a viewer has **no clear line of sight** to the player but is within range, the **text** row can appear **dimmer** so names behind walls are still noticeable. Tune **`obscuredNametagOpacity`**, **`obscuredNametagMaxDistance`**, **`obscuredNametagCheckInterval`**. *(TEXT only; sync task — uses `hasLineOfSight`.)* |
-| **Migration** | `configVersion` + **`SettingsYamlMigrator`** (backup, v1 → v2 → v3, YAML cleanup) |
-
-### Bedrock
-
-Limited support via **Geyser** (text displays may fall back to armor stands on the client).
-
----
-
-## Build & API
-
-| Module | Role |
-|:---|:---|
-| **`common`** | Shared internals |
-| **`api`** | `UNTAPI` (abstract), `Settings`, `UntNametagDisplayCore`, animations |
-| **`api-paper`** | `UNTPaperAPI`, `UntNametagDisplay`, `Formatter` — Paper/`Player` integrations |
-| **`paper`** | Runnable plugin + shadow jar |
-
-**Build the server jar**
+## Build
 
 ```bash
 ./gradlew :paper:shadowJar
 ```
 
-On Windows: `gradlew.bat :paper:shadowJar`
+On Windows:
 
-**Output:** `target/UnlimitedNametags.jar`
+```bat
+gradlew.bat :paper:shadowJar
+```
 
-**Addon dependencies** (compile-only; match your server plugin version):
+The server jar is written to `target/UnlimitedNametags.jar`.
+
+## API
+
+Use the artifact that matches the API surface you need:
 
 ```kotlin
 dependencies {
-    // Paper/Bukkit addons (Player, UNTPaperAPI, Formatter)
-    compileOnly("org.alexdev:unlimitednametags-api-paper:2.0.0")
-    // UUID-only / headless integrations
-    // compileOnly("org.alexdev:unlimitednametags-api:2.0.0")
+    compileOnly("io.github.alexdev03:unlimitednametags-api-paper:2.0.0")
+    // compileOnly("io.github.alexdev03:unlimitednametags-api:2.0.0")
 }
 ```
 
-`NametagAnimationTarget` (custom animation pose API) is in **`api-paper`**; register handlers via **`UNTPaperAPI`**.
+- `api-paper`: Paper/Bukkit types, `UNTPaperAPI`, `Player` overloads, `Formatter`.
+- `api`: UUID and Adventure-only interfaces.
+- `common`: shared config and value types used by the API.
 
-Maven Central / publishing: **[MAVEN_CENTRAL_PUBLISHING.md](MAVEN_CENTRAL_PUBLISHING.md)**.
+Publishing notes are in [MAVEN_CENTRAL_PUBLISHING.md](MAVEN_CENTRAL_PUBLISHING.md). Breaking changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
----
-
-## Getting started
-
-1. Install **[PacketEvents](https://modrinth.com/plugin/packetevents)** and **UnlimitedNameTags** in `plugins/`.
-2. Restart the server.
-3. Edit **`plugins/UnlimitedNameTags/settings.yml`** (generated on first run).
-
-### Example — conditional text lines
+## Minimal Config Example
 
 ```yaml
 displayGroups:
@@ -136,103 +72,10 @@ displayGroups:
       - text: "%luckperms_prefix%%player_name%"
       - text: "&a%player_ping%ms"
         when: "%player_ping% < 70"
-      - text: "&6%player_ping%ms"
-        when: "%player_ping% >= 70"
     scale: 1.0
     yOffset: 1.0
 ```
 
-### Example — item row + animation
-
-```yaml
-displayGroups:
-  - displayType: ITEM
-    itemMaterial: DIAMOND
-    scale: 1.0
-    yOffset: 0.2
-    animationInterval: 2
-    animation:
-      type: rotate
-      axis: Y
-      degreesPerSecond: 120
-      speed: 1.0
-      customProperties:
-        example_key: example_value
-```
-
-### Example — optional through-wall dimming (TEXT)
-
-```yaml
-obscuredNametagThroughWalls: true
-obscuredNametagOpacity: 55
-obscuredNametagMaxDistance: 48
-obscuredNametagCheckInterval: 5
-```
-
-### Custom animations (API)
-
-- YAML: `animation.type: custom` + `id: your_key`
-- Register: `UNTPaperAPI.registerNametagCustomAnimation(...)` and drive pose with **`NametagAnimationTarget`** (`api-paper`).
-
----
-
-## Commands
-
-| Command | Permission | Description |
-|:---|:---|:---|
-| `/unt` | — | Version and help |
-| `/unt reload` | `unt.reload` | Reload configs |
-| `/unt debug` | `unt.debug` | Debug snapshot |
-| `/unt debugger <true/false>` | `unt.debug` | Toggle debug logging |
-| `/unt show <player>` | `unt.show` | Show that player’s nametag |
-| `/unt hide <player>` | `unt.hide` | Hide that player’s nametag |
-| `/unt refresh <player>` | `unt.refresh` | Re-apply nametag for all viewers |
-| `/unt billboard <type>` | `unt.billboard` | Set **default** billboard |
-| `/unt formatter <formatter>` | `unt.formatter` | Set text formatter |
-| `/unt hideOtherNametags [-h]` | `unt.hideOtherNametags` | Hide others’ tags for you |
-| `/unt showOtherNametags [-h]` | `unt.showOtherNametags` | Show others’ tags again |
-
----
-
-## Permissions
-
-| Permission | Default | Effect |
-|:---|:---:|:---|
-| `unt.shownametags` | **true** | See other players’ nametags |
-| `unt.showownnametag` | **true** | See your own nametag (when enabled in config) |
-
----
-
-## Integrations
-
-- **PlaceholderAPI** — dynamic and relational placeholders  
-- **Vanish plugins** — hide tags when appropriate  
-- **TypeWriter** — cinematic / cutscene hooks  
-- **Nexo / Oraxen** — helmet / model compatibility  
-- **MiniPlaceholders** — when using MiniMessage  
-- **Custom plugins** — via **`api-paper`** (`UNTPaperAPI`) or **`api`** (UUID/`UNTAPI`)
-
----
-
-## Supported versions
-
-| Platform | Notes |
-|:---|:---|
-| **Paper** | **1.20.1+** — **recommended** |
-| **Spigot** | **1.20.2+** — supported; not all builds tested |
-
-**Clients:** **ViaBackwards** users may not see display-based nametags correctly. Prefer matching or close server/client versions. *(Some setups use ViaVersion + ViaBackwards with a supported server — YMMV.)*
-
----
-
 ## Support
 
-Questions or issues: **[Discord](https://discord.gg/W4Fu8fqCKs)** — use **#chat** for general talk; open a ticket for licensed support where applicable.
-
----
-
-<div align="center">
-
-**UnlimitedNameTags** — stacked, animated, API-friendly nametags.
-
-</div>
+Use [Discord](https://discord.gg/W4Fu8fqCKs) for questions and support.
