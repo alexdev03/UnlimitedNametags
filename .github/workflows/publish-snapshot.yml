@@ -1,0 +1,46 @@
+name: Publish SNAPSHOT
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: publish-snapshot
+  cancel-in-progress: true
+
+env:
+  SNAPSHOT_VERSION: "2.0.1-SNAPSHOT"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Import GPG key
+        run: echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Publish SNAPSHOT artifacts
+        run: >
+          ./gradlew :common:publish :api:publish :api-paper:publish
+          -Pversion=${{ env.SNAPSHOT_VERSION }}
+          --no-daemon
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signing_gnupg_keyName: ${{ secrets.GPG_KEY_ID }}
+          ORG_GRADLE_PROJECT_signing_gnupg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
