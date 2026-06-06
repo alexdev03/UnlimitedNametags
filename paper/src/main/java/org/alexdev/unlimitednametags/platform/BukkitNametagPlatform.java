@@ -101,12 +101,9 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
 
     @Override
     public boolean isEligibleToShow(@NotNull UUID owner, @NotNull UUID viewerId, boolean visible, boolean viewerAlreadySeeing) {
-        if (!visible) {
-            return false;
-        }
         final Player viewer = plugin.getPlayerListener().getPlayer(viewerId);
         final Player ownerPlayer = plugin.getPlayerListener().getPlayer(owner);
-        if (viewer == null || ownerPlayer == null) {
+        if (!visible || viewer == null || ownerPlayer == null) {
             return false;
         }
         if (!viewerSupportsTextDisplay(viewerId)) {
@@ -121,6 +118,7 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
         if (resolveUser(viewerId) == null || resolveUser(owner) == null) {
             return false;
         }
+
         final boolean isOwnerViewer = viewerId.equals(owner);
         if (!isOwnerViewer && !viewer.hasPermission("unt.shownametags")) {
             return false;
@@ -141,6 +139,7 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
         if (isOwnerViewer && plugin.getNametagManager().isEffectiveShowOwnNametag(ownerPlayer)) {
             return true;
         }
+
         return !viewerAlreadySeeing;
     }
 

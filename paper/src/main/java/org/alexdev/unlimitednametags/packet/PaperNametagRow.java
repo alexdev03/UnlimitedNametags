@@ -5,9 +5,16 @@ import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.api.NametagAnimationTarget;
 import org.alexdev.unlimitednametags.api.UntNametagDisplay;
+import org.alexdev.unlimitednametags.api.event.PlayerNametagHideEvent;
+import org.alexdev.unlimitednametags.api.event.PlayerNametagLifecycleEvent;
+import org.alexdev.unlimitednametags.api.event.PlayerNametagRefreshEvent;
+import org.alexdev.unlimitednametags.api.event.PlayerNametagShowEvent;
+import org.alexdev.unlimitednametags.api.event.PlayerNametagVisibilityEvent;
 import org.bukkit.Color;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Set;
 
 /**
  * Paper/Bukkit-facing {@link PacketNameTag} with {@link Player} convenience methods and public API interfaces.
@@ -34,6 +41,33 @@ public interface PaperNametagRow extends UntNametagDisplay, NametagAnimationTarg
 
     default void setBackgroundColor(@NotNull Color color) {
         packet().setBackgroundColor(color.asARGB());
+    }
+
+    @Override
+    default void hideFromPlayer(@NotNull Player player) {
+        final boolean visible = fireVisibilityEvent(getOwner(), player, false, canPlayerSee(player));
+        if (visible) {
+            return;
+        }
+        packet().hideFromViewer(player.getUniqueId());
+        fireLifecycleEvent(new PlayerNametagHideEvent(getOwner(), player, this, !getPlugin().getServer().isPrimaryThread()));
+    }
+
+    @Override
+    default void showToPlayer(@NotNull Player player) {
+        final boolean visible = fireVisibilityEvent(getOwner(), player, true, canPlayerSee(player));
+        if (!visible) {
+            return;
+        }
+        packet().showToViewer(player.getUniqueId());
+        fireLifecycleEvent(new PlayerNametagShowEvent(getOwner(), player, this, !getPlugin().getServer().isPrimaryThread()));
+    }
+
+    @Override
+    default void showToPlayers(@NotNull Set<Player> players) {
+        for (Player player : players) {
+            showToPlayer(player);
+        }
     }
 
     default void hideFromPlayerSilently(@NotNull Player player) {
@@ -73,5 +107,33 @@ public interface PaperNametagRow extends UntNametagDisplay, NametagAnimationTarg
     @Override
     default void clearLocalPose() {
         packet().clearAnimationPose();
+    }
+
+    @Override
+    default void refreshForPlayer(@NotNull Player player) {
+        packet().refreshForViewer(player.getUniqueId());
+        fireLifecycleEvent(new PlayerNametagRefreshEvent(getOwner(), player, this, !getPlugin().getServer().isPrimaryThread()));
+    }
+
+
+    private void fireLifecycleEvent(@NotNull PlayerNametagLifecycleEvent event) {
+        getPlugin().getServer().getPluginManager().callEvent(event);
+    }
+
+    private boolean fireVisibilityEvent(
+            @NotNull Player owner,
+            @NotNull Player viewer,
+            boolean shouldBeVisible,
+            boolean viewerAlreadySeeing
+    ) {
+        final PlayerNametagVisibilityEvent event = new PlayerNametagVisibilityEvent(
+                owner,
+                viewer,
+                shouldBeVisible,
+                viewerAlreadySeeing,
+                !getPlugin().getServer().isPrimaryThread()
+        );
+        getPlugin().getServer().getPluginManager().callEvent(event);
+        return event.isVisible();
     }
 }
