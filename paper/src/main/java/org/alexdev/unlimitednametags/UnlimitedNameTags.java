@@ -11,11 +11,14 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.alexdev.unlimitednametags.api.NametagCustomAnimationHandler;
+import org.alexdev.unlimitednametags.api.NametagCustomGlowHandler;
 import org.alexdev.unlimitednametags.api.UNTPaperAPI;
 import org.alexdev.unlimitednametags.api.UnlimitedNameTagsInstancePaper;
 import org.alexdev.unlimitednametags.commands.UntBrigadierCommands;
 import org.alexdev.unlimitednametags.config.ConfigManager;
 import org.alexdev.unlimitednametags.config.Formatter;
+import org.alexdev.unlimitednametags.config.GlowOverride;
+import org.alexdev.unlimitednametags.glow.DefaultNametagGlowRegistrations;
 import org.alexdev.unlimitednametags.hook.*;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.alexdev.unlimitednametags.listeners.*;
@@ -37,10 +40,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -64,7 +70,11 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
     private final NametagRuntime nametagRuntime = new BukkitNametagRuntime(this);
     private NametagMaterialBridge nametagMaterialBridge;
 
-    private final ConcurrentHashMap<String, NametagCustomAnimationHandler> nametagCustomAnimations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, NametagCustomAnimationHandler> nametagCustomAnimations =
+            new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, GlowOverride> nametagGlowAnimations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, NametagCustomGlowHandler> nametagCustomGlowHandlers =
+            new ConcurrentHashMap<>();
 
     @Override
     public void onLoad() {
@@ -100,6 +110,7 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
         loadHooks();
         loadStats();
 
+        DefaultNametagGlowRegistrations.register(this);
         UNTPaperAPI.register(this);
         getLogger().info("API registered");
         getLogger().info("UnlimitedNameTags has been enabled!");
@@ -317,6 +328,75 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
     }
 
     @Override
+    public void registerNametagGlowAnimation(@NotNull final String id, @NotNull final GlowOverride glow) {
+        Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(glow, "glow");
+        final String key = id.trim();
+        if (key.isEmpty()) {
+            throw new IllegalArgumentException("id cannot be blank");
+        }
+        if (glow instanceof GlowOverride.ReferenceGlowOverride) {
+            throw new IllegalArgumentException("registered glow presets cannot be type reference");
+        }
+        nametagGlowAnimations.put(key, glow);
+    }
+
+    @Override
+    public boolean unregisterNametagGlowAnimation(@NotNull final String id) {
+        return nametagGlowAnimations.remove(id.trim()) != null;
+    }
+
+    @Override
+    public @Nullable GlowOverride getNametagGlowAnimation(@NotNull final String id) {
+        return nametagGlowAnimations.get(id.trim());
+    }
+
+    @Override
+    @NotNull
+    public Set<String> getNametagGlowAnimationIds() {
+        return Collections.unmodifiableSet(nametagGlowAnimations.keySet());
+    }
+
+    @Override
+    public void registerNametagCustomGlowHandler(@NotNull final String id, @NotNull final NametagCustomGlowHandler handler) {
+        Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(handler, "handler");
+        final String key = id.trim();
+        if (key.isEmpty()) {
+            throw new IllegalArgumentException("id cannot be blank");
+        }
+        nametagCustomGlowHandlers.put(key, handler);
+    }
+
+    @Override
+    public boolean unregisterNametagCustomGlowHandler(@NotNull final String id) {
+        return nametagCustomGlowHandlers.remove(id.trim()) != null;
+    }
+
+    @Override
+    public @Nullable NametagCustomGlowHandler getNametagCustomGlowHandler(@NotNull final String id) {
+        return nametagCustomGlowHandlers.get(id.trim());
+    }
+
+    @Override
+    @NotNull
+    public Set<String> getNametagCustomGlowHandlerIds() {
+        return Collections.unmodifiableSet(nametagCustomGlowHandlers.keySet());
+    }
+
+    @Override
+    @NotNull
+    public Set<String> getKnownGlowAnimationIds() {
+        final Set<String> ids = new LinkedHashSet<>(configManager.getSettings().getGlowAnimations().keySet());
+        ids.addAll(nametagGlowAnimations.keySet());
+        return Set.copyOf(ids);
+    }
+
+    public boolean isKnownGlowAnimationId(@NotNull final String id) {
+        return getKnownGlowAnimationIds().contains(id.trim());
+    }
+
+    @Override
     public @NotNull Component formatTextForNametag(@NotNull Audience audience, @NotNull String text) {
         if (audience instanceof CommandSender sender) {
             return formatTextForNametag(sender, text);
@@ -338,6 +418,8 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
     public void onDisable() {
         UNTPaperAPI.unregister();
         nametagCustomAnimations.clear();
+        nametagGlowAnimations.clear();
+        nametagCustomGlowHandlers.clear();
 
         if (hooks != null) {
             hooks.values().forEach(Hook::onDisable);

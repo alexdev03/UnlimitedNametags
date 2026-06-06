@@ -1,7 +1,10 @@
 package org.alexdev.unlimitednametags.api;
 
+import org.alexdev.unlimitednametags.config.DisplayAnimation;
+import org.alexdev.unlimitednametags.config.GlowOverride;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -98,7 +101,24 @@ public interface UntNametagManager {
 
     void setNametagOverride(@NotNull UUID playerId, @NotNull Settings.NameTag nameTag);
 
+    void setNametagOverride(@NotNull UUID playerId, @NotNull Settings.NameTag nameTag, boolean persist);
+
     void removeNametagOverride(@NotNull UUID playerId);
+
+    void removeNametagOverride(@NotNull UUID playerId, boolean persist);
+
+    void setDisplayGroupGlow(@NotNull UUID playerId, int groupIndex, @Nullable GlowOverride glow, boolean persist);
+
+    void clearDisplayGroupGlow(@NotNull UUID playerId, int groupIndex, boolean persist);
+
+    @NotNull
+    Optional<GlowOverride> getDisplayGroupGlowOverride(@NotNull UUID playerId, int groupIndex);
+
+    void setNametagDisplayGroupAnimation(
+            @NotNull UUID playerId,
+            int displayGroupIndex,
+            @Nullable DisplayAnimation animation,
+            boolean persist);
 
     void setShiftSystemBlocked(@NotNull UUID playerId, boolean blocked);
 

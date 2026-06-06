@@ -1,6 +1,10 @@
 package org.alexdev.unlimitednametags.api;
 
+import org.alexdev.unlimitednametags.config.DisplayAnimation;
+import org.alexdev.unlimitednametags.config.GlowOverride;
+import org.alexdev.unlimitednametags.config.NametagGlowOverrides;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.jetbrains.annotations.Nullable;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.alexdev.unlimitednametags.vanish.VanishIntegration;
 import org.jetbrains.annotations.ApiStatus;
@@ -97,7 +101,11 @@ public abstract class UNTAPI {
     }
 
     public void setNametagOverride(@NotNull UUID playerId, @NotNull Settings.NameTag nameTag) {
-        plugin.getNametagManager().setNametagOverride(playerId, nameTag);
+        setNametagOverride(playerId, nameTag, false);
+    }
+
+    public void setNametagOverride(@NotNull UUID playerId, @NotNull Settings.NameTag nameTag, boolean persist) {
+        plugin.getNametagManager().setNametagOverride(playerId, nameTag, persist);
     }
 
     public void modifyNametagProperty(
@@ -108,7 +116,63 @@ public abstract class UNTAPI {
     }
 
     public void removeNametagOverride(@NotNull UUID playerId) {
-        plugin.getNametagManager().removeNametagOverride(playerId);
+        removeNametagOverride(playerId, false);
+    }
+
+    public void removeNametagOverride(@NotNull UUID playerId, boolean persist) {
+        plugin.getNametagManager().removeNametagOverride(playerId, persist);
+    }
+
+    public void setDisplayGroupGlow(@NotNull UUID playerId, int groupIndex, @NotNull GlowOverride glow) {
+        setDisplayGroupGlow(playerId, groupIndex, glow, false);
+    }
+
+    public void setDisplayGroupGlow(
+            @NotNull UUID playerId,
+            int groupIndex,
+            @NotNull GlowOverride glow,
+            boolean persist) {
+        plugin.getNametagManager().setDisplayGroupGlow(playerId, groupIndex, glow, persist);
+    }
+
+    public void setDisplayGroupFixedGlow(@NotNull UUID playerId, int groupIndex, @NotNull String color) {
+        setDisplayGroupGlow(playerId, groupIndex, NametagGlowOverrides.fixed(color), false);
+    }
+
+    public void setDisplayGroupFixedGlow(
+            @NotNull UUID playerId,
+            int groupIndex,
+            @NotNull String color,
+            boolean persist) {
+        setDisplayGroupGlow(playerId, groupIndex, NametagGlowOverrides.fixed(color), persist);
+    }
+
+    public void clearDisplayGroupGlow(@NotNull UUID playerId, int groupIndex) {
+        clearDisplayGroupGlow(playerId, groupIndex, false);
+    }
+
+    public void clearDisplayGroupGlow(@NotNull UUID playerId, int groupIndex, boolean persist) {
+        plugin.getNametagManager().clearDisplayGroupGlow(playerId, groupIndex, persist);
+    }
+
+    @NotNull
+    public Optional<GlowOverride> getDisplayGroupGlowOverride(@NotNull UUID playerId, int groupIndex) {
+        return plugin.getNametagManager().getDisplayGroupGlowOverride(playerId, groupIndex);
+    }
+
+    public void setNametagDisplayGroupAnimation(
+            @NotNull UUID playerId,
+            int displayGroupIndex,
+            @Nullable DisplayAnimation animation) {
+        setNametagDisplayGroupAnimation(playerId, displayGroupIndex, animation, false);
+    }
+
+    public void setNametagDisplayGroupAnimation(
+            @NotNull UUID playerId,
+            int displayGroupIndex,
+            @Nullable DisplayAnimation animation,
+            boolean persist) {
+        plugin.getNametagManager().setNametagDisplayGroupAnimation(playerId, displayGroupIndex, animation, persist);
     }
 
     public boolean hasNametagOverride(@NotNull UUID playerId) {

@@ -16,8 +16,12 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.api.UntNametagDisplay;
 import org.alexdev.unlimitednametags.api.UntNametagDisplayCore;
 import org.alexdev.unlimitednametags.api.UntNametagManagerPaper;
+import org.alexdev.unlimitednametags.config.DisplayAnimation;
+import org.alexdev.unlimitednametags.config.GlowOverride;
 import org.alexdev.unlimitednametags.config.NametagDisplayType;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.alexdev.unlimitednametags.data.NametagPlayerGlowStorage;
+import org.alexdev.unlimitednametags.data.NametagPlayerOverrideStorage;
 import org.alexdev.unlimitednametags.data.NametagPlayerPreferences;
 import org.alexdev.unlimitednametags.hook.HMCCosmeticsHook;
 import org.alexdev.unlimitednametags.hook.ViaVersionHook;
@@ -32,6 +36,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -60,7 +65,13 @@ public class NameTagManager implements UntNametagManagerPaper {
     /** Owners who hide their nametag from all other viewers. */
     private final Set<UUID> hideOwnFromOthers;
     private final NametagPlayerPreferences playerPreferences;
+    private final NametagPlayerGlowStorage glowStorage;
+    private final NametagPlayerOverrideStorage overrideStorage;
     private final Map<UUID, Settings.NameTag> nameTagOverrides;
+    private final Map<UUID, Map<Integer, GlowOverride>> sessionGlowOverrides;
+    private final Map<UUID, Map<Integer, GlowOverride>> persistentGlowOverrides;
+    private final Map<UUID, Map<Integer, DisplayAnimation>> sessionDisplayAnimations;
+    private final Map<UUID, Map<Integer, DisplayAnimation>> persistentDisplayAnimations;
     private final Map<UUID, Boolean> shiftSystemBlocked;
     private final List<MyScheduledTask> tasks;
     private final AtomicLong displayAnimationMonotonicTick = new AtomicLong();
@@ -89,7 +100,13 @@ public class NameTagManager implements UntNametagManagerPaper {
         this.hideOwnFromSelf = Sets.newConcurrentHashSet();
         this.hideOwnFromOthers = Sets.newConcurrentHashSet();
         this.playerPreferences = new NametagPlayerPreferences(plugin);
+        this.glowStorage = new NametagPlayerGlowStorage(plugin);
+        this.overrideStorage = new NametagPlayerOverrideStorage(plugin);
         this.nameTagOverrides = Maps.newConcurrentMap();
+        this.sessionGlowOverrides = Maps.newConcurrentMap();
+        this.persistentGlowOverrides = Maps.newConcurrentMap();
+        this.sessionDisplayAnimations = Maps.newConcurrentMap();
+        this.persistentDisplayAnimations = Maps.newConcurrentMap();
         this.shiftSystemBlocked = Maps.newConcurrentMap();
         this.loadAll();
         this.scaleAttribute = loadScaleAttribute();
@@ -97,7 +114,10 @@ public class NameTagManager implements UntNametagManagerPaper {
 
     private void loadAll() {
         plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
-            plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> addPlayer(p, true));
+            plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> {
+                syncPlayerOverridesFromPdc(p);
+                addPlayer(p, true);
+            });
             this.startTask();
         }, 5);
     }
@@ -109,7 +129,10 @@ public class NameTagManager implements UntNametagManagerPaper {
         final MyScheduledTask displayAnimations = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                 () -> {
                     final long t = displayAnimationMonotonicTick.incrementAndGet();
-                    nameTags.values().forEach(tags -> tags.forEach(tag -> tag.tickDisplayAnimation(t)));
+                    nameTags.values().forEach(tags -> tags.forEach(tag -> {
+                        tag.tickDisplayAnimation(t);
+                        tag.tickGlowAnimation(t);
+                    }));
                 },
                 1L,
                 1L);
@@ -341,6 +364,10 @@ public class NameTagManager implements UntNametagManagerPaper {
         hideOwnFromSelf.remove(uuid);
         hideOwnFromOthers.remove(uuid);
         nameTagOverrides.remove(uuid);
+        sessionGlowOverrides.remove(uuid);
+        persistentGlowOverrides.remove(uuid);
+        sessionDisplayAnimations.remove(uuid);
+        persistentDisplayAnimations.remove(uuid);
         shiftSystemBlocked.remove(uuid);
     }
 
@@ -524,8 +551,81 @@ public class NameTagManager implements UntNametagManagerPaper {
 
     @NotNull
     public Settings.NameTag getEffectiveNametag(@NotNull Player player) {
-        return nameTagOverrides.getOrDefault(player.getUniqueId(),
+        final UUID uuid = player.getUniqueId();
+        final Settings.NameTag base = nameTagOverrides.getOrDefault(uuid,
                 plugin.getConfigManager().getSettings().resolveNametag(player::hasPermission));
+        final Map<Integer, DisplayAnimation> animationOverrides = mergedDisplayAnimationOverrides(uuid);
+        if (animationOverrides.isEmpty()) {
+            return base;
+        }
+        final List<Settings.DisplayGroup> groups = new ArrayList<>(base.displayGroups());
+        animationOverrides.forEach((index, animation) -> {
+            if (index >= 0 && index < groups.size()) {
+                groups.set(index, groups.get(index).withAnimation(animation));
+            }
+        });
+        return new Settings.NameTag(base.permission(), List.copyOf(groups));
+    }
+
+    @NotNull
+    private Map<Integer, DisplayAnimation> mergedDisplayAnimationOverrides(@NotNull UUID playerId) {
+        final Map<Integer, DisplayAnimation> merged = new LinkedHashMap<>();
+        final Map<Integer, DisplayAnimation> persistent = persistentDisplayAnimations.get(playerId);
+        if (persistent != null) {
+            merged.putAll(persistent);
+        }
+        final Map<Integer, DisplayAnimation> session = sessionDisplayAnimations.get(playerId);
+        if (session != null) {
+            merged.putAll(session);
+        }
+        return merged;
+    }
+
+    @Nullable
+    public GlowOverride resolveDisplayGroupGlow(
+            @NotNull UUID playerId,
+            int groupIndex,
+            @NotNull Settings.DisplayGroup group) {
+        if (group.resolvedDisplayType() == NametagDisplayType.TEXT) {
+            return null;
+        }
+        final Map<Integer, GlowOverride> session = sessionGlowOverrides.get(playerId);
+        if (session != null && session.containsKey(groupIndex)) {
+            return session.get(groupIndex);
+        }
+        final Map<Integer, GlowOverride> persistent = persistentGlowOverrides.get(playerId);
+        if (persistent != null && persistent.containsKey(groupIndex)) {
+            return persistent.get(groupIndex);
+        }
+        return group.glow();
+    }
+
+    private void applyRowGlow(@NotNull Player owner, int groupIndex, @NotNull PacketNameTag display,
+            @NotNull Settings.DisplayGroup group) {
+        if (group.resolvedDisplayType() == NametagDisplayType.TEXT || display.isTextDisplay()) {
+            if (display.getGlowOverride() != null) {
+                display.setGlowOverride(null);
+            } else {
+                display.clearGlow();
+            }
+            return;
+        }
+        final GlowOverride resolved = resolveDisplayGroupGlow(owner.getUniqueId(), groupIndex, group);
+        if (!java.util.Objects.equals(display.getGlowOverride(), resolved)) {
+            display.setGlowOverride(resolved);
+        } else {
+            display.applyGlowNow(displayAnimationMonotonicTick.get());
+        }
+    }
+
+    public void syncPlayerOverridesFromPdc(@NotNull Player player) {
+        final UUID uuid = player.getUniqueId();
+        overrideStorage.readNametagOverride(player).ifPresent(tag -> nameTagOverrides.put(uuid, tag));
+        persistentGlowOverrides.put(uuid, new LinkedHashMap<>(glowStorage.read(player)));
+        persistentDisplayAnimations.put(uuid, new LinkedHashMap<>(overrideStorage.readDisplayAnimations(player)));
+        if (hasNametagRows(uuid)) {
+            refresh(player, true);
+        }
     }
 
     @NotNull
@@ -623,9 +723,10 @@ public class NameTagManager implements UntNametagManagerPaper {
                     finishRowCreation(player.getUniqueId());
                     continue;
                 }
-                loadDisplay(player, resolved, row.displayGroup(), row.display(), helmetExtraOffset);
+                loadDisplay(player, row.index(), resolved, row.displayGroup(), row.display(), helmetExtraOffset);
             }
             applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
+            applyPersistentGlowOverrides(player);
             final int missingRows = rowCount - rows.size();
             for (int i = 0; i < missingRows; i++) {
                 finishRowCreation(player.getUniqueId());
@@ -675,7 +776,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenRun(() -> {
             final List<ResolvedDisplayRow> rows = collectResolvedRows(futures);
             final float helmetExtraOffset = plugin.getPlaceholderManager().computeHelmetExtraOffset(player);
-            rows.forEach(row -> editDisplay(row.display(), row.components(), row.displayGroup(), force, helmetExtraOffset));
+            rows.forEach(row -> editDisplay(player, row.index(), row.display(), row.components(), row.displayGroup(), force, helmetExtraOffset));
             applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
         });
     }
@@ -724,14 +825,16 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
     }
 
-    private void editDisplay(PacketNameTag packetNameTag, Map<Player, Component> components,
-            @NotNull Settings.DisplayGroup displayGroup, boolean force, float helmetExtraOffset) {
+    private void editDisplay(@NotNull Player owner, int groupIndex, PacketNameTag packetNameTag,
+            Map<Player, Component> components, @NotNull Settings.DisplayGroup displayGroup, boolean force,
+            float helmetExtraOffset) {
         if (!packetNameTag.getDisplayGroup().equals(displayGroup)) {
             packetNameTag.setDisplayGroup(displayGroup);
         }
         final Settings cfg = plugin.getConfigManager().getSettings();
         packetNameTag.setBillboard(displayGroup.effectiveBillboard(cfg));
         packetNameTag.setHelmetExtraOffset(helmetExtraOffset);
+        applyRowGlow(owner, groupIndex, packetNameTag, displayGroup);
         if (displayGroup.resolvedDisplayType() != NametagDisplayType.TEXT) {
             packetNameTag.syncVisualFromGroup(displayGroup);
             if (force && isScalePresent()) {
@@ -806,7 +909,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
     }
 
-    private void loadDisplay(@NotNull Player player, @NotNull Component component,
+    private void loadDisplay(@NotNull Player player, int groupIndex, @NotNull Component component,
             @NotNull Settings.DisplayGroup displayGroup,
             @NotNull PacketNameTag display,
             float helmetExtraOffset) {
@@ -832,10 +935,13 @@ public class NameTagManager implements UntNametagManagerPaper {
             display.setHelmetExtraOffset(helmetExtraOffset);
 
             display.setViewRange(plugin.getConfigManager().getSettings().getBehavior().getViewDistance());
+            applyRowGlow(player, groupIndex, display, displayGroup);
 
             if (dt == NametagDisplayType.TEXT) {
-                plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> display.modifyTextForOwner(meta -> meta.setText(component)),
-                        1);
+                plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+                    display.modifyTextForOwner(meta -> meta.setText(component));
+                    display.refresh();
+                }, 1);
             }
 
             display.refresh();
@@ -1504,7 +1610,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                             "No nametag component for owner " + player.getName() + "; swap skipped for one row.");
                     continue;
                 }
-                loadDisplay(player, component, row.displayGroup(), row.display(), helmetExtraOffset);
+                loadDisplay(player, row.index(), component, row.displayGroup(), row.display(), helmetExtraOffset);
                 if (row.displayGroup().resolvedDisplayType() == NametagDisplayType.TEXT) {
                     row.components().forEach((p, c) -> {
                         if (!p.equals(player) && c != null) {
@@ -1519,16 +1625,196 @@ public class NameTagManager implements UntNametagManagerPaper {
     }
 
     public void setNametagOverride(@NotNull Player player, @NotNull Settings.NameTag nameTag) {
-        nameTagOverrides.put(player.getUniqueId(), nameTag);
+        setNametagOverride(player, nameTag, false);
+    }
 
+    public void setNametagOverride(@NotNull Player player, @NotNull Settings.NameTag nameTag, boolean persist) {
+        nameTagOverrides.put(player.getUniqueId(), nameTag);
+        if (persist) {
+            overrideStorage.writeNametagOverride(player, nameTag);
+        }
         swapNametag(player, nameTag);
     }
 
     public void removeNametagOverride(@NotNull Player player) {
-        nameTagOverrides.remove(player.getUniqueId());
+        removeNametagOverride(player, false);
+    }
 
-        final Settings.NameTag configNametag = getConfigNametag(player);
-        swapNametag(player, configNametag);
+    public void removeNametagOverride(@NotNull Player player, boolean persist) {
+        nameTagOverrides.remove(player.getUniqueId());
+        if (persist) {
+            overrideStorage.clearNametagOverride(player);
+        }
+        swapNametag(player, getConfigNametag(player));
+    }
+
+    @Override
+    public void setDisplayGroupGlow(
+            @NotNull UUID playerId,
+            int groupIndex,
+            @Nullable GlowOverride glow,
+            boolean persist) {
+        setDisplayGroupGlow(playerId, groupIndex, glow, persist, true);
+    }
+
+    /**
+     * @param reapplyWhenOnline when {@code false}, only updates session/PDC maps (batch writes before one refresh)
+     */
+    public void setDisplayGroupGlow(
+            @NotNull UUID playerId,
+            int groupIndex,
+            @Nullable GlowOverride glow,
+            boolean persist,
+            boolean reapplyWhenOnline) {
+        if (glow == null) {
+            clearDisplayGroupGlow(playerId, groupIndex, persist, reapplyWhenOnline);
+            return;
+        }
+        if (persist) {
+            final Map<Integer, GlowOverride> map = new LinkedHashMap<>(
+                    persistentGlowOverrides.getOrDefault(playerId, Map.of()));
+            map.put(groupIndex, glow);
+            persistentGlowOverrides.put(playerId, Map.copyOf(map));
+            final Player player = onlinePlayer(playerId);
+            if (player != null) {
+                glowStorage.write(player, map);
+            }
+            sessionGlowOverrides.computeIfPresent(playerId, (id, session) -> {
+                session.remove(groupIndex);
+                return session.isEmpty() ? null : session;
+            });
+        } else {
+            sessionGlowOverrides.computeIfAbsent(playerId, id -> new ConcurrentHashMap<>()).put(groupIndex, glow);
+        }
+        if (reapplyWhenOnline) {
+            final Player player = onlinePlayer(playerId);
+            if (player != null) {
+                applyGlowOverrideToPlayer(player);
+            }
+        }
+    }
+
+    @Override
+    public void clearDisplayGroupGlow(@NotNull UUID playerId, int groupIndex, boolean persist) {
+        clearDisplayGroupGlow(playerId, groupIndex, persist, true);
+    }
+
+    public void clearDisplayGroupGlow(
+            @NotNull UUID playerId,
+            int groupIndex,
+            boolean persist,
+            boolean reapplyWhenOnline) {
+        if (persist) {
+            final Map<Integer, GlowOverride> map = new LinkedHashMap<>(
+                    persistentGlowOverrides.getOrDefault(playerId, Map.of()));
+            if (map.remove(groupIndex) != null) {
+                if (map.isEmpty()) {
+                    persistentGlowOverrides.remove(playerId);
+                } else {
+                    persistentGlowOverrides.put(playerId, map);
+                }
+                final Player player = onlinePlayer(playerId);
+                if (player != null) {
+                    glowStorage.write(player, map);
+                }
+            }
+        }
+        sessionGlowOverrides.computeIfPresent(playerId, (id, session) -> {
+            session.remove(groupIndex);
+            return session.isEmpty() ? null : session;
+        });
+        if (reapplyWhenOnline) {
+            final Player player = onlinePlayer(playerId);
+            if (player != null) {
+                applyGlowOverrideToPlayer(player);
+            }
+        }
+    }
+
+    @Override
+    @NotNull
+    public Optional<GlowOverride> getDisplayGroupGlowOverride(@NotNull UUID playerId, int groupIndex) {
+        final Map<Integer, GlowOverride> session = sessionGlowOverrides.get(playerId);
+        if (session != null && session.containsKey(groupIndex)) {
+            return Optional.ofNullable(session.get(groupIndex));
+        }
+        final Map<Integer, GlowOverride> persistent = persistentGlowOverrides.get(playerId);
+        if (persistent != null && persistent.containsKey(groupIndex)) {
+            return Optional.ofNullable(persistent.get(groupIndex));
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public void setNametagDisplayGroupAnimation(
+            @NotNull UUID playerId,
+            int displayGroupIndex,
+            @Nullable DisplayAnimation animation,
+            boolean persist) {
+        if (persist) {
+            final Map<Integer, DisplayAnimation> map = new LinkedHashMap<>(
+                    persistentDisplayAnimations.getOrDefault(playerId, Map.of()));
+            if (animation == null) {
+                map.remove(displayGroupIndex);
+            } else {
+                map.put(displayGroupIndex, animation);
+            }
+            if (map.isEmpty()) {
+                persistentDisplayAnimations.remove(playerId);
+            } else {
+                persistentDisplayAnimations.put(playerId, map);
+            }
+            final Player player = onlinePlayer(playerId);
+            if (player != null) {
+                overrideStorage.writeDisplayAnimations(player, map);
+            }
+            sessionDisplayAnimations.computeIfPresent(playerId, (id, session) -> {
+                session.remove(displayGroupIndex);
+                return session.isEmpty() ? null : session;
+            });
+        } else {
+            if (animation == null) {
+                sessionDisplayAnimations.computeIfPresent(playerId, (id, session) -> {
+                    session.remove(displayGroupIndex);
+                    return session.isEmpty() ? null : session;
+                });
+            } else {
+                sessionDisplayAnimations.computeIfAbsent(playerId, id -> new ConcurrentHashMap<>())
+                        .put(displayGroupIndex, animation);
+            }
+        }
+        final Player player = onlinePlayer(playerId);
+        if (player != null) {
+            refresh(player, true);
+        }
+    }
+
+    private boolean hasNametagRows(@NotNull UUID playerId) {
+        final CopyOnWriteArrayList<PacketNameTag> tags = nameTags.get(playerId);
+        return tags != null && !tags.isEmpty();
+    }
+
+    /**
+     * Re-applies PDC-backed glow overrides on every display row (join, reload, or after /unt glow).
+     */
+    public void applyPersistentGlowOverrides(@NotNull Player player) {
+        if (!hasNametagRows(player.getUniqueId())) {
+            return;
+        }
+        final Settings.NameTag nametag = getEffectiveNametag(player);
+        final CopyOnWriteArrayList<PacketNameTag> tags = nameTags.get(player.getUniqueId());
+        final int count = Math.min(tags.size(), nametag.displayGroups().size());
+        for (int i = 0; i < count; i++) {
+            applyRowGlow(player, i, tags.get(i), nametag.displayGroups().get(i));
+        }
+    }
+
+    private void applyGlowOverrideToPlayer(@NotNull Player player) {
+        if (hasNametagRows(player.getUniqueId())) {
+            refresh(player, false);
+            return;
+        }
+        applyPersistentGlowOverrides(player);
     }
 
     public void setShiftSystemBlocked(@NotNull Player player, boolean blocked) {
@@ -1815,9 +2101,14 @@ public class NameTagManager implements UntNametagManagerPaper {
 
     @Override
     public void setNametagOverride(@NotNull UUID playerId, @NotNull Settings.NameTag nameTag) {
+        setNametagOverride(playerId, nameTag, false);
+    }
+
+    @Override
+    public void setNametagOverride(@NotNull UUID playerId, @NotNull Settings.NameTag nameTag, boolean persist) {
         final Player player = onlinePlayer(playerId);
         if (player != null) {
-            setNametagOverride(player, nameTag);
+            setNametagOverride(player, nameTag, persist);
         } else {
             nameTagOverrides.put(playerId, nameTag);
         }
@@ -1825,9 +2116,14 @@ public class NameTagManager implements UntNametagManagerPaper {
 
     @Override
     public void removeNametagOverride(@NotNull UUID playerId) {
+        removeNametagOverride(playerId, false);
+    }
+
+    @Override
+    public void removeNametagOverride(@NotNull UUID playerId, boolean persist) {
         final Player player = onlinePlayer(playerId);
         if (player != null) {
-            removeNametagOverride(player);
+            removeNametagOverride(player, persist);
         } else {
             nameTagOverrides.remove(playerId);
         }

@@ -3,6 +3,8 @@ package org.alexdev.unlimitednametags.api;
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.config.DisplayAnimation;
+import org.alexdev.unlimitednametags.config.GlowOverride;
+import org.alexdev.unlimitednametags.config.NametagGlowOverrides;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.alexdev.unlimitednametags.vanish.VanishIntegration;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -142,20 +145,52 @@ public final class UNTPaperAPI extends UNTAPI {
             @NotNull Player player,
             int displayGroupIndex,
             @Nullable DisplayAnimation animation) {
-        final Settings.NameTag current = paperPlugin.getNametagManager().getEffectiveNametag(player);
-        final List<Settings.DisplayGroup> groups = new ArrayList<>(current.displayGroups());
-        if (displayGroupIndex < 0 || displayGroupIndex >= groups.size()) {
-            throw new IllegalArgumentException(
-                    "displayGroupIndex " + displayGroupIndex + " out of range (size " + groups.size() + ")");
-        }
-        groups.set(displayGroupIndex, groups.get(displayGroupIndex).withAnimation(animation));
-        final Settings.NameTag modified = new Settings.NameTag(current.permission(), List.copyOf(groups));
-        paperPlugin.getNametagManager().setNametagOverride(player, modified);
-        paperPlugin.getNametagManager().refresh(player, true);
+        setNametagDisplayGroupAnimation(player, displayGroupIndex, animation, false);
+    }
+
+    public void setNametagDisplayGroupAnimation(
+            @NotNull Player player,
+            int displayGroupIndex,
+            @Nullable DisplayAnimation animation,
+            boolean persist) {
+        paperPlugin.getNametagManager().setNametagDisplayGroupAnimation(
+                player.getUniqueId(), displayGroupIndex, animation, persist);
     }
 
     public void clearNametagDisplayGroupAnimation(@NotNull Player player, int displayGroupIndex) {
-        setNametagDisplayGroupAnimation(player, displayGroupIndex, null);
+        setNametagDisplayGroupAnimation(player, displayGroupIndex, null, false);
+    }
+
+    public void setDisplayGroupGlow(@NotNull Player player, int groupIndex, @NotNull GlowOverride glow) {
+        setDisplayGroupGlow(player, groupIndex, glow, false);
+    }
+
+    public void setDisplayGroupGlow(
+            @NotNull Player player,
+            int groupIndex,
+            @NotNull GlowOverride glow,
+            boolean persist) {
+        setDisplayGroupGlow(player.getUniqueId(), groupIndex, glow, persist);
+    }
+
+    public void setDisplayGroupFixedGlow(@NotNull Player player, int groupIndex, @NotNull String color) {
+        setDisplayGroupFixedGlow(player.getUniqueId(), groupIndex, color);
+    }
+
+    public void setDisplayGroupFixedGlow(
+            @NotNull Player player,
+            int groupIndex,
+            @NotNull String color,
+            boolean persist) {
+        setDisplayGroupGlow(player, groupIndex, NametagGlowOverrides.fixed(color), persist);
+    }
+
+    public void clearDisplayGroupGlow(@NotNull Player player, int groupIndex) {
+        clearDisplayGroupGlow(player.getUniqueId(), groupIndex);
+    }
+
+    public void clearDisplayGroupGlow(@NotNull Player player, int groupIndex, boolean persist) {
+        clearDisplayGroupGlow(player.getUniqueId(), groupIndex, persist);
     }
 
     public void registerNametagCustomAnimation(@NotNull String id, @NotNull NametagCustomAnimationHandler handler) {
@@ -169,6 +204,50 @@ public final class UNTPaperAPI extends UNTAPI {
     @Nullable
     public NametagCustomAnimationHandler getNametagCustomAnimationHandler(@NotNull String id) {
         return paperPlugin.getNametagCustomAnimationHandler(id);
+    }
+
+    public void registerNametagGlowAnimation(@NotNull String id, @NotNull GlowOverride glow) {
+        paperPlugin.registerNametagGlowAnimation(id, glow);
+    }
+
+    public boolean unregisterNametagGlowAnimation(@NotNull String id) {
+        return paperPlugin.unregisterNametagGlowAnimation(id);
+    }
+
+    @Nullable
+    public GlowOverride getNametagGlowAnimation(@NotNull String id) {
+        return paperPlugin.getNametagGlowAnimation(id);
+    }
+
+    @NotNull
+    public Set<String> getNametagGlowAnimationIds() {
+        return paperPlugin.getNametagGlowAnimationIds();
+    }
+
+    /**
+     * Preset ids from {@code settings.yml} {@code glowAnimations} plus API-registered presets.
+     */
+    @NotNull
+    public Set<String> getAllKnownGlowAnimationIds() {
+        return paperPlugin.getKnownGlowAnimationIds();
+    }
+
+    public void registerNametagCustomGlowHandler(@NotNull String id, @NotNull NametagCustomGlowHandler handler) {
+        paperPlugin.registerNametagCustomGlowHandler(id, handler);
+    }
+
+    public boolean unregisterNametagCustomGlowHandler(@NotNull String id) {
+        return paperPlugin.unregisterNametagCustomGlowHandler(id);
+    }
+
+    @Nullable
+    public NametagCustomGlowHandler getNametagCustomGlowHandler(@NotNull String id) {
+        return paperPlugin.getNametagCustomGlowHandler(id);
+    }
+
+    @NotNull
+    public Set<String> getNametagCustomGlowHandlerIds() {
+        return paperPlugin.getNametagCustomGlowHandlerIds();
     }
 
     /**

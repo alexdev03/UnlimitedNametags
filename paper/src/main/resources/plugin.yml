@@ -51,4 +51,8 @@ permissions:
     default: true
   unt.preferences.others:
     default: op
+  unt.glow:
+    default: op
+  unt.glow.others:
+    default: op
 compiled: ${compiled}

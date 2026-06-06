@@ -5,6 +5,8 @@ import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.api.NametagAnimationTarget;
 import org.alexdev.unlimitednametags.api.UntNametagDisplay;
+import org.alexdev.unlimitednametags.config.GlowOverride;
+import org.jetbrains.annotations.Nullable;
 import org.alexdev.unlimitednametags.api.event.PlayerNametagHideEvent;
 import org.alexdev.unlimitednametags.api.event.PlayerNametagLifecycleEvent;
 import org.alexdev.unlimitednametags.api.event.PlayerNametagRefreshEvent;
@@ -41,6 +43,18 @@ public interface PaperNametagRow extends UntNametagDisplay, NametagAnimationTarg
 
     default void setBackgroundColor(@NotNull Color color) {
         packet().setBackgroundColor(color.asARGB());
+    }
+
+    @Override
+    default void setGlowOverride(@Nullable GlowOverride glow) {
+        packet().setGlowOverride(glow);
+        packet().applyGlowNow(0L);
+    }
+
+    @Override
+    default void clearGlowOverride() {
+        packet().setGlowOverride(null);
+        packet().clearGlow();
     }
 
     @Override

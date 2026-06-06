@@ -2,7 +2,9 @@ package org.alexdev.unlimitednametags.api;
 
 import me.tofaa.entitylib.meta.display.AbstractDisplayMeta;
 import net.kyori.adventure.text.Component;
+import org.alexdev.unlimitednametags.config.GlowOverride;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 import java.util.UUID;
@@ -37,4 +39,8 @@ public interface UntNametagDisplayCore {
     void hideForOwner();
 
     boolean isSneaking();
+
+    void setGlowOverride(@Nullable GlowOverride glow);
+
+    void clearGlowOverride();
 }

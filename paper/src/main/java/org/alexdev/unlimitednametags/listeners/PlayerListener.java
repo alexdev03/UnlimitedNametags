@@ -98,6 +98,7 @@ public class PlayerListener implements PackSendHandler {
     public void onJoinSyncPreferences(@NotNull PlayerJoinEvent event) {
         final Player player = event.getPlayer();
         plugin.getNametagManager().syncPlayerPreferenceSetsFromPdc(player);
+        plugin.getNametagManager().syncPlayerOverridesFromPdc(player);
         plugin.getTaskScheduler().runTaskLater(() -> {
             if (!player.isOnline()) {
                 return;

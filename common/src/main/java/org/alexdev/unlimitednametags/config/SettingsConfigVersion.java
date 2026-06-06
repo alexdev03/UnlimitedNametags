@@ -9,9 +9,9 @@ public final class SettingsConfigVersion {
     }
 
     /**
-     * Latest schema: version 5 introduces throughWallMode and nested throughWallSettings.
+     * Latest schema: version 6 introduces glowAnimations and per-display-group glow overrides.
      */
-    public static final int CURRENT = 5;
+    public static final int CURRENT = 6;
 
     /**
      * {@code displayGroups} with {@link Settings.DisplayGroup}, structured {@code lines} as {@code {text, when?}} objects.

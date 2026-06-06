@@ -23,11 +23,18 @@ public class Settings {
     @Comment({
             "Schema version for settings.yml (managed by the plugin; do not lower).",
             "1 = flat NameTag, 2 = displayGroups with string lines, 3 = displayGroups with structured lines,",
-            "4 = unified Background (no type: discriminator) + sectioned settings (current)."
+            "4 = unified Background (no type: discriminator) + sectioned settings,",
+            "5 = throughWallMode, 6 = glowAnimations + per-row glow (current)."
     })
     private int configVersion = SettingsConfigVersion.CURRENT;
 
     private Map<String, NameTag> nameTags = defaultNameTags();
+
+    @Comment({
+            "Reusable glow animation presets. Reference from displayGroups via glow.type: reference.",
+            "Built-in ids: rainbow, gradient, gold_pulse (custom handler registered by the plugin)."
+    })
+    private Map<String, GlowOverride> glowAnimations = defaultGlowAnimations();
 
     @Comment("General nametag behavior settings.")
     private Behavior behavior = new Behavior();
@@ -79,6 +86,16 @@ public class Settings {
                         .when("%vault_eco_balance% > 1000")
                         .build())));
         return m;
+    }
+
+    private static Map<String, GlowOverride> defaultGlowAnimations() {
+        final Map<String, GlowOverride> presets = new LinkedHashMap<>();
+        presets.put("rainbow", NametagGlowOverrides.rainbow(1.0));
+        presets.put("gradient", NametagGlowOverrides.gradient(List.of("#FF5555", "#55FF55", "#5555FF"), 10));
+        final GlowOverride.CustomGlowOverride goldPulse = NametagGlowOverrides.custom("default_gold_pulse");
+        goldPulse.speed(1.0);
+        presets.put("gold_pulse", goldPulse);
+        return presets;
     }
 
     private static Map<String, List<PlaceholderReplacement>> defaultPlaceholdersReplacements() {
@@ -296,6 +313,9 @@ public class Settings {
      * Optional {@code animation} (rotate, bob, dvd_bounce, pulse_scale, wiggle, orbit); optional {@code animation_interval}
      * overrides root {@code displayAnimationInterval}. Optional {@code billboard} overrides
      * {@code behavior.defaultBillboard} for this row only.
+     * <p>
+     * Optional {@code glow} (fixed, reference, rainbow, gradient); optional {@code glowInterval} overrides
+     * root {@code displayAnimationInterval} for glow tick cadence.
      */
     public record DisplayGroup(
             List<NametagLine> lines,
@@ -310,7 +330,9 @@ public class Settings {
             @Nullable String itemDisplayMode,
             @Nullable DisplayAnimation animation,
             @Nullable Integer animationInterval,
-            @Nullable AbstractDisplayMeta.BillboardConstraints billboard) {
+            @Nullable AbstractDisplayMeta.BillboardConstraints billboard,
+            @Nullable GlowOverride glow,
+            @Nullable Integer glowInterval) {
 
         public DisplayGroup {
             final NametagDisplayType resolved = displayType != null ? displayType : NametagDisplayType.TEXT;
@@ -370,35 +392,84 @@ public class Settings {
             return billboard != null ? billboard : settings.getBehavior().getDefaultBillboard();
         }
 
+        /**
+         * Resolved glow from config (dereferences {@code type: reference}).
+         */
+        @Nullable
+        public GlowOverride effectiveGlow(@NotNull Settings settings) {
+            if (glow == null) {
+                return null;
+            }
+            return glow.resolve(settings);
+        }
+
+        /**
+         * Ticks between glow color updates for this row.
+         */
+        public int effectiveGlowTickInterval(@NotNull Settings settings) {
+            if (glowInterval != null && glowInterval > 0) {
+                return glowInterval;
+            }
+            return Math.max(1, settings.getBehavior().resolveDisplayAnimationTickInterval());
+        }
+
         // ─── with* helpers ────────────────────────────────────────────────────
 
         public DisplayGroup withBackground(@Nullable Background background) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withScale(float scale) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         @NotNull
         public DisplayGroup withAnimation(@Nullable DisplayAnimation animation) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withLines(@NotNull List<NametagLine> lines) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withWhen(@Nullable String when) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withBillboard(@Nullable AbstractDisplayMeta.BillboardConstraints billboard) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withYOffset(float yOffset) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+        }
+
+        @NotNull
+        public DisplayGroup withGlow(@Nullable GlowOverride glow) {
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+        }
+
+        @NotNull
+        public DisplayGroup withGlowInterval(@Nullable Integer glowInterval) {
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+        }
+
+        private DisplayGroup copy(
+                @Nullable Background background,
+                float scale,
+                float yOffset,
+                @Nullable String when,
+                boolean relationalConditions,
+                @Nullable NametagDisplayType displayType,
+                @Nullable String itemMaterial,
+                @Nullable String blockMaterial,
+                @Nullable String itemDisplayMode,
+                @Nullable DisplayAnimation animation,
+                @Nullable Integer animationInterval,
+                @Nullable AbstractDisplayMeta.BillboardConstraints billboard,
+                @Nullable GlowOverride glow,
+                @Nullable Integer glowInterval) {
+            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         // ─── Builder ──────────────────────────────────────────────────────────
@@ -427,6 +498,8 @@ public class Settings {
             private @Nullable DisplayAnimation animation = null;
             private @Nullable Integer animationInterval = null;
             private @Nullable AbstractDisplayMeta.BillboardConstraints billboard = null;
+            private @Nullable GlowOverride glow = null;
+            private @Nullable Integer glowInterval = null;
 
             private Builder() {
             }
@@ -445,6 +518,8 @@ public class Settings {
                 this.animation = base.animation();
                 this.animationInterval = base.animationInterval();
                 this.billboard = base.billboard();
+                this.glow = base.glow();
+                this.glowInterval = base.glowInterval();
             }
 
             public Builder line(@NotNull String text) {
@@ -522,10 +597,20 @@ public class Settings {
                 return this;
             }
 
+            public Builder glow(@Nullable GlowOverride glow) {
+                this.glow = glow;
+                return this;
+            }
+
+            public Builder glowInterval(int ticks) {
+                this.glowInterval = ticks;
+                return this;
+            }
+
             @NotNull
             public DisplayGroup build() {
                 return new DisplayGroup(List.copyOf(lines), background, scale, yOffset, when, relationalConditions,
-                        displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard);
+                        displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
             }
         }
     }

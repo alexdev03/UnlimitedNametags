@@ -82,6 +82,7 @@ public final class SettingsYamlMigrator {
                 case 2 -> changed |= migrateV2ToV3(root, log);
                 case 3 -> changed |= migrateV3ToV4(root, log);
                 case 4 -> changed |= migrateV4ToV5(root, log);
+                case 5 -> changed |= migrateV5ToV6(root, log);
                 default -> throw new IllegalStateException("Missing settings migrator from v" + v + " to v" + (v + 1));
             }
         }
@@ -730,5 +731,31 @@ public final class SettingsYamlMigrator {
             log.info("Migrated visibility settings to throughWallMode and throughWallSettings (v5).");
         }
         return changed;
+    }
+
+    private static boolean migrateV5ToV6(Map<String, Object> root, Logger log) {
+        final Object existing = root.get("glowAnimations");
+        if (existing instanceof Map<?, ?> map && !map.isEmpty()) {
+            return false;
+        }
+        root.put("glowAnimations", defaultGlowAnimationsYaml());
+        log.info("Added default glowAnimations presets (v6).");
+        return true;
+    }
+
+    private static Map<String, Object> defaultGlowAnimationsYaml() {
+        final Map<String, Object> presets = new LinkedHashMap<>();
+        presets.put("rainbow", Map.of("type", "rainbow", "speed", 1.0));
+        final Map<String, Object> gradient = new LinkedHashMap<>();
+        gradient.put("type", "gradient");
+        gradient.put("colors", List.of("#FF5555", "#55FF55", "#5555FF"));
+        gradient.put("refreshInterval", 10);
+        presets.put("gradient", gradient);
+        final Map<String, Object> goldPulse = new LinkedHashMap<>();
+        goldPulse.put("type", "custom");
+        goldPulse.put("id", "default_gold_pulse");
+        goldPulse.put("speed", 1.0);
+        presets.put("gold_pulse", goldPulse);
+        return presets;
     }
 }

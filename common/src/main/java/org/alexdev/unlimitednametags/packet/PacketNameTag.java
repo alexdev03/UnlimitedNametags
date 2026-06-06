@@ -13,6 +13,7 @@ import me.tofaa.entitylib.wrapper.WrapperEntity;
 import me.tofaa.entitylib.wrapper.WrapperPerPlayerEntity;
 import net.kyori.adventure.text.Component;
 import org.alexdev.unlimitednametags.config.DisplayAnimation;
+import org.alexdev.unlimitednametags.config.GlowOverride;
 import org.alexdev.unlimitednametags.config.NametagDisplayType;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.platform.NametagMaterialBridge;
@@ -76,6 +77,12 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     /** True while {@link DisplayAnimation#cullBeyondBlocks()} distance culling is pausing the pose. */
     private boolean animationCullDistancePaused;
 
+    @Nullable
+    private GlowOverride glowOverride;
+    private long glowEpochMs = System.currentTimeMillis();
+    @Nullable
+    private Integer lastAppliedGlowRgb;
+
     /** DVD bounce state for {@link DisplayAnimationComputer}. */
     private boolean animDvdInitialized;
     private float animDvdX;
@@ -107,6 +114,31 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     public void setDisplayGroup(@NotNull Settings.DisplayGroup displayGroup) {
         this.displayGroup = displayGroup;
         resetDisplayAnimationState();
+        resetGlowAnimationState();
+        applyGlowNow(0L);
+    }
+
+    public void setGlowOverride(@Nullable GlowOverride glowOverride) {
+        this.glowOverride = glowOverride;
+        resetGlowAnimationState();
+        applyGlowNow(0L);
+    }
+
+    @Nullable
+    public GlowOverride getGlowOverride() {
+        return glowOverride;
+    }
+
+    @Nullable
+    public GlowOverride effectiveGlow() {
+        if (isTextDisplay()) {
+            return null;
+        }
+        final GlowOverride raw = glowOverride != null ? glowOverride : displayGroup.glow();
+        if (raw == null) {
+            return null;
+        }
+        return raw.resolve(runtime.settings(), runtime::resolveGlowAnimation);
     }
 
     protected abstract @NotNull Function<User, WrapperEntity> buildBaseSupplier();
@@ -451,6 +483,79 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         animationEpochMs = System.currentTimeMillis();
         animationCullDistancePaused = false;
         clearAnimationPose();
+    }
+
+    void resetGlowAnimationState() {
+        glowEpochMs = System.currentTimeMillis();
+        lastAppliedGlowRgb = null;
+    }
+
+    private static final int NO_GLOW_COLOR_OVERRIDE = -1;
+
+    public void clearGlow() {
+        lastAppliedGlowRgb = null;
+        modifyEntity(entity -> {
+            entity.getEntityMeta().setGlowing(false);
+            if (entity.getEntityMeta() instanceof AbstractDisplayMeta displayMeta) {
+                displayMeta.setGlowColorOverride(NO_GLOW_COLOR_OVERRIDE);
+            }
+        });
+        // notifyAboutChanges(false) on display meta — same as applyDisplayTransform().
+        refresh();
+    }
+
+    public void applyGlow(int rgb) {
+        final int normalized = rgb & 0xFFFFFF;
+        if (lastAppliedGlowRgb != null && lastAppliedGlowRgb == normalized) {
+            return;
+        }
+        lastAppliedGlowRgb = normalized;
+        modifyEntity(entity -> {
+            entity.getEntityMeta().setGlowing(true);
+            if (entity.getEntityMeta() instanceof AbstractDisplayMeta displayMeta) {
+                displayMeta.setGlowColorOverride(normalized);
+            }
+        });
+        refresh();
+    }
+
+    public void applyGlowNow(long monotonicTick) {
+        final GlowOverride glow = effectiveGlow();
+        if (glow == null || !glow.isActive()) {
+            if (lastAppliedGlowRgb != null) {
+                clearGlow();
+            }
+            return;
+        }
+        final int interval = displayGroup.effectiveGlowTickInterval(runtime.settings());
+        final double elapsed = (System.currentTimeMillis() - glowEpochMs) / 1000.0;
+        GlowOverrideComputer.compute(
+                        glow,
+                        elapsed,
+                        monotonicTick,
+                        interval,
+                        ownerId,
+                        runtime,
+                        (id, ex) -> runtime.logWarning("Nametag custom glow '" + id + "'", ex))
+                .ifPresentOrElse(this::applyGlow, this::clearGlow);
+    }
+
+    public void tickGlowAnimation(long monotonicTick) {
+        if (removed) {
+            return;
+        }
+        final GlowOverride glow = effectiveGlow();
+        if (glow == null || !glow.isActive()) {
+            if (lastAppliedGlowRgb != null) {
+                clearGlow();
+            }
+            return;
+        }
+        final int interval = displayGroup.effectiveGlowTickInterval(runtime.settings());
+        if (interval > 1 && monotonicTick % interval != 0) {
+            return;
+        }
+        applyGlowNow(monotonicTick);
     }
 
     public void tickDisplayAnimation(long monotonicTick) {
@@ -845,6 +950,8 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         properties.put("increasedOffset", String.valueOf(increasedOffset));
         properties.put("helmetExtraOffset", String.valueOf(helmetExtraOffset));
         properties.put("viewRange", String.valueOf(meta.getViewRange()));
+        properties.put("glowing", String.valueOf(meta.isGlowing()));
+        properties.put("glowColorOverride", String.valueOf(meta.getGlowColorOverride()));
         appendTypeProperties(properties, meta);
         return properties;
     }

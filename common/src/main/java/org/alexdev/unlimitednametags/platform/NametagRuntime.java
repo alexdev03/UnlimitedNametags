@@ -1,9 +1,13 @@
 package org.alexdev.unlimitednametags.platform;
 
+import org.alexdev.unlimitednametags.config.GlowOverride;
 import org.alexdev.unlimitednametags.config.Settings;
 import org.alexdev.unlimitednametags.packet.CustomDisplayAnimationHandler;
+import org.alexdev.unlimitednametags.packet.CustomGlowHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Set;
 
 /**
  * Platform-neutral services for nametag display entities (entity ids, config, logging, scheduling).
@@ -25,6 +29,18 @@ public interface NametagRuntime {
 
     @Nullable
     CustomDisplayAnimationHandler resolveCustomAnimationHandler(@NotNull String id);
+
+    @Nullable
+    GlowOverride resolveGlowAnimation(@NotNull String id);
+
+    @NotNull
+    Set<String> registeredGlowAnimationIds();
+
+    @Nullable
+    CustomGlowHandler resolveCustomGlowHandler(@NotNull String id);
+
+    @NotNull
+    Set<String> registeredCustomGlowHandlerIds();
 
     void runTaskLaterAsync(@NotNull Runnable task, long delayTicks);
 

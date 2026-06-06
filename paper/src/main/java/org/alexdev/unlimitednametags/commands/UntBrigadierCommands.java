@@ -2,6 +2,8 @@ package org.alexdev.unlimitednametags.commands;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -12,7 +14,10 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.config.ColorStrings;
 import org.alexdev.unlimitednametags.config.Formatter;
+import org.alexdev.unlimitednametags.config.GlowOverride;
+import org.alexdev.unlimitednametags.config.NametagGlowOverrides;
 import org.alexdev.unlimitednametags.config.TextFormatter;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -55,6 +60,7 @@ public final class UntBrigadierCommands {
                     .then(literalHideOtherNametags(plugin))
                     .then(literalShowOtherNametags(plugin))
                     .then(literalPreferences(plugin))
+                    .then(literalGlow(plugin))
                     .build();
 
             event.registrar().register(root, "UnlimitedNametags commands", List.of("unlimitednametags"));
@@ -76,6 +82,7 @@ public final class UntBrigadierCommands {
         msg(plugin, sender, "<green>/unt hideOtherNametags</green> <gray>- Hide other players' nametags</gray>");
         msg(plugin, sender, "<green>/unt showOtherNametags</green> <gray>- Show other players' nametags</gray>");
         msg(plugin, sender, "<green>/unt preferences …</green> <gray>- Per-player nametag visibility (see /unt preferences)");
+        msg(plugin, sender, "<green>/unt glow …</green> <gray>- Per-player glow overrides (see /unt glow)");
     }
 
     private static void sendPreferenceLines(@NotNull UnlimitedNameTags plugin, @NotNull CommandSender to,
@@ -508,5 +515,411 @@ public final class UntBrigadierCommands {
         msg(plugin, sender, "<green>Your nametag visibility to others is now <yellow><state></yellow></green>",
                 Placeholder.unparsed("state", String.valueOf(show)));
         return Command.SINGLE_SUCCESS;
+    }
+
+    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> literalGlow(
+            @NotNull UnlimitedNameTags plugin) {
+        return Commands.literal("glow")
+                .requires(stack -> stack.getSender().hasPermission("unt.glow"))
+                .executes(ctx -> {
+                    msg(plugin, ctx.getSource().getSender(),
+                            "<yellow>/unt glow fixed</yellow> <gray><player> <group> <color></gray>");
+                    msg(plugin, ctx.getSource().getSender(),
+                            "<yellow>/unt glow animation</yellow> <gray><id> [player] [group]</gray>");
+                    msg(plugin, ctx.getSource().getSender(),
+                            "<yellow>/unt glow rate</yellow> <gray><rate> <id> [player] [group]</gray>");
+                    msg(plugin, ctx.getSource().getSender(),
+                            "<yellow>/unt glow rainbow</yellow> <gray><player> <group> [speed]</gray>");
+                    msg(plugin, ctx.getSource().getSender(),
+                            "<yellow>/unt glow gradient</yellow> <gray><player> <group> <color...> [interval]</gray>");
+                    msg(plugin, ctx.getSource().getSender(),
+                            "<yellow>/unt glow clear</yellow> <gray><player> [group]</gray>");
+                    msg(plugin, ctx.getSource().getSender(),
+                            "<yellow>/unt glow get</yellow> <gray>[player]</gray>");
+                    return Command.SINGLE_SUCCESS;
+                })
+                .then(glowPlayerArg(plugin, "fixed")
+                        .then(Commands.argument("group", IntegerArgumentType.integer(0))
+                                .then(Commands.argument("color", StringArgumentType.greedyString())
+                                        .executes(ctx -> {
+                                            final Player target = glowTarget(ctx, plugin);
+                                            if (target == null) {
+                                                return 0;
+                                            }
+                                            final int group = IntegerArgumentType.getInteger(ctx, "group");
+                                            final String color = StringArgumentType.getString(ctx, "color").trim();
+                                            if (!ColorStrings.isValid(color)) {
+                                                msg(plugin, ctx.getSource().getSender(),
+                                                        "<red>Invalid color. Use #RRGGBB or R,G,B.</red>");
+                                                return 0;
+                                            }
+                                            plugin.getNametagManager().setDisplayGroupGlow(
+                                                    target.getUniqueId(), group, NametagGlowOverrides.fixed(color), true);
+                                            msg(plugin, ctx.getSource().getSender(),
+                                                    "<green>Set fixed glow on <yellow><name></yellow> group <yellow><group></yellow>.</green>",
+                                                    Placeholder.unparsed("name", target.getName()),
+                                                    Placeholder.unparsed("group", String.valueOf(group)));
+                                            return Command.SINGLE_SUCCESS;
+                                        }))))
+                .then(Commands.literal("animation")
+                        .then(glowAnimationApplyTree(plugin, ctx -> 1.0)))
+                .then(Commands.literal("rate")
+                        .then(Commands.argument("rate", DoubleArgumentType.doubleArg(0.01))
+                                .then(glowAnimationApplyTree(plugin,
+                                        ctx -> DoubleArgumentType.getDouble(ctx, "rate")))))
+                .then(glowPlayerArg(plugin, "rainbow")
+                        .then(Commands.argument("group", IntegerArgumentType.integer(0))
+                                .executes(ctx -> execGlowRainbow(plugin, ctx, 1.0))
+                                .then(Commands.argument("speed", DoubleArgumentType.doubleArg(0.01))
+                                        .executes(ctx -> execGlowRainbow(plugin, ctx,
+                                                DoubleArgumentType.getDouble(ctx, "speed"))))))
+                .then(glowPlayerArg(plugin, "gradient")
+                        .then(Commands.argument("group", IntegerArgumentType.integer(0))
+                                .then(Commands.argument("colors", StringArgumentType.greedyString())
+                                        .executes(ctx -> execGlowGradient(plugin, ctx, 10)))))
+                .then(Commands.literal("clear")
+                        .then(glowTargetArg(plugin)
+                                .executes(ctx -> execGlowClearAll(plugin, ctx))
+                                .then(Commands.argument("group", IntegerArgumentType.integer(0))
+                                        .executes(ctx -> {
+                                            final Player target = glowTarget(ctx, plugin);
+                                            if (target == null) {
+                                                return 0;
+                                            }
+                                            final int group = IntegerArgumentType.getInteger(ctx, "group");
+                                            plugin.getNametagManager().clearDisplayGroupGlow(
+                                                    target.getUniqueId(), group, true);
+                                            msg(plugin, ctx.getSource().getSender(),
+                                                    "<green>Cleared glow on <yellow><name></yellow> group <yellow><group></yellow>.</green>",
+                                                    Placeholder.unparsed("name", target.getName()),
+                                                    Placeholder.unparsed("group", String.valueOf(group)));
+                                            return Command.SINGLE_SUCCESS;
+                                        }))))
+                .then(Commands.literal("get")
+                        .executes(ctx -> {
+                            if (!(ctx.getSource().getSender() instanceof Player self)) {
+                                msg(plugin, ctx.getSource().getSender(),
+                                        "<red>Players only (or /unt glow get <player>).</red>");
+                                return 0;
+                            }
+                            sendGlowLines(plugin, ctx.getSource().getSender(), self);
+                            return Command.SINGLE_SUCCESS;
+                        })
+                        .then(glowTargetArg(plugin)
+                                .executes(ctx -> {
+                                    final Player target = glowTarget(ctx, plugin);
+                                    if (target == null) {
+                                        return 0;
+                                    }
+                                    sendGlowLines(plugin, ctx.getSource().getSender(), target);
+                                    return Command.SINGLE_SUCCESS;
+                                })));
+    }
+
+    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> glowPlayerArg(
+            @NotNull UnlimitedNameTags plugin, @NotNull String sub) {
+        return Commands.literal(sub).then(glowTargetArg(plugin));
+    }
+
+    private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, ?> glowAnimationIdArg(
+            @NotNull UnlimitedNameTags plugin) {
+        return Commands.argument("animationId", StringArgumentType.word())
+                .suggests((ctx, builder) -> {
+                    plugin.getKnownGlowAnimationIds().forEach(builder::suggest);
+                    return builder.buildFuture();
+                });
+    }
+
+    private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, ?> glowAnimationApplyTree(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull java.util.function.ToDoubleFunction<com.mojang.brigadier.context.CommandContext<CommandSourceStack>> rate) {
+        return glowAnimationIdArg(plugin)
+                .executes(ctx -> execGlowAnimationSelf(plugin, ctx, rate.applyAsDouble(ctx), null))
+                .then(glowTargetArg(plugin)
+                        .executes(ctx -> execGlowAnimationTarget(plugin, ctx, rate.applyAsDouble(ctx), null))
+                        .then(glowGroupArg(plugin)
+                                .executes(ctx -> execGlowAnimationTarget(plugin, ctx, rate.applyAsDouble(ctx),
+                                        IntegerArgumentType.getInteger(ctx, "group")))))
+                .then(glowGroupArg(plugin)
+                        .executes(ctx -> execGlowAnimationSelf(plugin, ctx, rate.applyAsDouble(ctx),
+                                IntegerArgumentType.getInteger(ctx, "group"))));
+    }
+
+    private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, ?> glowTargetArg(
+            @NotNull UnlimitedNameTags plugin) {
+        return Commands.argument("target", StringArgumentType.word())
+                .suggests((ctx, builder) -> {
+                    Bukkit.getOnlinePlayers().forEach(player -> builder.suggest(player.getName()));
+                    return builder.buildFuture();
+                })
+                .executes(ctx -> 0);
+    }
+
+    private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, ?> glowGroupArg(
+            @NotNull UnlimitedNameTags plugin) {
+        return Commands.argument("group", IntegerArgumentType.integer(0))
+                .suggests((ctx, builder) -> {
+                    final Player target = resolveGlowAnimationTarget(ctx, plugin, false);
+                    if (target == null) {
+                        return builder.buildFuture();
+                    }
+                    final int count = glowDisplayGroupCount(plugin, target);
+                    for (int i = 0; i < count; i++) {
+                        builder.suggest(i);
+                    }
+                    return builder.buildFuture();
+                });
+    }
+
+    private static int glowDisplayGroupCount(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull Player target) {
+        return plugin.getNametagManager().getEffectiveNametag(target).displayGroups().size();
+    }
+
+    @org.jetbrains.annotations.Nullable
+    private static Player resolveGlowAnimationTarget(
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            @NotNull UnlimitedNameTags plugin,
+            boolean messageOnMissingSelf) {
+        try {
+            final String name = StringArgumentType.getString(ctx, "target");
+            return Bukkit.getPlayerExact(name);
+        } catch (IllegalArgumentException ignored) {
+            if (ctx.getSource().getSender() instanceof Player player) {
+                return player;
+            }
+            if (messageOnMissingSelf) {
+                msg(plugin, ctx.getSource().getSender(),
+                        "<red>Players only (or specify a target).</red>");
+            }
+            return null;
+        }
+    }
+
+    @org.jetbrains.annotations.Nullable
+    private static Player glowTarget(
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            @NotNull UnlimitedNameTags plugin) {
+        final CommandSender sender = ctx.getSource().getSender();
+        final String name = StringArgumentType.getString(ctx, "target");
+        final Player target = Bukkit.getPlayerExact(name);
+        if (target == null) {
+            msg(plugin, sender, "<red>Player not found or not online.</red>");
+            return null;
+        }
+        if (!sender.equals(target) && !sender.hasPermission("unt.glow.others")) {
+            msg(plugin, sender, "<red>You may not modify other players' glow.</red>");
+            return null;
+        }
+        return target;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    private static Player glowSelf(
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            @NotNull UnlimitedNameTags plugin) {
+        final CommandSender sender = ctx.getSource().getSender();
+        if (sender instanceof Player player) {
+            return player;
+        }
+        msg(plugin, sender, "<red>Players only (or specify a target).</red>");
+        return null;
+    }
+
+    private static int execGlowAnimationSelf(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            double rate,
+            @org.jetbrains.annotations.Nullable Integer group) {
+        final Player target = glowSelf(ctx, plugin);
+        if (target == null) {
+            return 0;
+        }
+        return execGlowAnimation(plugin, ctx, rate, target, group);
+    }
+
+    private static int execGlowAnimationTarget(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            double rate,
+            @org.jetbrains.annotations.Nullable Integer group) {
+        final Player target = glowTarget(ctx, plugin);
+        if (target == null) {
+            return 0;
+        }
+        return execGlowAnimation(plugin, ctx, rate, target, group);
+    }
+
+    private static int execGlowAnimation(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            double rate,
+            @NotNull Player target,
+            @org.jetbrains.annotations.Nullable Integer group) {
+        final String id = StringArgumentType.getString(ctx, "animationId");
+        if (!plugin.isKnownGlowAnimationId(id)) {
+            msg(plugin, ctx.getSource().getSender(),
+                    "<red>Unknown glow animation: <gray><id></gray></red>",
+                    Placeholder.unparsed("id", id));
+            return 0;
+        }
+        final GlowOverride glow = NametagGlowOverrides.reference(id, rate);
+        final int groupCount = glowDisplayGroupCount(plugin, target);
+        if (groupCount == 0) {
+            msg(plugin, ctx.getSource().getSender(),
+                    "<red><name> has no display groups.</red>",
+                    Placeholder.unparsed("name", target.getName()));
+            return 0;
+        }
+        if (group != null) {
+            if (group < 0 || group >= groupCount) {
+                msg(plugin, ctx.getSource().getSender(),
+                        "<red>Invalid group <yellow><group></yellow> for <yellow><name></yellow> (0-<max>).</red>",
+                        Placeholder.unparsed("group", String.valueOf(group)),
+                        Placeholder.unparsed("name", target.getName()),
+                        Placeholder.unparsed("max", String.valueOf(groupCount - 1)));
+                return 0;
+            }
+            plugin.getNametagManager().setDisplayGroupGlow(target.getUniqueId(), group, glow, true);
+        } else {
+            for (int i = 0; i < groupCount; i++) {
+                plugin.getNametagManager().setDisplayGroupGlow(target.getUniqueId(), i, glow, true, false);
+            }
+            plugin.getNametagManager().applyPersistentGlowOverrides(target);
+            plugin.getNametagManager().refresh(target, false);
+        }
+        final boolean allGroups = group == null;
+        if (rate == 1.0) {
+            if (allGroups) {
+                msg(plugin, ctx.getSource().getSender(),
+                        "<green>Set glow animation <yellow><id></yellow> on <yellow><name></yellow>.</green>",
+                        Placeholder.unparsed("id", id),
+                        Placeholder.unparsed("name", target.getName()));
+            } else {
+                msg(plugin, ctx.getSource().getSender(),
+                        "<green>Set glow animation <yellow><id></yellow> on <yellow><name></yellow> group <yellow><group></yellow>.</green>",
+                        Placeholder.unparsed("id", id),
+                        Placeholder.unparsed("name", target.getName()),
+                        Placeholder.unparsed("group", String.valueOf(group)));
+            }
+        } else if (allGroups) {
+            msg(plugin, ctx.getSource().getSender(),
+                    "<green>Set glow animation <yellow><id></yellow> (rate <yellow><rate></yellow>) on <yellow><name></yellow>.</green>",
+                    Placeholder.unparsed("id", id),
+                    Placeholder.unparsed("rate", String.valueOf(rate)),
+                    Placeholder.unparsed("name", target.getName()));
+        } else {
+            msg(plugin, ctx.getSource().getSender(),
+                    "<green>Set glow animation <yellow><id></yellow> (rate <yellow><rate></yellow>) on <yellow><name></yellow> group <yellow><group></yellow>.</green>",
+                    Placeholder.unparsed("id", id),
+                    Placeholder.unparsed("rate", String.valueOf(rate)),
+                    Placeholder.unparsed("name", target.getName()),
+                    Placeholder.unparsed("group", String.valueOf(group)));
+        }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int execGlowRainbow(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            double speed) {
+        final Player target = glowTarget(ctx, plugin);
+        if (target == null) {
+            return 0;
+        }
+        final int group = IntegerArgumentType.getInteger(ctx, "group");
+        plugin.getNametagManager().setDisplayGroupGlow(
+                target.getUniqueId(), group, NametagGlowOverrides.rainbow(speed), true);
+        msg(plugin, ctx.getSource().getSender(),
+                "<green>Set rainbow glow on <yellow><name></yellow> group <yellow><group></yellow>.</green>",
+                Placeholder.unparsed("name", target.getName()),
+                Placeholder.unparsed("group", String.valueOf(group)));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int execGlowGradient(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            int defaultInterval) {
+        final Player target = glowTarget(ctx, plugin);
+        if (target == null) {
+            return 0;
+        }
+        final int group = IntegerArgumentType.getInteger(ctx, "group");
+        final String raw = StringArgumentType.getString(ctx, "colors").trim();
+        final String[] tokens = raw.split("\\s+");
+        int interval = defaultInterval;
+        final List<String> colors = new java.util.ArrayList<>();
+        for (int i = 0; i < tokens.length; i++) {
+            if (tokens[i].equalsIgnoreCase("interval")) {
+                if (i + 1 >= tokens.length) {
+                    msg(plugin, ctx.getSource().getSender(), "<red>Missing value after interval.</red>");
+                    return 0;
+                }
+                try {
+                    interval = Integer.parseInt(tokens[i + 1]);
+                } catch (NumberFormatException ignored) {
+                    msg(plugin, ctx.getSource().getSender(), "<red>Invalid gradient interval.</red>");
+                    return 0;
+                }
+                break;
+            }
+            if (!ColorStrings.isValid(tokens[i])) {
+                msg(plugin, ctx.getSource().getSender(),
+                        "<red>Invalid gradient color: <gray><color></gray></red>",
+                        Placeholder.unparsed("color", tokens[i]));
+                return 0;
+            }
+            colors.add(tokens[i]);
+        }
+        if (colors.size() < 2) {
+            msg(plugin, ctx.getSource().getSender(), "<red>Gradient requires at least two colors.</red>");
+            return 0;
+        }
+        final GlowOverride.GradientGlowOverride gradient = NametagGlowOverrides.gradient(colors, interval);
+        plugin.getNametagManager().setDisplayGroupGlow(target.getUniqueId(), group, gradient, true);
+        msg(plugin, ctx.getSource().getSender(),
+                "<green>Set gradient glow on <yellow><name></yellow> group <yellow><group></yellow>.</green>",
+                Placeholder.unparsed("name", target.getName()),
+                Placeholder.unparsed("group", String.valueOf(group)));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int execGlowClearAll(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
+        final Player target = glowTarget(ctx, plugin);
+        if (target == null) {
+            return 0;
+        }
+        final int groups = plugin.getNametagManager().getEffectiveNametag(target).displayGroups().size();
+        for (int i = 0; i < groups; i++) {
+            plugin.getNametagManager().clearDisplayGroupGlow(target.getUniqueId(), i, true, false);
+        }
+        plugin.getNametagManager().applyPersistentGlowOverrides(target);
+        plugin.getNametagManager().refresh(target, false);
+        msg(plugin, ctx.getSource().getSender(),
+                "<green>Cleared all glow overrides for <yellow><name></yellow>.</green>",
+                Placeholder.unparsed("name", target.getName()));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static void sendGlowLines(
+            @NotNull UnlimitedNameTags plugin,
+            @NotNull CommandSender to,
+            @NotNull Player subject) {
+        msg(plugin, to, "<gray>Glow overrides for</gray> <yellow><name></yellow><gray>:</gray>",
+                Placeholder.unparsed("name", subject.getName()));
+        final int groups = plugin.getNametagManager().getEffectiveNametag(subject).displayGroups().size();
+        for (int i = 0; i < groups; i++) {
+            final String value = plugin.getNametagManager()
+                    .getDisplayGroupGlowOverride(subject.getUniqueId(), i)
+                    .map(g -> g.getClass().getSimpleName())
+                    .orElse("none");
+            msg(plugin, to, "  <yellow><group></yellow><gray>:</gray> <white><value></white>",
+                    Placeholder.unparsed("group", String.valueOf(i)),
+                    Placeholder.unparsed("value", value));
+        }
     }
 }

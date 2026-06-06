@@ -2,12 +2,18 @@ package org.alexdev.unlimitednametags.platform;
 
 import com.github.retrooper.packetevents.protocol.player.User;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
+import org.alexdev.unlimitednametags.config.GlowOverride;
 import org.alexdev.unlimitednametags.config.Settings;
+import org.alexdev.unlimitednametags.api.NametagCustomGlowContext;
+import org.alexdev.unlimitednametags.api.NametagCustomGlowHandler;
 import org.alexdev.unlimitednametags.packet.CustomDisplayAnimationHandler;
+import org.alexdev.unlimitednametags.packet.CustomGlowHandler;
+import org.alexdev.unlimitednametags.packet.GlowApplyContext;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -61,6 +67,40 @@ public final class BukkitNametagRuntime implements NametagRuntime {
                 handler.apply(animationTarget, animation, scaledElapsedSeconds);
             }
         };
+    }
+
+    @Override
+    public @Nullable GlowOverride resolveGlowAnimation(@NotNull String id) {
+        return plugin.getNametagGlowAnimation(id);
+    }
+
+    @Override
+    @NotNull
+    public Set<String> registeredGlowAnimationIds() {
+        return plugin.getNametagGlowAnimationIds();
+    }
+
+    @Override
+    public @Nullable CustomGlowHandler resolveCustomGlowHandler(@NotNull String id) {
+        final NametagCustomGlowHandler handler = plugin.getNametagCustomGlowHandler(id);
+        if (handler == null) {
+            return null;
+        }
+        return context -> {
+            final NametagCustomGlowContext paperContext = new NametagCustomGlowContext(
+                    context.glow(),
+                    context.scaledElapsedSeconds(),
+                    context.monotonicTick(),
+                    context.effectiveGlowTickInterval(),
+                    context.ownerId());
+            return handler.apply(paperContext);
+        };
+    }
+
+    @Override
+    @NotNull
+    public Set<String> registeredCustomGlowHandlerIds() {
+        return plugin.getNametagCustomGlowHandlerIds();
     }
 
     @Override
