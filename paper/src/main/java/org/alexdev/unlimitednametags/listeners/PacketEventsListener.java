@@ -151,7 +151,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     @NotNull
     private List<Integer> collectPassengers(int[] passengers) {
-        final  List<Integer> passengerList = new ArrayList<>(passengers.length);
+        final List<Integer> passengerList = new ArrayList<>(passengers.length);
         for (int passenger : passengers) {
             passengerList.add(passenger);
         }
