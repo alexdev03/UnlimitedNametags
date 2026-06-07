@@ -882,10 +882,12 @@ public class NameTagManager implements UntNametagManagerPaper {
     private void applyTextVisualState(@NotNull PacketNameTag display, @NotNull Settings.DisplayGroup displayGroup,
             @NotNull TextDisplayMeta meta, boolean force) {
         final boolean shadowed = displayGroup.effectiveBackground().shadowed();
-        final boolean seeThrough = displayGroup.effectiveBackground().seeThrough() && !display.isSneaking();
+        final Settings.ThroughWallMode throughWallMode = plugin.getConfigManager().getSettings()
+                .getVisibility().getThroughWallMode();
+        final boolean seeThrough = throughWallMode == Settings.ThroughWallMode.SEE_THROUGH
+                && displayGroup.effectiveBackground().seeThrough()
+                && !display.isSneaking();
         final int backgroundColor = displayGroup.effectiveBackground().getArgb();
-        final boolean obscuredMode = plugin.getConfigManager().getSettings().getVisibility().getThroughWallMode()
-                == Settings.ThroughWallMode.OBSCURED;
 
         if (force || meta.isShadow() != shadowed) {
             meta.setShadow(shadowed);
@@ -893,7 +895,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         if (force || meta.getBackgroundColor() != backgroundColor) {
             meta.setBackgroundColor(backgroundColor);
         }
-        if (!obscuredMode && (force || meta.isSeeThrough() != seeThrough)) {
+        if (force || meta.isSeeThrough() != seeThrough) {
             meta.setSeeThrough(seeThrough);
         }
     }
