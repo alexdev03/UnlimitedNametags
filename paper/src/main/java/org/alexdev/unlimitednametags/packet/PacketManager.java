@@ -15,9 +15,12 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -31,7 +34,7 @@ public class PacketManager {
     public PacketManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.initialize();
-        this.passengers = new ConcurrentMultimap<>();
+        this.passengers = new ConcurrentMultimap<>(CopyOnWriteArraySet::new);
         final ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("UnlimitedNameTags-PacketManager-%d")
                 .build();
@@ -63,6 +66,7 @@ public class PacketManager {
         final List<Integer> entityIds = packetNameTags.stream()
                 .map(NametagPassengerSource::displayEntityId)
                 .toList();
+        final Set<Integer> entityIdSet = new HashSet<>(entityIds);
         executorService.submit(() -> {
             if (player.getChannel() == null) {
                 return;
@@ -71,7 +75,9 @@ public class PacketManager {
             final Collection<Integer> ownerPassengers = this.passengers.get(owner.getUniqueId());
             final LinkedHashSet<Integer> passengers = new LinkedHashSet<>(
                     ownerPassengers.size() + entityIds.size());
-            ownerPassengers.stream().sorted().forEach(passengers::add);
+            ownerPassengers.stream()
+                    .filter(passenger -> !entityIdSet.contains(passenger))
+                    .forEach(passengers::add);
             passengers.addAll(entityIds);
             final int[] passengersArray = passengers.stream().mapToInt(Integer::intValue).toArray();
             final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(owner.getEntityId(), passengersArray);
