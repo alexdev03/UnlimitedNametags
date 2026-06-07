@@ -9,6 +9,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.Setter;
+import me.tofaa.entitylib.meta.display.TextDisplayMeta;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
@@ -860,10 +861,6 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
 
         final PaperNametagRow row = paperRow(packetNameTag);
-        final boolean shadowed = displayGroup.effectiveBackground().shadowed();
-        final boolean seeThrough = displayGroup.effectiveBackground().seeThrough() && !packetNameTag.isSneaking();
-        final int backgroundColor = displayGroup.effectiveBackground().getArgb();
-        final boolean wallOpacity = cfg.getVisibility().getThroughWallMode() == Settings.ThroughWallMode.OBSCURED;
 
         components.forEach((p, c) -> {
             if (c == null) {
@@ -874,26 +871,31 @@ public class NameTagManager implements UntNametagManagerPaper {
             if (user == null) {
                 return;
             }
-            packetNameTag.modifyTextForViewer(user, m -> {
-                if (force) {
-                    m.setShadow(shadowed);
-                    if (!wallOpacity) {
-                        m.setSeeThrough(seeThrough);
-                    }
-                    m.setBackgroundColor(backgroundColor);
-                } else {
-                    if (m.isShadow() != shadowed) {
-                        m.setShadow(shadowed);
-                    }
-                    if (m.getBackgroundColor() != backgroundColor) {
-                        m.setBackgroundColor(backgroundColor);
-                    }
-                    if (!wallOpacity && m.isSeeThrough() != seeThrough) {
-                        m.setSeeThrough(seeThrough);
-                    }
-                }
-            });
+            packetNameTag.modifyTextForViewer(user, m -> applyTextVisualState(packetNameTag, displayGroup, m, force));
         });
+    }
+
+    private void applyTextVisualState(@NotNull PacketNameTag display, @NotNull Settings.DisplayGroup displayGroup, boolean force) {
+        display.modifyTextAll(meta -> applyTextVisualState(display, displayGroup, meta, force));
+    }
+
+    private void applyTextVisualState(@NotNull PacketNameTag display, @NotNull Settings.DisplayGroup displayGroup,
+            @NotNull TextDisplayMeta meta, boolean force) {
+        final boolean shadowed = displayGroup.effectiveBackground().shadowed();
+        final boolean seeThrough = displayGroup.effectiveBackground().seeThrough() && !display.isSneaking();
+        final int backgroundColor = displayGroup.effectiveBackground().getArgb();
+        final boolean obscuredMode = plugin.getConfigManager().getSettings().getVisibility().getThroughWallMode()
+                == Settings.ThroughWallMode.OBSCURED;
+
+        if (force || meta.isShadow() != shadowed) {
+            meta.setShadow(shadowed);
+        }
+        if (force || meta.getBackgroundColor() != backgroundColor) {
+            meta.setBackgroundColor(backgroundColor);
+        }
+        if (!obscuredMode && (force || meta.isSeeThrough() != seeThrough)) {
+            meta.setSeeThrough(seeThrough);
+        }
     }
 
     private void finishRowCreation(@NotNull UUID uuid) {
@@ -919,11 +921,7 @@ public class NameTagManager implements UntNametagManagerPaper {
             }
             display.setBillboard(displayGroup.effectiveBillboard(plugin.getConfigManager().getSettings()));
             if (dt == NametagDisplayType.TEXT) {
-                display.setShadowed(displayGroup.effectiveBackground().shadowed());
-                if (plugin.getConfigManager().getSettings().getVisibility().getThroughWallMode() != Settings.ThroughWallMode.OBSCURED) {
-                    display.setSeeThrough(displayGroup.effectiveBackground().seeThrough() && !display.isSneaking());
-                }
-                display.setBackgroundColor(displayGroup.effectiveBackground().getArgb());
+                applyTextVisualState(display, displayGroup, true);
             }
 
             display.resetOffset(plugin.getConfigManager().getSettings().getBehavior().getYOffset());
@@ -1349,9 +1347,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 if (isObscured) {
                     packetNameTag.applyObscuredLineOfSightPresentation(true, sneakB, obscB, maxSq, sneaking);
                 } else {
-                    if (packetNameTag.getDisplayGroup().effectiveBackground().seeThrough()) {
-                        packetNameTag.setSeeThrough(!sneaking);
-                    }
+                    applyTextVisualState(packetNameTag, packetNameTag.getDisplayGroup(), false);
                     packetNameTag.setTextOpacity(sneaking ? sneakB : (byte) -1);
                 }
             }
