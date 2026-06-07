@@ -235,14 +235,14 @@ public class PlaceholderManager {
 
     @NotNull
     private List<String> collectActiveLineTexts(@NotNull Player owner, @NotNull Player viewer, @NotNull Settings.DisplayGroup group) {
-        final boolean isGroupRelational = requiresRelationalEvaluation(group);
-        if (!isDisplayGroupActive(owner, group, isGroupRelational ? viewer : null)) {
+        final boolean relationalConditions = group.relationalConditions() || containsRelationalPlaceholders(group.when());
+        if (!isDisplayGroupActive(owner, group, relationalConditions ? viewer : null)) {
             return List.of();
         }
         return group.lines().stream()
                 .filter(line -> line.when() == null
                         || line.when().isBlank()
-                        || evaluateLineWhen(owner, viewer, line, isGroupRelational))
+                        || evaluateLineWhen(owner, viewer, line, relationalConditions || containsRelationalPlaceholders(line.when())))
                 .map(Settings.NametagLine::text)
                 .toList();
     }
@@ -293,7 +293,11 @@ public class PlaceholderManager {
                 .replacement((matchResult, builder) -> {
                     final String placeholder = matchResult.group();
                     final String resolved = papiManager.setRelationalPlaceholders(viewer, owner, placeholder);
-                    return format(resolved, owner);
+                    final String customReplacement = getReplacement(placeholder, resolved);
+                    final String replacementText = customReplacement == null
+                            ? resolved
+                            : resolveCustomReplacement(customReplacement, owner, viewer);
+                    return format(replacementText, owner);
                 })
                 .build());
     }
@@ -494,7 +498,7 @@ public class PlaceholderManager {
             return true;
         }
         for (Settings.NametagLine line : group.lines()) {
-            if (containsRelationalPlaceholders(line.when())) {
+            if (containsRelationalPlaceholders(line.when()) || containsRelationalPlaceholders(line.text())) {
                 return true;
             }
         }
@@ -546,6 +550,21 @@ public class PlaceholderManager {
         }
 
         return intermediateResult;
+    }
+
+
+    @NotNull
+    private String resolveCustomReplacement(@NotNull String replacement, @NotNull Player owner, @Nullable Player viewer) {
+        String result = formatPhases(replacement);
+        if (!papiManager.isPapiEnabled() || !containsAnyPlaceholders(result)) {
+            return result;
+        }
+
+        result = papiManager.setPlaceholders(owner, result);
+        if (viewer != null && containsRelationalPlaceholders(result)) {
+            result = papiManager.setRelationalPlaceholders(viewer, owner, result);
+        }
+        return result;
     }
 
     @Nullable
