@@ -1,7 +1,6 @@
 package org.alexdev.unlimitednametags.hook;
 
 import com.hibiscusmc.hmccosmetics.api.HMCCosmeticsAPI;
-import com.hibiscusmc.hmccosmetics.cosmetic.Cosmetic;
 import com.hibiscusmc.hmccosmetics.cosmetic.CosmeticSlot;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUser;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
@@ -63,12 +62,11 @@ public class HMCCosmeticsHook extends Hook implements HatHookPaper {
             return List.of();
         }
 
-        final Cosmetic cosmetic = user.getCosmetic(CosmeticSlot.HELMET);
-        if (cosmetic == null) {
+        if (!user.hasCosmeticInSlot(CosmeticSlot.HELMET)) {
             return List.of();
         }
 
-        final ItemStack item = cosmetic.getItem();
+        final ItemStack item = user.getUserCosmeticItem(CosmeticSlot.HELMET);
         if (item == null || item.getType().isAir()) {
             return List.of();
         }
