@@ -15,7 +15,9 @@ import org.alexdev.unlimitednametags.hook.HelmetDebugContext;
 import org.alexdev.unlimitednametags.hook.HelmetRuleDebugThrottle;
 import org.alexdev.unlimitednametags.hook.HelmetRuleDiagnostics;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.alexdev.unlimitednametags.hook.hat.HatHookPaper;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,6 +25,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -362,6 +365,11 @@ public class PlaceholderManager {
                 plugin.getLogger().info("[UNT helmet dbg] computing offset (hat hooks=" + plugin.getHatHooks().size() + ")");
             }
 
+            final List<ItemStack> hatSources = collectHatSources(player);
+            if (verbose) {
+                plugin.getLogger().info("[UNT helmet dbg] hat item sources=" + hatSources.size());
+            }
+
             double rawHeight = 0d;
             HatHook winner = null;
             for (final HatHook hook : plugin.getHatHooks()) {
@@ -369,15 +377,28 @@ public class PlaceholderManager {
                 if (verbose) {
                     plugin.getLogger().info("[UNT helmet dbg]   " + hook.getClass().getSimpleName() + ".getHigh -> " + v);
                 }
-                if (v > 0d && rawHeight <= 0d) {
+                if (v > rawHeight) {
                     rawHeight = v;
                     winner = hook;
-                    break;
+                }
+
+                if (hook instanceof HatHookPaper paperHook) {
+                    for (final ItemStack source : hatSources) {
+                        final double sourceHeight = paperHook.getHigh(player, source);
+                        if (verbose) {
+                            plugin.getLogger().info("[UNT helmet dbg]   " + hook.getClass().getSimpleName()
+                                    + ".getHigh(source=" + source.getType() + ") -> " + sourceHeight);
+                        }
+                        if (sourceHeight > rawHeight) {
+                            rawHeight = sourceHeight;
+                            winner = hook;
+                        }
+                    }
                 }
             }
 
             if (verbose) {
-                plugin.getLogger().info("[UNT helmet dbg] first hook with height>0: "
+                plugin.getLogger().info("[UNT helmet dbg] max hook/source height>0: "
                         + (winner == null ? "<none>" : winner.getClass().getSimpleName())
                         + " rawHeight=" + rawHeight);
             }
@@ -397,6 +418,32 @@ public class PlaceholderManager {
         } finally {
             HelmetDebugContext.clear();
         }
+    }
+
+    private @NotNull List<ItemStack> collectHatSources(@NotNull Player player) {
+        final List<ItemStack> sources = new ArrayList<>();
+        final ItemStack helmet = player.getInventory().getHelmet();
+        addHatSource(sources, helmet);
+        for (final HatHook hook : plugin.getHatHooks()) {
+            if (hook instanceof HatHookPaper paperHook) {
+                for (final ItemStack item : paperHook.getHatItems(player)) {
+                    addHatSource(sources, item);
+                }
+            }
+        }
+        return sources;
+    }
+
+    private void addHatSource(@NotNull List<ItemStack> sources, @Nullable ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return;
+        }
+        for (final ItemStack existing : sources) {
+            if (existing.isSimilar(item)) {
+                return;
+            }
+        }
+        sources.add(item);
     }
 
     private Component joinLines(List<Component> lines) {

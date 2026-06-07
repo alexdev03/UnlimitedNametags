@@ -2,19 +2,20 @@ package org.alexdev.unlimitednametags.hook;
 
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Advanced;
-import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.alexdev.unlimitednametags.hook.hat.HatHookPaper;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public final class AdvancedHatHook implements HatHook {
+public final class AdvancedHatHook implements HatHookPaper {
 
     private final UnlimitedNameTags plugin;
 
@@ -28,6 +29,13 @@ public final class AdvancedHatHook implements HatHook {
         if (player == null) {
             return 0;
         }
+
+        final ItemStack helmet = player.getInventory().getHelmet();
+        return getHigh(player, helmet);
+    }
+
+    @Override
+    public double getHigh(@NotNull Player player, @Nullable ItemStack helmet) {
         final Advanced advanced = plugin.getConfigManager().getAdvanced();
         final List<Advanced.HelmetHeightRule> rules = advanced.getHelmetHeightRules();
         final boolean verbose = HelmetDebugContext.isVerbose();
@@ -39,7 +47,6 @@ public final class AdvancedHatHook implements HatHook {
             return 0;
         }
 
-        final ItemStack helmet = player.getInventory().getHelmet();
         if (helmet == null || helmet.getType().isAir()) {
             if (verbose) {
                 plugin.getLogger().info("[UNT helmet dbg] AdvancedHatHook: helmet slot empty");

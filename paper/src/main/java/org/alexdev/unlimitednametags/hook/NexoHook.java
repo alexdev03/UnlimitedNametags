@@ -10,12 +10,13 @@ import lombok.Getter;
 import net.kyori.adventure.key.Key;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.creative.CreativeHook;
-import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.alexdev.unlimitednametags.hook.hat.HatHookPaper;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 import team.unnamed.creative.ResourcePack;
@@ -25,7 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Getter
-public class NexoHook extends Hook implements Listener, CreativeHook, HatHook {
+public class NexoHook extends Hook implements Listener, CreativeHook, HatHookPaper {
 
     private final Map<Key, Map<Integer, Model>> cmdCache;
     private ResourcePack resourcePack;
@@ -46,12 +47,27 @@ public class NexoHook extends Hook implements Listener, CreativeHook, HatHook {
         if (player == null) {
             return 0;
         }
+        return getHigh(player);
+    }
+
+    @Override
+    public double getHigh(@NotNull Player player) {
         final double v = CreativeHook.super.getHigh(player);
         if (HelmetDebugContext.isVerbose()) {
-            final var helmet = player.getInventory().getHelmet();
-            final boolean empty = helmet == null || helmet.getType().isAir();
-            final Optional<Model> resolved = empty ? Optional.empty() : findModel(helmet);
-            plugin.getLogger().info("[UNT helmet dbg] NexoHook: super.getHigh=" + v
+            plugin.getLogger().info("[UNT helmet dbg] NexoHook: getHigh=" + v);
+        }
+        return v;
+    }
+
+    @Override
+    public double getHigh(@NotNull Player player, @Nullable ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return 0;
+        }
+        final double v = CreativeHook.super.getHigh(item);
+        if (HelmetDebugContext.isVerbose()) {
+            final Optional<Model> resolved = findModel(item);
+            plugin.getLogger().info("[UNT helmet dbg] NexoHook: source item getHigh=" + v
                     + " findModelResolved=" + resolved.isPresent());
         }
         return v;
