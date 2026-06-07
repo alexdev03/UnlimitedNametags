@@ -6,14 +6,16 @@ import com.hibiscusmc.hmccosmetics.cosmetic.CosmeticSlot;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUser;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.creative.CreativeHook;
-import org.alexdev.unlimitednametags.hook.hat.HatHook;
+import org.alexdev.unlimitednametags.hook.hat.HatHookPaper;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.UUID;
 
-public class HMCCosmeticsHook extends Hook implements HatHook {
+public class HMCCosmeticsHook extends Hook implements HatHookPaper {
 
     private CreativeHook creativeHook;
 
@@ -48,21 +50,37 @@ public class HMCCosmeticsHook extends Hook implements HatHook {
         if (player == null) {
             return 0;
         }
-        final CosmeticUser user = HMCCosmeticsAPI.getUser(playerId);
+        return getHatItems(player).stream()
+                .mapToDouble(item -> getHigh(player, item))
+                .max()
+                .orElse(0);
+    }
+
+    @Override
+    public @NotNull List<ItemStack> getHatItems(@NotNull Player player) {
+        final CosmeticUser user = HMCCosmeticsAPI.getUser(player.getUniqueId());
         if (user == null) {
-            return 0;
+            return List.of();
         }
 
         final Cosmetic cosmetic = user.getCosmetic(CosmeticSlot.HELMET);
         if (cosmetic == null) {
-            return 0;
+            return List.of();
         }
 
         final ItemStack item = cosmetic.getItem();
-        if (item == null) {
-            return 0;
+        if (item == null || item.getType().isAir()) {
+            return List.of();
         }
 
+        return List.of(item);
+    }
+
+    @Override
+    public double getHigh(@NotNull Player player, @Nullable ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return 0;
+        }
         if (creativeHook != null) {
             return creativeHook.getHigh(item);
         }
