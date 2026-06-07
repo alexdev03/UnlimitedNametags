@@ -17,6 +17,7 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTe
 import com.google.common.collect.Maps;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.data.TeamData;
+import org.alexdev.unlimitednametags.packet.PacketNameTag;
 import org.alexdev.unlimitednametags.packet.PaperNametagRow;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -129,17 +130,23 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return;
         }
 
-        for (PaperNametagRow row : packetNameTags) {
-            final int entityId = ((org.alexdev.unlimitednametags.packet.PacketNameTag) row).getEntityId();
-            if (!passengers.contains(entityId)) {
-                passengers.add(entityId);
-                passengers.sort(Comparator.naturalOrder());
-                packet.setPassengers(passengers.stream().mapToInt(i -> i).toArray());
-                event.markForReEncode(true);
-            }
+        final List<Integer> displayEntityIds = packetNameTags.stream()
+                .map(row -> ((PacketNameTag) row).displayEntityId())
+                .toList();
+        final Set<Integer> displayEntityIdSet = new HashSet<>(displayEntityIds);
+        final List<Integer> vanillaPassengers = passengers.stream()
+                .filter(passenger -> !displayEntityIdSet.contains(passenger))
+                .toList();
+        final List<Integer> updatedPassengers = new ArrayList<>(vanillaPassengers.size() + displayEntityIds.size());
+        updatedPassengers.addAll(vanillaPassengers);
+        updatedPassengers.addAll(displayEntityIds);
+
+        if (!updatedPassengers.equals(passengers)) {
+            packet.setPassengers(updatedPassengers.stream().mapToInt(Integer::intValue).toArray());
+            event.markForReEncode(true);
         }
 
-        plugin.getPacketManager().setPassengers(player.get(), passengers);
+        plugin.getPacketManager().setPassengers(player.get(), vanillaPassengers);
     }
 
     @NotNull

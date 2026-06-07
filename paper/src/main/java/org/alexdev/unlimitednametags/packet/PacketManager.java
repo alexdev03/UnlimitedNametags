@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +32,7 @@ public class PacketManager {
     public PacketManager(@NotNull UnlimitedNameTags plugin) {
         this.plugin = plugin;
         this.initialize();
-        this.passengers = new ConcurrentMultimap<>();
+        this.passengers = new ConcurrentMultimap<>(() -> Collections.synchronizedSet(new LinkedHashSet<>()));
         final ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("UnlimitedNameTags-PacketManager-%d")
                 .build();
@@ -71,7 +72,9 @@ public class PacketManager {
             final Collection<Integer> ownerPassengers = this.passengers.get(owner.getUniqueId());
             final LinkedHashSet<Integer> passengers = new LinkedHashSet<>(
                     ownerPassengers.size() + entityIds.size());
-            ownerPassengers.stream().sorted().forEach(passengers::add);
+            ownerPassengers.stream()
+                    .filter(passenger -> !entityIds.contains(passenger))
+                    .forEach(passengers::add);
             passengers.addAll(entityIds);
             final int[] passengersArray = passengers.stream().mapToInt(Integer::intValue).toArray();
             final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(owner.getEntityId(), passengersArray);
