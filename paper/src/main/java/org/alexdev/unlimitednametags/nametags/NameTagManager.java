@@ -735,6 +735,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 }
                 applyDisplayGroupStackLayout(player, rows, helmetExtraOffset);
                 applyPersistentGlowOverrides(player);
+                replayTrackedViewersAfterCreation(player);
             });
             final int missingRows = rowCount - rows.size();
             for (int i = 0; i < missingRows; i++) {
@@ -1298,15 +1299,29 @@ public class NameTagManager implements UntNametagManagerPaper {
     }
 
     public void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<Player> tracked) {
+        showToTrackedPlayers(player, tracked, true, true);
+    }
+
+    private void replayTrackedViewersAfterCreation(@NotNull Player player) {
+        if (!player.isOnline()) {
+            return;
+        }
+        showToTrackedPlayers(player, plugin.getTrackerManager().getWhoTracks(player), false, isEffectiveShowOwnNametag(player));
+    }
+
+    private void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<Player> tracked, boolean ensureCreated, boolean includeOwner) {
         final CopyOnWriteArrayList<PacketNameTag> tagList = nameTags.get(player.getUniqueId());
         final List<PacketNameTag> packetNameTags = tagList == null ? List.of() : tagList;
         for (PacketNameTag packetNameTag : packetNameTags) {
             packetNameTag.setVisible(true);
             final Set<Player> players = tracked.stream()
                     .filter(Objects::nonNull)
+                    .filter(Player::isOnline)
                     .collect(Collectors.toSet());
             final PaperNametagRow row = paperRow(packetNameTag);
-            players.add(row.getOwner());
+            if (includeOwner) {
+                players.add(row.getOwner());
+            }
             row.showToPlayers(players);
             if (debug) {
                 plugin.getLogger().info("Showing nametag of " + player.getName() + " to tracked players: " +
@@ -1314,7 +1329,9 @@ public class NameTagManager implements UntNametagManagerPaper {
             }
         }
 
-        addPlayer(player, false);
+        if (ensureCreated) {
+            addPlayer(player, false);
+        }
     }
 
     public void hideAllDisplays(@NotNull Player player) {
