@@ -138,8 +138,7 @@ final class TextNametagSupport {
         }
 
         final UUID ownerId = host.getOwnerId();
-        final boolean groupSeeThrough = host.getDisplayGroup().effectiveBackground().seeThrough();
-        final boolean baseSeeThrough = groupSeeThrough && !sneakEffective;
+        final boolean baseSeeThrough = false;
 
         for (final UUID viewerId : new ArrayList<>(host.getViewers())) {
             if (host.getPlatform().viewerLacksTextDisplaySupport(viewerId)) {
