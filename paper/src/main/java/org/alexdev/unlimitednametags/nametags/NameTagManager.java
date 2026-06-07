@@ -185,7 +185,11 @@ public class NameTagManager implements UntNametagManagerPaper {
                             continue;
                         }
 
-                        final boolean isPointing = isPlayerPointingAt(viewer, targetOwner);
+                        boolean isPointing = isPlayerPointingAt(viewer, targetOwner);
+                        if (isPointing && plugin.getConfigManager().getSettings().getVisibility().getThroughWallMode()
+                                == Settings.ThroughWallMode.HIDE && !viewer.hasLineOfSight(targetOwner)) {
+                            isPointing = false;
+                        }
 
                         if (paperRow(tag).canPlayerSee(viewer) && !isPointing) {
                             paperRow(tag).hideFromPlayer(viewer);
@@ -1358,11 +1362,20 @@ public class NameTagManager implements UntNametagManagerPaper {
     }
 
     public void reload() {
-        final float yOffset = plugin.getConfigManager().getSettings().getBehavior().getYOffset();
-        final float viewDistance = plugin.getConfigManager().getSettings().getBehavior().getViewDistance();
-        if (plugin.getConfigManager().getSettings().getVisibility().getThroughWallMode() == Settings.ThroughWallMode.SEE_THROUGH) {
-            nameTags.values().forEach(tags -> tags.forEach(PacketNameTag::clearObscuredPresentationTracking));
-        }
+        final Settings settings = plugin.getConfigManager().getSettings();
+        final float yOffset = settings.getBehavior().getYOffset();
+        final float viewDistance = settings.getBehavior().getViewDistance();
+        final Settings.ThroughWallMode throughWallMode = settings.getVisibility().getThroughWallMode();
+        final byte sneakOpacity = clampMcTextOpacity(settings.getVisibility().getSneakOpacity());
+        nameTags.values().forEach(tags -> tags.forEach(tag -> {
+            tag.clearObscuredPresentationTracking();
+            if (tag.isTextDisplay()) {
+                applyTextVisualState(tag, tag.getDisplayGroup(), true);
+                if (throughWallMode != Settings.ThroughWallMode.OBSCURED) {
+                    tag.setTextOpacity(tag.isSneaking() ? sneakOpacity : (byte) -1);
+                }
+            }
+        }));
         plugin.getTaskScheduler()
                 .runTaskAsynchronously(() -> plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> {
                     setYOffset(p, yOffset);
