@@ -126,21 +126,32 @@ public final class UnlimitedNameTags extends JavaPlugin implements UnlimitedName
     }
 
     private CompletableFuture<Void> loadLibraries() {
-
         final BukkitLibraryManager bukkitLibraryManager = new BukkitLibraryManager(this);
         bukkitLibraryManager.addRepository("https://maven-central.storage-download.googleapis.com/maven2");
         bukkitLibraryManager.addMavenCentral();
 
-        final List<Library> libraries = Lists.newArrayList(
-
-        );
+        final List<Library> libraries = Lists.newArrayList();
 
         if (!isPaper) {
             libraries.add(Library.builder()
                     .groupId("net{}kyori")
                     .artifactId("adventure-text-minimessage")
                     .version("4.17.0")
-                    .relocate("net{}]kyori{}adventure{}text{}serializer", "io{}github{}retrooper{}packetevents{}adventure{}serializer")
+                    .relocate("net{}kyori{}adventure{}text{}serializer", "io{}github{}retrooper{}packetevents{}adventure{}serializer")
+                    .build());
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("ItemsAdder")
+                && !Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
+            libraries.add(Library.builder()
+                    .groupId("team{}unnamed")
+                    .artifactId("creative-api")
+                    .version("1.7.3")
+                    .build());
+            libraries.add(Library.builder()
+                    .groupId("team{}unnamed")
+                    .artifactId("creative-serializer-minecraft")
+                    .version("1.7.3")
                     .build());
         }
 

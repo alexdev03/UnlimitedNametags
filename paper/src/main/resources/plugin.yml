@@ -24,6 +24,7 @@ softdepend:
   - Oraxen
   - Nexo
   - HMCCosmetics
+  - ItemsAdder
 permissions:
   unt.shownametags:
     default: true
