@@ -10,6 +10,7 @@ import lombok.Getter;
 import net.kyori.adventure.key.Key;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.creative.CreativeHook;
+import org.alexdev.unlimitednametags.hook.creative.JsonModelHeightResolver;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -17,18 +18,21 @@ import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.util.UUID;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.model.Model;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 
 @Getter
 public class NexoHook extends Hook implements Listener, CreativeHook, HatHook {
 
     private final Map<Key, Map<Integer, Model>> cmdCache;
     private ResourcePack resourcePack;
+    private JsonModelHeightResolver jsonModelHeightResolver;
 
     public NexoHook(@NotNull UnlimitedNameTags plugin) {
         super(plugin);
@@ -38,6 +42,8 @@ public class NexoHook extends Hook implements Listener, CreativeHook, HatHook {
 
     public void loadTexture() {
         resourcePack = NexoPack.resourcePack();
+        File packZip = new File(plugin.getDataFolder().getParentFile(), "Nexo" + File.separator + "pack" + File.separator + "pack.zip");
+        jsonModelHeightResolver = new JsonModelHeightResolver(packZip);
     }
 
     @Override
@@ -46,15 +52,59 @@ public class NexoHook extends Hook implements Listener, CreativeHook, HatHook {
         if (player == null) {
             return 0;
         }
-        final double v = CreativeHook.super.getHigh(player);
+        final ItemStack helmet = player.getInventory().getHelmet();
+        if (helmet == null) {
+            return 0;
+        }
+        final double v = getHigh(helmet);
         if (HelmetDebugContext.isVerbose()) {
-            final var helmet = player.getInventory().getHelmet();
-            final boolean empty = helmet == null || helmet.getType().isAir();
+            final boolean empty = helmet.getType().isAir();
             final Optional<Model> resolved = empty ? Optional.empty() : findModel(helmet);
             plugin.getLogger().info("[UNT helmet dbg] NexoHook: super.getHigh=" + v
                     + " findModelResolved=" + resolved.isPresent());
         }
         return v;
+    }
+
+    @Override
+    public double getHigh(@NotNull ItemStack item) {
+        final double creativeHeight = CreativeHook.super.getHigh(item);
+        if (creativeHeight > 0) {
+            return creativeHeight;
+        }
+        if (jsonModelHeightResolver == null) {
+            return creativeHeight;
+        }
+        final Optional<ItemBuilder> optionalItemBuilder = Optional.ofNullable(NexoItems.builderFromItem(item));
+        if (optionalItemBuilder.isEmpty()) {
+            return creativeHeight;
+        }
+        final NexoMeta meta = optionalItemBuilder.get().getNexoMeta();
+        OptionalDouble height = jsonModelHeightResolver.heightForKey(meta.getModel());
+        if (height.isPresent()) {
+            return height.getAsDouble();
+        }
+        final Key itemModelKey = itemModelKey(meta);
+        if (itemModelKey != null) {
+            height = jsonModelHeightResolver.heightForKey(itemModelKey);
+            if (height.isPresent()) {
+                return height.getAsDouble();
+            }
+        }
+        return creativeHeight;
+    }
+
+    private Key itemModelKey(@NotNull NexoMeta meta) {
+        try {
+            Object itemModel = meta.getClass().getMethod("getItemModel").invoke(meta);
+            if (itemModel == null) {
+                return null;
+            }
+            Object key = itemModel.getClass().getMethod("getKey").invoke(itemModel);
+            return key instanceof Key ? (Key) key : null;
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
     }
 
     public Optional<Model> findModel(@NotNull ItemStack item) {

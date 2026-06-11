@@ -7,6 +7,7 @@ import net.kyori.adventure.key.Key;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.creative.CreativeHook;
 import org.alexdev.unlimitednametags.hook.creative.CustomMinecraftResourcePackReaderImpl;
+import org.alexdev.unlimitednametags.hook.creative.JsonModelHeightResolver;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -16,6 +17,7 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.UUID;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.model.Model;
@@ -32,6 +34,7 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
 
     private final Map<Key, Map<Integer, Model>> cmdCache;
     private ResourcePack resourcePack;
+    private JsonModelHeightResolver jsonModelHeightResolver;
 
     public ItemsAdderHook(@NotNull UnlimitedNameTags plugin) {
         super(plugin);
@@ -45,7 +48,24 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
         if (player == null) {
             return 0;
         }
-        return CreativeHook.super.getHigh(player);
+        final ItemStack helmet = player.getInventory().getHelmet();
+        if (helmet == null) {
+            return 0;
+        }
+        return getHigh(helmet);
+    }
+
+    @Override
+    public double getHigh(@NotNull ItemStack helmet) {
+        final double creativeHeight = CreativeHook.super.getHigh(helmet);
+        if (creativeHeight > 0) {
+            return creativeHeight;
+        }
+        if (jsonModelHeightResolver == null) {
+            return creativeHeight;
+        }
+        final OptionalDouble jsonHeight = jsonModelHeightResolver.heightForItem(helmet);
+        return jsonHeight.orElse(creativeHeight);
     }
 
     public Optional<Model> findModel(@NotNull ItemStack item) {
@@ -91,9 +111,11 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
         try {
 //            resourcePack = MinecraftResourcePackReader.builder().lenient(true).build().readFromZipFile(generated);
             resourcePack = CustomMinecraftResourcePackReaderImpl.INSTANCE.readFromZipFile(generated);
+            jsonModelHeightResolver = new JsonModelHeightResolver(generated);
             plugin.getLogger().info("ItemsAdder's resource pack loaded from " + generated.getAbsolutePath());
         } catch (Throwable e) {
             resourcePack = null;
+            jsonModelHeightResolver = new JsonModelHeightResolver(generated);
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to load ItemsAdder resource pack for file at " + generated.getAbsolutePath(), e);
         }
     }
