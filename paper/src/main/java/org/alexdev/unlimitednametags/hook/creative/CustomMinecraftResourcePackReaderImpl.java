@@ -32,9 +32,6 @@ import org.jetbrains.annotations.Nullable;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.base.Writable;
 import team.unnamed.creative.metadata.Metadata;
-import team.unnamed.creative.metadata.overlays.OverlayEntry;
-import team.unnamed.creative.metadata.overlays.OverlaysMeta;
-import team.unnamed.creative.metadata.pack.PackMeta;
 import team.unnamed.creative.overlay.Overlay;
 import team.unnamed.creative.overlay.ResourceContainer;
 import team.unnamed.creative.part.ResourcePackPart;
@@ -52,17 +49,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Queue;
 
 import static java.util.Objects.requireNonNull;
-import static team.unnamed.creative.serialize.minecraft.MinecraftResourcePackStructure.*;
 
 public final class CustomMinecraftResourcePackReaderImpl implements MinecraftResourcePackReader {
     public static final CustomMinecraftResourcePackReaderImpl INSTANCE = new CustomMinecraftResourcePackReaderImpl(false);
+
+    private static final String METADATA_EXTENSION = ".mcmeta";
+    private static final String PACK_METADATA_FILE = "pack.mcmeta";
+    private static final String PACK_ICON_FILE = "pack.png";
+    private static final String ASSETS_FOLDER = "assets";
+    private static final String SOUNDS_FILE = "sounds.json";
+    private static final String TEXTURES_FOLDER = "textures";
     public static final String OVERLAYS_FOLDER = "overlays";
 
     private final boolean lenient;
@@ -84,11 +89,6 @@ public final class CustomMinecraftResourcePackReaderImpl implements MinecraftRes
         // (null key means it is root resource pack)
         Map<@Nullable String, Map<Key, Texture>> incompleteTextures = new LinkedHashMap<>();
 
-        // fill in with the default ones first (pack format is unknown at the start)
-        Map<String, ResourceCategory<?>> categoriesByFolderThisPackFormat = ResourceCategories.buildCategoryMapByFolder(-1);
-        Map<String, Integer> packFormatsByOverlayDir = new HashMap<>();
-        int packFormat = -1;
-
         while (reader.hasNext()) {
             String path = reader.next();
 
@@ -107,25 +107,15 @@ public final class CustomMinecraftResourcePackReaderImpl implements MinecraftRes
             if (tokens.size() == 1) {
                 switch (tokens.poll()) {
                     case PACK_METADATA_FILE: {
-                        // found pack.mcmeta file, deserialize and add
-                        Metadata metadata = MetadataSerializer.INSTANCE.readFromTree(parseJson(reader.stream()));
-                        resourcePack.metadata(metadata);
+                        try {
+                            // found pack.mcmeta file, deserialize and add
+                            Metadata metadata = MetadataSerializer.INSTANCE.readFromTree(parseJson(reader.stream()));
+                            resourcePack.metadata(metadata);
 
-                        // get the pack format from the metadata
-                        PackMeta packMeta = metadata.meta(PackMeta.class);
-                        if (packMeta == null) {
-                            // TODO: better warning system
-                            System.err.println("Reading a resource-pack with no pack meta in its pack.mcmeta file! Unknown pack format version :(");
-                        } else {
-                            // update the pack format and categories
-                            packFormat = packMeta.formats().min();
-                            categoriesByFolderThisPackFormat = ResourceCategories.buildCategoryMapByFolder(packFormat);
-                        }
-
-                        // overlays info
-                        OverlaysMeta overlaysMeta = metadata.meta(OverlaysMeta.class);
-                        if (overlaysMeta != null) for (OverlayEntry entry : overlaysMeta.entries()) {
-                            packFormatsByOverlayDir.put(entry.directory(), entry.formats().min());
+                        } catch (Throwable ignored) {
+                            // Some ItemsAdder generated packs contain modern or malformed metadata
+                            // that older Creative releases cannot deserialize. Metadata is not
+                            // required for model height lookup, so keep reading the pack.
                         }
                         continue;
                     }
@@ -146,7 +136,6 @@ public final class CustomMinecraftResourcePackReaderImpl implements MinecraftRes
             // but it may change if the file is inside an overlay folder
             @Subst("dir")
             @Nullable String overlayDir = null;
-            int localPackFormat = packFormat;
 
             // the file path, relative to the container
             String containerPath = path;
@@ -179,7 +168,6 @@ public final class CustomMinecraftResourcePackReaderImpl implements MinecraftRes
                 container = overlay;
                 folder = tokens.poll();
                 containerPath = path.substring((OVERLAYS_FOLDER + '/' + overlayDir + '/').length());
-                localPackFormat = packFormatsByOverlayDir.getOrDefault(overlayDir, -1);
             }
 
             // null check to make ide happy
@@ -269,18 +257,13 @@ public final class CustomMinecraftResourcePackReaderImpl implements MinecraftRes
                     }
                 }
             } else {
-                // get the resource category, if the local pack format (overlay or root) is the same as the
-                // root pack format, we can use the previously computed map, otherwise we need to compute it
-                // (we could save some time by caching the computed map, but, is it worth it?)
-                ResourceCategory<?> category = (localPackFormat == packFormat
-                        ? categoriesByFolderThisPackFormat
-                        : ResourceCategories.buildCategoryMapByFolder(localPackFormat)).get(categoryName);
+                ResourceCategory<?> category = categoryByFolder(categoryName);
                 if (category == null) {
                     // unknown category
                     container.unknownFile(containerPath, reader.content().asWritable());
                     continue;
                 }
-                String keyValue = withoutExtension(categoryPath, category.extension(-1));
+                String keyValue = withoutExtension(categoryPath, categoryExtension(category));
                 if (keyValue == null) {
                     // wrong extension
                     container.unknownFile(containerPath, reader.content().asWritable());
@@ -295,18 +278,10 @@ public final class CustomMinecraftResourcePackReaderImpl implements MinecraftRes
 
                 Key key = Key.key(namespace, keyValue);
                 try {
-                    ResourceDeserializer<? extends ResourcePackPart> deserializer = category.deserializer();
-                    ResourcePackPart resource;
-                    if (deserializer instanceof BinaryResourceDeserializer) {
-                        resource = ((BinaryResourceDeserializer<? extends ResourcePackPart>) deserializer)
-                                .deserializeBinary(reader.content().asWritable(), key);
-                    } else if (deserializer instanceof JsonResourceDeserializer) {
-                        resource = ((JsonResourceDeserializer<? extends ResourcePackPart>) deserializer)
-                                .deserializeFromJson(parseJson(reader.stream()), key);
-                    } else {
-                        resource = deserializer.deserialize(reader.stream(), key);
-                    }
-                    resource.addTo(container);
+                    @SuppressWarnings({"rawtypes", "unchecked"})
+                    ResourceDeserializer deserializer = category.deserializer();
+                    Object resource = deserializeResource(deserializer, reader, key);
+                    ((ResourcePackPart) resource).addTo(container);
                 } catch (Throwable e) {
 //                    throw new UncheckedIOException("Failed to deserialize resource at: '" + path + "'", e);
                 }
@@ -335,6 +310,100 @@ public final class CustomMinecraftResourcePackReaderImpl implements MinecraftRes
             }
         }
         return resourcePack;
+    }
+
+    private static Queue<String> tokenize(String path) {
+        return new ArrayDeque<>(Arrays.asList(path.split("/")));
+    }
+
+    private static String path(Iterable<String> tokens) {
+        StringBuilder builder = new StringBuilder();
+        for (String token : tokens) {
+            if (builder.length() > 0) {
+                builder.append('/');
+            }
+            builder.append(token);
+        }
+        return builder.toString();
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Object deserializeResource(ResourceDeserializer deserializer, FileTreeReader reader, Key key) throws Exception {
+        if (deserializer instanceof BinaryResourceDeserializer) {
+            return ((BinaryResourceDeserializer) deserializer).deserializeBinary(reader.content().asWritable(), key);
+        }
+        if (deserializer instanceof JsonResourceDeserializer) {
+            JsonElement json = parseJson(reader.stream());
+            try {
+                Method method = deserializer.getClass().getMethod("deserializeFromJson", JsonElement.class, Key.class);
+                return method.invoke(deserializer, json, key);
+            } catch (NoSuchMethodException ignored) {
+                Class<?> packFormat = Class.forName("team.unnamed.creative.metadata.pack.PackFormat");
+                Object unknown = packFormat.getField("UNKNOWN").get(null);
+                Method method = deserializer.getClass().getMethod("deserializeFromJson", JsonElement.class, Key.class, packFormat);
+                return method.invoke(deserializer, json, key, unknown);
+            }
+        }
+        return deserializer.deserialize(reader.stream(), key);
+    }
+
+    private static ResourceCategory<?> categoryByFolder(String folder) {
+        try {
+            Method getByFolder = ResourceCategories.class.getMethod("getByFolder", String.class);
+            return (ResourceCategory<?>) getByFolder.invoke(null, folder);
+        } catch (NoSuchMethodException ignored) {
+            // Creative 1.9.x and some shaded copies build a folder map per pack format.
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+
+        try {
+            Method build = ResourceCategories.class.getMethod("buildCategoryMapByFolder", int.class);
+            @SuppressWarnings("unchecked")
+            Map<String, ResourceCategory<?>> categories = (Map<String, ResourceCategory<?>>) build.invoke(null, -1);
+            return categories.get(folder);
+        } catch (NoSuchMethodException ignored) {
+            // Newer Nexo-shaded Creative uses PackFormat instead of int.
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+
+        try {
+            Class<?> packFormat = Class.forName("team.unnamed.creative.metadata.pack.PackFormat");
+            Object unknown = packFormat.getField("UNKNOWN").get(null);
+            Method build = ResourceCategories.class.getMethod("buildCategoryMapByFolder", packFormat);
+            @SuppressWarnings("unchecked")
+            Map<String, ResourceCategory<?>> categories = (Map<String, ResourceCategory<?>>) build.invoke(null, unknown);
+            return categories.get(folder);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+    private static String categoryExtension(ResourceCategory<?> category) {
+        try {
+            return (String) category.getClass().getMethod("extension").invoke(category);
+        } catch (NoSuchMethodException ignored) {
+            // Creative 1.9.x and some shaded copies require a pack format.
+        } catch (ReflectiveOperationException e) {
+            return ".json";
+        }
+
+        try {
+            return (String) category.getClass().getMethod("extension", int.class).invoke(category, -1);
+        } catch (NoSuchMethodException ignored) {
+            // Newer Nexo-shaded Creative uses PackFormat instead of int.
+        } catch (ReflectiveOperationException e) {
+            return ".json";
+        }
+
+        try {
+            Class<?> packFormat = Class.forName("team.unnamed.creative.metadata.pack.PackFormat");
+            Object unknown = packFormat.getField("UNKNOWN").get(null);
+            return (String) category.getClass().getMethod("extension", packFormat).invoke(category, unknown);
+        } catch (ReflectiveOperationException e) {
+            return ".json";
+        }
     }
 
     private static @Nullable String withoutExtension(String string, String extension) {

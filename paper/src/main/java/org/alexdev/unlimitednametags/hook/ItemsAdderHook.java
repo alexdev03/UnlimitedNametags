@@ -7,6 +7,7 @@ import net.kyori.adventure.key.Key;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.creative.CreativeHook;
 import org.alexdev.unlimitednametags.hook.creative.CustomMinecraftResourcePackReaderImpl;
+import org.alexdev.unlimitednametags.hook.creative.JsonModelHeightResolver;
 import org.alexdev.unlimitednametags.hook.hat.HatHook;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -24,6 +25,7 @@ import dev.lone.itemsadder.api.CustomStack;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.OptionalDouble;
 
 @Getter
 public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeHook {
@@ -32,6 +34,7 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
 
     private final Map<Key, Map<Integer, Model>> cmdCache;
     private ResourcePack resourcePack;
+    private JsonModelHeightResolver jsonModelHeightResolver;
 
     public ItemsAdderHook(@NotNull UnlimitedNameTags plugin) {
         super(plugin);
@@ -63,6 +66,16 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
         return CreativeHook.super.findModel(item);
     }
 
+    @Override
+    public double getHigh(@NotNull ItemStack helmet) {
+        final double creativeHeight = CreativeHook.super.getHigh(helmet);
+        if (creativeHeight > 0 || jsonModelHeightResolver == null) {
+            return creativeHeight;
+        }
+        final OptionalDouble height = jsonModelHeightResolver.heightForItem(helmet);
+        return height.orElse(creativeHeight);
+    }
+
     @EventHandler
     public void onLoad(ItemsAdderPackCompressedEvent event) {
         cmdCache.clear();
@@ -91,9 +104,11 @@ public class ItemsAdderHook extends Hook implements Listener, HatHook, CreativeH
         try {
 //            resourcePack = MinecraftResourcePackReader.builder().lenient(true).build().readFromZipFile(generated);
             resourcePack = CustomMinecraftResourcePackReaderImpl.INSTANCE.readFromZipFile(generated);
+            jsonModelHeightResolver = new JsonModelHeightResolver(generated);
             plugin.getLogger().info("ItemsAdder's resource pack loaded from " + generated.getAbsolutePath());
         } catch (Throwable e) {
             resourcePack = null;
+            jsonModelHeightResolver = new JsonModelHeightResolver(generated);
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to load ItemsAdder resource pack for file at " + generated.getAbsolutePath(), e);
         }
     }

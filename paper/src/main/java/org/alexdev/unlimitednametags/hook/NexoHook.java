@@ -10,6 +10,7 @@ import lombok.Getter;
 import net.kyori.adventure.key.Key;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.creative.CreativeHook;
+import org.alexdev.unlimitednametags.hook.creative.JsonModelHeightResolver;
 import org.alexdev.unlimitednametags.hook.hat.HatHookPaper;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -22,14 +23,17 @@ import java.util.UUID;
 import team.unnamed.creative.ResourcePack;
 import team.unnamed.creative.model.Model;
 
+import java.io.File;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 
 @Getter
 public class NexoHook extends Hook implements Listener, CreativeHook, HatHookPaper {
 
     private final Map<Key, Map<Integer, Model>> cmdCache;
     private ResourcePack resourcePack;
+    private JsonModelHeightResolver jsonModelHeightResolver;
 
     public NexoHook(@NotNull UnlimitedNameTags plugin) {
         super(plugin);
@@ -39,6 +43,8 @@ public class NexoHook extends Hook implements Listener, CreativeHook, HatHookPap
 
     public void loadTexture() {
         resourcePack = NexoPack.resourcePack();
+        File packZip = new File(plugin.getDataFolder().getParentFile(), "Nexo" + File.separator + "pack" + File.separator + "pack.zip");
+        jsonModelHeightResolver = new JsonModelHeightResolver(packZip);
     }
 
     @Override
@@ -64,13 +70,51 @@ public class NexoHook extends Hook implements Listener, CreativeHook, HatHookPap
         if (item == null || item.getType().isAir()) {
             return 0;
         }
-        final double v = CreativeHook.super.getHigh(item);
+        final double v = getHigh(item);
         if (HelmetDebugContext.isVerbose()) {
             final Optional<Model> resolved = findModel(item);
             plugin.getLogger().info("[UNT helmet dbg] NexoHook: source item getHigh=" + v
                     + " findModelResolved=" + resolved.isPresent());
         }
         return v;
+    }
+
+    @Override
+    public double getHigh(@NotNull ItemStack item) {
+        final double creativeHeight = CreativeHook.super.getHigh(item);
+        if (creativeHeight > 0 || jsonModelHeightResolver == null) {
+            return creativeHeight;
+        }
+        final Optional<ItemBuilder> optionalItemBuilder = Optional.ofNullable(NexoItems.builderFromItem(item));
+        if (optionalItemBuilder.isEmpty()) {
+            return creativeHeight;
+        }
+        final NexoMeta meta = optionalItemBuilder.get().getNexoMeta();
+        OptionalDouble height = jsonModelHeightResolver.heightForKey(meta.getModel());
+        if (height.isPresent()) {
+            return height.getAsDouble();
+        }
+        final Key itemModelKey = itemModelKey(meta);
+        if (itemModelKey != null) {
+            height = jsonModelHeightResolver.heightForKey(itemModelKey);
+            if (height.isPresent()) {
+                return height.getAsDouble();
+            }
+        }
+        return creativeHeight;
+    }
+
+    private Key itemModelKey(@NotNull NexoMeta meta) {
+        try {
+            Object itemModel = meta.getClass().getMethod("getItemModel").invoke(meta);
+            if (itemModel == null) {
+                return null;
+            }
+            Object key = itemModel.getClass().getMethod("getKey").invoke(itemModel);
+            return key instanceof Key ? (Key) key : null;
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
     }
 
     public Optional<Model> findModel(@NotNull ItemStack item) {
