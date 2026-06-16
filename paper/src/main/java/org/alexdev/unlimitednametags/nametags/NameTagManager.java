@@ -1140,7 +1140,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
 
         return switch (row.displayGroup().resolvedDisplayType()) {
-            case TEXT -> hasRenderableText(row.components().get(viewer));
+            case TEXT -> CompactStackVisibility.shouldReserveTextRowStackSpace(row.displayGroup());
             case ITEM -> isMaterialVisible(owner, row.displayGroup().itemMaterial(), true);
             case BLOCK -> isMaterialVisible(owner, row.displayGroup().blockMaterial(), false);
         };
@@ -1162,7 +1162,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
 
         return switch (row.displayGroup().resolvedDisplayType()) {
-            case TEXT -> hasRenderableText(row.ownerComponent());
+            case TEXT -> CompactStackVisibility.shouldReserveTextRowStackSpace(row.displayGroup());
             case ITEM -> isMaterialVisible(player, row.displayGroup().itemMaterial(), true);
             case BLOCK -> isMaterialVisible(player, row.displayGroup().blockMaterial(), false);
         };
