@@ -16,7 +16,7 @@ dependencies {
     compileOnly(libs.typeWriter) {
         exclude(group = "io.papermc.paper")
         exclude(group = "com.github.Tofaa2.EntityLib")
-        exclude(group = "me.tofaa.entitylib")
+        exclude(group = "me.tofaa2")
     }
     compileOnly(libs.placeholderapi)
     compileOnly(libs.miniplaceholdersApi)
