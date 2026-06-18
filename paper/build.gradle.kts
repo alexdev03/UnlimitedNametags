@@ -122,16 +122,16 @@ tasks.build {
 
 tasks {
     runServer {
-        minecraftVersion("26.1.1")
+        minecraftVersion("26.2")
 
         downloadPlugins {
-            hangar("PlaceholderAPI", "2.11.6")
+            //hangar("PlaceholderAPI", "2.12.2")
             modrinth("luckperms", "v5.4.145-bukkit")
             modrinth("multiverse-core", "4.3.14")
             modrinth("essentialsx", "2.22.0")
             //url("https://ci.ender.zone/job/EssentialsX/lastSuccessfulBuild/artifact/jars/EssentialsX-2.22.0-dev+112-5baf239.jar")
             github("MiniPlaceholders", "MiniPlaceholders", "3.2.0", "MiniPlaceholders-Paper-3.2.0.jar")
-            url("https://github.com/retrooper/packetevents/releases/download/v2.12.1/packetevents-spigot-2.12.1.jar")
+            url("https://ci.codemc.io/job/retrooper/job/packetevents/892/artifact/build/libs/packetevents-spigot-2.12.3-SNAPSHOT.jar")
             github("MilkBowl", "Vault", "1.7.3", "Vault.jar")
             github("FeatherMC", "feather-server-api", "v0.0.5", "feather-server-api-0.0.5-bukkit.jar")
             github("LabyMod", "labymod4-server-api", "1.0.6", "labymod-server-api-bukkit-1.0.6.jar")

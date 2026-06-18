@@ -69,21 +69,21 @@ public class Settings {
         final Map<String, NameTag> m = new LinkedHashMap<>();
         m.put("staffer", new NameTag("nametag.staffer", List.of(
                 DisplayGroup.builder()
-                        .line("%luckperms_prefix% %player_name% %luckperms_suffix%")
+                        .line("Staffer %luckperms_prefix% %player_name% %luckperms_suffix%")
                         .background(Background.ofRGB(false, 255, 0, 0, 255, true, false))
-                        .scale(1f).yOffset(1.0f)
+                        .scale(1f).yOffset(0.2f)
                         .build())));
         m.put("default", new NameTag("nametag.default", List.of(
                 DisplayGroup.builder()
                         .line("%luckperms_prefix% %player_name% %luckperms_suffix%")
                         .background(Background.ofRGB(false, 255, 0, 0, 255, true, false))
-                        .scale(1f).yOffset(1.0f)
+                        .scale(1f).yOffset(0.2f)
+                        .when("%player_health% > 10")
                         .build(),
                 DisplayGroup.builder()
-                        .line("Rich Player")
+                        .line("Healthy Player!")
                         .background(Background.ofHex(false, "#ffffff", 255, false, false))
-                        .scale(1f).yOffset(1.0f)
-                        .when("%vault_eco_balance% > 1000")
+                        .scale(1f).yOffset(1.2f)
                         .build())));
         return m;
     }

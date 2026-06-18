@@ -54,7 +54,7 @@ subprojects {
         options.encoding = "UTF-8"
     }
     extensions.configure<JavaPluginExtension>("java") {
-        toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+        toolchain.languageVersion.set(JavaLanguageVersion.of(25))
         disableAutoTargetJvm()
     }
 }
