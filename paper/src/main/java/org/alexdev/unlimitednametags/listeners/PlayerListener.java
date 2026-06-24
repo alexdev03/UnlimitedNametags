@@ -8,6 +8,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.PackSendHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -145,7 +146,8 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPotion(@NotNull EntityPotionEffectEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
+        final Entity entity = event.getEntity();
+        if (!(entity instanceof Player player)) {
             return;
         }
 
