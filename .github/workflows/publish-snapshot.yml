@@ -29,11 +29,6 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Import GPG key
-        run: echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-
       - name: Publish SNAPSHOT artifacts
         run: >
           bash ./gradlew :common:publish :api:publish :api-paper:publish
@@ -42,5 +37,5 @@ jobs:
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          ORG_GRADLE_PROJECT_signing_gnupg_keyName: ${{ secrets.GPG_KEY_ID }}
-          ORG_GRADLE_PROJECT_signing_gnupg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
