@@ -36,7 +36,7 @@ jobs:
 
       - name: Publish SNAPSHOT artifacts
         run: >
-          ./gradlew :common:publish :api:publish :api-paper:publish
+          bash ./gradlew :common:publish :api:publish :api-paper:publish
           -Pversion=${{ env.SNAPSHOT_VERSION }}
           --no-daemon
         env:
