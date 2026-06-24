@@ -101,46 +101,64 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
 
     @Override
     public boolean isEligibleToShow(@NotNull UUID owner, @NotNull UUID viewerId, boolean visible, boolean viewerAlreadySeeing) {
+        return nametagShowBlockReason(owner, viewerId, visible, viewerAlreadySeeing) == null;
+    }
+
+    @Override
+    public @Nullable String nametagShowBlockReason(@NotNull UUID owner, @NotNull UUID viewerId, boolean visible, boolean viewerAlreadySeeing) {
         final Player viewer = plugin.getPlayerListener().getPlayer(viewerId);
         final Player ownerPlayer = plugin.getPlayerListener().getPlayer(owner);
-        if (!visible || viewer == null || ownerPlayer == null) {
-            return false;
+        if (!visible) {
+            return "nametag is not marked visible";
+        }
+        if (viewer == null) {
+            return "viewer is not loaded or online";
+        }
+        if (ownerPlayer == null) {
+            return "owner is not loaded or online";
         }
         if (!viewerSupportsTextDisplay(viewerId)) {
-            return false;
+            return "viewer client does not support text displays";
         }
         if (!viewer.canSee(ownerPlayer)) {
-            return false;
+            return "viewer cannot see owner through Bukkit visibility";
         }
         if (viewer.getWorld() != ownerPlayer.getWorld()) {
-            return false;
+            return "viewer is in world " + viewer.getWorld().getName()
+                    + " but owner is in world " + ownerPlayer.getWorld().getName();
         }
-        if (resolveUser(viewerId) == null || resolveUser(owner) == null) {
-            return false;
+        if (resolveUser(viewerId) == null) {
+            return "PacketEvents user is not loaded for viewer";
+        }
+        if (resolveUser(owner) == null) {
+            return "PacketEvents user is not loaded for owner";
         }
 
         final boolean isOwnerViewer = viewerId.equals(owner);
         if (!isOwnerViewer && !viewer.hasPermission("unt.shownametags")) {
-            return false;
+            return "viewer lacks permission unt.shownametags";
         }
         if (isOwnerViewer && !viewer.hasPermission("unt.showownnametag")) {
-            return false;
+            return "viewer lacks permission unt.showownnametag";
         }
         if (plugin.getNametagManager().isHiddenOtherNametags(viewer)) {
-            return false;
+            return "viewer has hidden other nametags";
         }
         if (!isOwnerViewer && plugin.getNametagManager().isHidingOwnNametagFromOthers(ownerPlayer)) {
-            return false;
+            return "owner is hiding their nametag from others";
         }
         if (plugin.getConfigManager().getSettings().getVisibility().isShowWhileLooking()
                 && !plugin.getNametagManager().isPlayerPointingAt(viewer, ownerPlayer)) {
-            return false;
+            return "show-while-looking is enabled and viewer is not pointing at owner";
         }
         if (isOwnerViewer && plugin.getNametagManager().isEffectiveShowOwnNametag(ownerPlayer)) {
-            return true;
+            return null;
         }
 
-        return !viewerAlreadySeeing;
+        if (viewerAlreadySeeing) {
+            return "viewer is already seeing this nametag";
+        }
+        return null;
     }
 
     @Override

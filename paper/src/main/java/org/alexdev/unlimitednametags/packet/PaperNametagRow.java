@@ -72,6 +72,10 @@ public interface PaperNametagRow extends UntNametagDisplay, NametagAnimationTarg
     default void showToPlayer(@NotNull Player player) {
         final boolean visible = fireVisibilityEvent(getOwner(), player, true, canPlayerSee(player));
         if (!visible) {
+            if (getPlugin().getNametagManager().isDebug()) {
+                getPlugin().getLogger().info("Visibility event prevented showing nametag of "
+                        + getOwner().getName() + " to " + player.getName());
+            }
             return;
         }
         packet().showToViewer(player.getUniqueId());

@@ -12,6 +12,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.entity.EntityEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
@@ -146,7 +147,7 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPotion(@NotNull EntityPotionEffectEvent event) {
-        final Entity entity = event.getEntity();
+        final Entity entity = ((EntityEvent) event).getEntity();
         if (!(entity instanceof Player player)) {
             return;
         }

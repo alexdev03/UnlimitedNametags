@@ -11,7 +11,6 @@ import me.tofaa.entitylib.spigot.UntSpigotEntityLibPlatform;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.platform.NametagPassengerSource;
 import org.alexdev.unlimitednametags.data.ConcurrentMultimap;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -91,7 +90,7 @@ public class PacketManager {
     }
 
     public int getEntityIndex() {
-        return Bukkit.getUnsafe().nextEntityId(Bukkit.getWorlds().get(0));
+        return SpigotReflectionUtil.generateEntityId();
     }
 
     public void removePassenger(int passenger) {

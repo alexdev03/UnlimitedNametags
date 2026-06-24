@@ -37,6 +37,9 @@ public interface NametagPlatformBridge {
     boolean isEligibleToShow(@NotNull UUID ownerId, @NotNull UUID viewerId, boolean visible, boolean viewerAlreadySeeing);
 
     @Nullable
+    String nametagShowBlockReason(@NotNull UUID ownerId, @NotNull UUID viewerId, boolean visible, boolean viewerAlreadySeeing);
+
+    @Nullable
     String playerName(@NotNull UUID playerId);
 
     boolean isEffectiveShowOwnNametag(@NotNull UUID ownerId);

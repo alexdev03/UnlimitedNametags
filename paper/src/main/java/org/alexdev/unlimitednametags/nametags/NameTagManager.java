@@ -1324,7 +1324,7 @@ public class NameTagManager implements UntNametagManagerPaper {
             }
             row.showToPlayers(players);
             if (debug) {
-                plugin.getLogger().info("Showing nametag of " + player.getName() + " to tracked players: " +
+                plugin.getLogger().info("Attempting to show nametag of " + player.getName() + " to tracked players: " +
                         players.stream().map(Player::getName).collect(Collectors.joining(", ")));
             }
         }

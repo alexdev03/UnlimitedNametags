@@ -709,7 +709,8 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             if (runtime.isNametagDebug()) {
                 final String viewerName = platform.playerName(viewerId);
                 final String ownerName = platform.playerName(ownerId);
-                runtime.logInfo("Player " + viewerName + " is not eligible to show nametag for " + ownerName);
+                runtime.logInfo("Player " + viewerName + " is not eligible to show nametag for " + ownerName
+                        + ": " + showBlockReason(viewerId));
             }
             return;
         }
@@ -756,6 +757,15 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             return false;
         }
         return platform.isEligibleToShow(ownerId, viewerId, visible, getViewers().contains(viewerId));
+    }
+
+    @NotNull
+    private String showBlockReason(@NotNull UUID viewerId) {
+        if (blocked.contains(viewerId)) {
+            return "viewer is blocked for this nametag";
+        }
+        final String reason = platform.nametagShowBlockReason(ownerId, viewerId, visible, getViewers().contains(viewerId));
+        return reason != null ? reason : "unknown eligibility failure";
     }
 
     @Override
