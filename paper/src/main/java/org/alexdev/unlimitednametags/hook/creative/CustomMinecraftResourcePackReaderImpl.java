@@ -227,7 +227,16 @@ public final class CustomMinecraftResourcePackReaderImpl implements MinecraftRes
                 if (keyOfMetadata != null) {
                     // found metadata for texture
                     Key key = Key.key(namespace, keyOfMetadata);
-                    Metadata metadata = MetadataSerializer.INSTANCE.readFromTree(parseJson(reader.stream()));
+                    Metadata metadata;
+                    try {
+                        metadata = MetadataSerializer.INSTANCE.readFromTree(parseJson(reader.stream()));
+                    } catch (RuntimeException e) {
+                        // ItemsAdder generated packs may contain non-object .mcmeta sidecar files
+                        // (for example a plain hash string). Texture metadata is optional for the
+                        // model-height lookup, so skip only this sidecar instead of aborting the
+                        // whole resource-pack load.
+                        continue;
+                    }
 
                     Map<Key, Texture> incompleteTexturesThisContainer = incompleteTextures.computeIfAbsent(overlayDir, k -> new LinkedHashMap<>());
                     Texture texture = incompleteTexturesThisContainer.remove(key);
