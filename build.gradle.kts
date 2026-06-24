@@ -155,7 +155,13 @@ configure(publishableLibraryModules.keys.map { project(it) }) {
     }
 
     extensions.configure<SigningExtension> {
-        useGpgCmd()
+        val signingKey = findProperty("signingKey") as String? ?: System.getenv("GPG_PRIVATE_KEY")
+        val signingPassword = findProperty("signingPassword") as String? ?: System.getenv("GPG_PASSPHRASE")
+        if (!signingKey.isNullOrBlank()) {
+            useInMemoryPgpKeys(signingKey, signingPassword)
+        } else {
+            useGpgCmd()
+        }
         sign(extensions.getByType<PublishingExtension>().publications.getByName("maven"))
     }
 }
