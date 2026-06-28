@@ -18,6 +18,7 @@ import org.alexdev.unlimitednametags.api.UntNametagDisplay;
 import org.alexdev.unlimitednametags.api.UntNametagDisplayCore;
 import org.alexdev.unlimitednametags.api.UntNametagManagerPaper;
 import org.alexdev.unlimitednametags.config.DisplayAnimation;
+import org.alexdev.unlimitednametags.config.DistanceRefreshCulling;
 import org.alexdev.unlimitednametags.config.GlowOverride;
 import org.alexdev.unlimitednametags.config.NametagDisplayType;
 import org.alexdev.unlimitednametags.config.Settings;
@@ -73,11 +74,14 @@ public class NameTagManager implements UntNametagManagerPaper {
     private final Map<UUID, Map<Integer, GlowOverride>> persistentGlowOverrides;
     private final Map<UUID, Map<Integer, DisplayAnimation>> sessionDisplayAnimations;
     private final Map<UUID, Map<Integer, DisplayAnimation>> persistentDisplayAnimations;
+    private final Map<UUID, Long> lastDistanceRefreshTicks;
+    private final Set<UUID> distanceRefreshCullingBypassed;
     private final Map<UUID, Boolean> shiftSystemBlocked;
     private final List<MyScheduledTask> tasks;
     private final AtomicLong displayAnimationMonotonicTick = new AtomicLong();
     @Setter
     private boolean debug = false;
+    private volatile boolean distanceRefreshCullingEnabled = true;
     private final Attribute scaleAttribute;
 
     private record ResolvedDisplayRow(
@@ -108,6 +112,8 @@ public class NameTagManager implements UntNametagManagerPaper {
         this.persistentGlowOverrides = Maps.newConcurrentMap();
         this.sessionDisplayAnimations = Maps.newConcurrentMap();
         this.persistentDisplayAnimations = Maps.newConcurrentMap();
+        this.lastDistanceRefreshTicks = Maps.newConcurrentMap();
+        this.distanceRefreshCullingBypassed = Sets.newConcurrentHashSet();
         this.shiftSystemBlocked = Maps.newConcurrentMap();
         this.loadAll();
         this.scaleAttribute = loadScaleAttribute();
@@ -139,14 +145,23 @@ public class NameTagManager implements UntNametagManagerPaper {
                 1L);
         tasks.add(displayAnimations);
 
+        final AtomicLong refreshSweepTick = new AtomicLong();
+        final int baseRefreshInterval = Math.max(1, plugin.getConfigManager().getSettings().getBehavior().getTaskInterval());
         final MyScheduledTask refresh = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                 () -> {
                     if (plugin.isPaper() && plugin.getServer().isStopping()) {
                         return;
                     }
-                    nameTags.values().forEach(tags -> tags.forEach(tag -> refresh(paperRow(tag).getOwner(), false)));
+                    final long nowTick = refreshSweepTick.addAndGet(baseRefreshInterval);
+                    nameTags.values().stream()
+                            .flatMap(Collection::stream)
+                            .map(tag -> paperRow(tag).getOwner())
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .filter(owner -> shouldRefreshOwnerThisSweep(owner, nowTick, baseRefreshInterval))
+                            .forEach(owner -> refresh(owner, false));
                 },
-                10, plugin.getConfigManager().getSettings().getBehavior().getTaskInterval());
+                10, baseRefreshInterval);
         tasks.add(refresh);
 
         // Refresh passengers
@@ -211,6 +226,49 @@ public class NameTagManager implements UntNametagManagerPaper {
                     obscuredInterval);
             tasks.add(obscured);
         }
+    }
+
+    private boolean shouldRefreshOwnerThisSweep(@NotNull Player owner, final long nowTick, final int baseRefreshInterval) {
+        final UUID ownerId = owner.getUniqueId();
+        final Settings.DistanceRefreshCulling config = plugin.getConfigManager().getSettings()
+                .getPerformance().getDistanceRefreshCulling();
+        if (!distanceRefreshCullingEnabled || distanceRefreshCullingBypassed.contains(ownerId) || !config.isEnabled()) {
+            lastDistanceRefreshTicks.put(ownerId, nowTick);
+            return true;
+        }
+        final double nearestDistance = nearestViewerDistance(owner);
+        final int effectiveInterval = DistanceRefreshCulling.intervalTicks(baseRefreshInterval, config, nearestDistance);
+        final long lastTick = lastDistanceRefreshTicks.getOrDefault(ownerId, Long.MIN_VALUE);
+        if (lastTick == Long.MIN_VALUE || DistanceRefreshCulling.shouldRefresh(nowTick - lastTick, effectiveInterval)) {
+            lastDistanceRefreshTicks.put(ownerId, nowTick);
+            return true;
+        }
+        return false;
+    }
+
+    private double nearestViewerDistance(@NotNull Player owner) {
+        if (isEffectiveShowOwnNametag(owner)) {
+            return 0.0;
+        }
+
+        double nearestSq = Double.POSITIVE_INFINITY;
+        final Location ownerLocation = owner.getLocation();
+        for (Player viewer : plugin.getTrackerManager().getWhoTracks(owner)) {
+            if (viewer == null || !viewer.isOnline()) {
+                continue;
+            }
+            if (!viewer.getWorld().equals(owner.getWorld())) {
+                continue;
+            }
+            final double distanceSq = viewer.getLocation().distanceSquared(ownerLocation);
+            if (distanceSq < nearestSq) {
+                nearestSq = distanceSq;
+            }
+        }
+        if (Double.isInfinite(nearestSq)) {
+            return Double.POSITIVE_INFINITY;
+        }
+        return Math.sqrt(nearestSq);
     }
 
     private Attribute loadScaleAttribute() {
@@ -373,6 +431,8 @@ public class NameTagManager implements UntNametagManagerPaper {
         persistentGlowOverrides.remove(uuid);
         sessionDisplayAnimations.remove(uuid);
         persistentDisplayAnimations.remove(uuid);
+        lastDistanceRefreshTicks.remove(uuid);
+        distanceRefreshCullingBypassed.remove(uuid);
         shiftSystemBlocked.remove(uuid);
     }
 
@@ -2196,6 +2256,31 @@ public class NameTagManager implements UntNametagManagerPaper {
     @Override
     public boolean isShiftSystemBlocked(@NotNull UUID playerId) {
         return shiftSystemBlocked.getOrDefault(playerId, false);
+    }
+
+    @Override
+    public boolean isDistanceRefreshCullingEnabled() {
+        return distanceRefreshCullingEnabled;
+    }
+
+    @Override
+    public void setDistanceRefreshCullingEnabled(boolean enabled) {
+        distanceRefreshCullingEnabled = enabled;
+    }
+
+    @Override
+    public boolean isDistanceRefreshCullingBypassed(@NotNull UUID playerId) {
+        return distanceRefreshCullingBypassed.contains(playerId);
+    }
+
+    @Override
+    public void setDistanceRefreshCullingBypassed(@NotNull UUID playerId, boolean bypassed) {
+        if (bypassed) {
+            distanceRefreshCullingBypassed.add(playerId);
+        } else {
+            distanceRefreshCullingBypassed.remove(playerId);
+        }
+        lastDistanceRefreshTicks.remove(playerId);
     }
 
     @Override

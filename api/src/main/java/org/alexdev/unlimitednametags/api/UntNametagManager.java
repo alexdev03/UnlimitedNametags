@@ -124,6 +124,14 @@ public interface UntNametagManager {
 
     boolean isShiftSystemBlocked(@NotNull UUID playerId);
 
+    boolean isDistanceRefreshCullingEnabled();
+
+    void setDistanceRefreshCullingEnabled(boolean enabled);
+
+    boolean isDistanceRefreshCullingBypassed(@NotNull UUID playerId);
+
+    void setDistanceRefreshCullingBypassed(@NotNull UUID playerId, boolean bypassed);
+
     boolean isDebug();
 
     void setDebug(boolean debug);

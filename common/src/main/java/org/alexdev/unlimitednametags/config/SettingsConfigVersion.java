@@ -9,9 +9,9 @@ public final class SettingsConfigVersion {
     }
 
     /**
-     * Latest schema: version 6 introduces glowAnimations and per-display-group glow overrides.
+     * Latest schema: version 7 introduces distance refresh culling settings.
      */
-    public static final int CURRENT = 6;
+    public static final int CURRENT = 7;
 
     /**
      * {@code displayGroups} with {@link Settings.DisplayGroup}, structured {@code lines} as {@code {text, when?}} objects.
