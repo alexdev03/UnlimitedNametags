@@ -224,7 +224,11 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             return;
         }
 
-        perPlayerEntity.execute(e -> consumer.accept((AbstractDisplayMeta) e.getEntityMeta()));
+        perPlayerEntity.execute(e -> {
+            if (e != null) {
+                consumer.accept((AbstractDisplayMeta) e.getEntityMeta());
+            }
+        });
     }
 
     public void modifyEntity(@Nullable User user, @NotNull Consumer<WrapperEntity> consumer) {
@@ -232,7 +236,12 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             return;
         }
 
-        perPlayerEntity.modify(user, consumer);
+        final WrapperEntity entity = resolveEntity(user);
+        if (entity == null) {
+            return;
+        }
+
+        consumer.accept(entity);
     }
 
     public void modifyEntity(@NotNull Consumer<WrapperEntity> consumer) {
@@ -240,7 +249,19 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             return;
         }
 
-        perPlayerEntity.execute(consumer);
+        perPlayerEntity.execute(entity -> {
+            if (entity != null) {
+                consumer.accept(entity);
+            }
+        });
+    }
+
+    @Nullable
+    private WrapperEntity resolveEntity(@Nullable final User user) {
+        if (user == null || user.getUUID() == null) {
+            return null;
+        }
+        return perPlayerEntity.getEntityOf(user);
     }
 
     public float getDefaultScale() {
@@ -439,7 +460,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             return false;
         }
 
-        final WrapperEntity entity = perPlayerEntity.getEntityOf(user);
+        final WrapperEntity entity = resolveEntity(user);
         if (entity == null || !entity.isSpawned()) {
             return false;
         }
@@ -455,7 +476,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
 
     public void flushAllViewers(final boolean force) {
         perPlayerEntity.getEntities().forEach((viewerId, entity) -> {
-            if (blocked.contains(viewerId)) {
+            if (entity == null || blocked.contains(viewerId)) {
                 return;
             }
             if (force) {
@@ -718,7 +739,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (!viewerId.equals(ownerId)) {
             final User user = platform.resolveUser(viewerId);
             if (user != null) {
-                final WrapperEntity entity = perPlayerEntity.getEntityOf(user);
+                final WrapperEntity entity = resolveEntity(user);
                 if (entity != null) {
                     applyOwnerData(entity);
                 }
@@ -735,7 +756,10 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
 
         final User viewerUser = platform.resolveUser(viewerId);
         if (viewerUser != null) {
-            perPlayerEntity.addViewer(viewerUser);
+            final WrapperEntity entity = resolveEntity(viewerUser);
+            if (entity != null) {
+                entity.addViewer(viewerUser);
+            }
         }
 
         final TextNametagSupport tn = textNametag();
@@ -851,7 +875,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             perPlayerEntity.getEntities().remove(viewerId);
             return;
         }
-        final WrapperEntity wrapperEntity = perPlayerEntity.getEntityOf(user);
+        final WrapperEntity wrapperEntity = resolveEntity(user);
         if (wrapperEntity != null) {
             wrapperEntity.removeViewer(user);
         }
@@ -920,7 +944,10 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         perPlayerEntity.getEntities().keySet().forEach(viewerId -> {
             final User user = platform.resolveUser(viewerId);
             if (user != null && user.getChannel() != null) {
-                perPlayerEntity.removeViewer(user);
+                final WrapperEntity entity = resolveEntity(user);
+                if (entity != null) {
+                    entity.removeViewer(user);
+                }
             }
         });
 
@@ -987,7 +1014,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (ownerUser == null) {
             return;
         }
-        final WrapperEntity ownerEntity = perPlayerEntity.getEntityOf(ownerUser);
+        final WrapperEntity ownerEntity = resolveEntity(ownerUser);
         if (ownerEntity == null) {
             return;
         }
@@ -1005,7 +1032,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (ownerUser == null) {
             return properties;
         }
-        final WrapperEntity entity = this.perPlayerEntity.getEntityOf(ownerUser);
+        final WrapperEntity entity = resolveEntity(ownerUser);
         if (entity == null) {
             return properties;
         }
