@@ -83,6 +83,7 @@ public final class SettingsYamlMigrator {
                 case 3 -> changed |= migrateV3ToV4(root, log);
                 case 4 -> changed |= migrateV4ToV5(root, log);
                 case 5 -> changed |= migrateV5ToV6(root, log);
+                case 6 -> changed |= migrateV6ToV7(root, log);
                 default -> throw new IllegalStateException("Missing settings migrator from v" + v + " to v" + (v + 1));
             }
         }
@@ -740,6 +741,24 @@ public final class SettingsYamlMigrator {
         }
         root.put("glowAnimations", defaultGlowAnimationsYaml());
         log.info("Added default glowAnimations presets (v6).");
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean migrateV6ToV7(Map<String, Object> root, Logger log) {
+        final Map<String, Object> performance = (Map<String, Object>) root.computeIfAbsent("performance",
+                ignored -> new LinkedHashMap<>());
+        if (performance.containsKey("distanceRefreshCulling")) {
+            return false;
+        }
+        final Map<String, Object> culling = new LinkedHashMap<>();
+        culling.put("enabled", true);
+        culling.put("nearDistance", 24.0);
+        culling.put("maxDistance", 96.0);
+        culling.put("maxInterval", 100);
+        culling.put("curve", 2.0);
+        performance.put("distanceRefreshCulling", culling);
+        log.info("Added distance refresh culling settings (v7).");
         return true;
     }
 

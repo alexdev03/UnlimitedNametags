@@ -178,6 +178,14 @@ public interface UntNametagManagerPaper extends UntNametagManager {
         return isShiftSystemBlocked(player.getUniqueId());
     }
 
+    default boolean isDistanceRefreshCullingBypassed(@NotNull Player player) {
+        return isDistanceRefreshCullingBypassed(player.getUniqueId());
+    }
+
+    default void setDistanceRefreshCullingBypassed(@NotNull Player player, boolean bypassed) {
+        setDistanceRefreshCullingBypassed(player.getUniqueId(), bypassed);
+    }
+
     default float getScale(@NotNull Player player) {
         return getScale(player.getUniqueId());
     }

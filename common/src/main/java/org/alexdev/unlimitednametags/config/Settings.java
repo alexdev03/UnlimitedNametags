@@ -24,7 +24,8 @@ public class Settings {
             "Schema version for settings.yml (managed by the plugin; do not lower).",
             "1 = flat NameTag, 2 = displayGroups with string lines, 3 = displayGroups with structured lines,",
             "4 = unified Background (no type: discriminator) + sectioned settings,",
-            "5 = throughWallMode, 6 = glowAnimations + per-row glow (current)."
+            "5 = throughWallMode, 6 = glowAnimations + per-row glow,",
+            "7 = distance refresh culling (current)."
     })
     private int configVersion = SettingsConfigVersion.CURRENT;
 
@@ -253,6 +254,34 @@ public class Settings {
                 "Example:  \"%vault_eco_balance%\": 100   (re-fetches balance at most every 100 ticks)"
         })
         private Map<String, Integer> placeholderUpdateRates = new LinkedHashMap<>();
+
+        @Comment({
+                "Distance-aware refresh culling for the periodic nametag placeholder refresh task.",
+                "Nearest viewers keep behavior.taskInterval; farther owners still refresh, but less often."
+        })
+        private DistanceRefreshCulling distanceRefreshCulling = new DistanceRefreshCulling();
+    }
+
+    @Configuration
+    @Getter
+    @Setter
+    @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal"})
+    public static class DistanceRefreshCulling {
+
+        @Comment("Enable distance-aware refresh intervals for far-away nametags.")
+        private boolean enabled = true;
+
+        @Comment("Distance in blocks up to which nametags use behavior.taskInterval.")
+        private double nearDistance = 24.0;
+
+        @Comment("Distance in blocks at/after which nametags use maxInterval.")
+        private double maxDistance = 96.0;
+
+        @Comment("Slowest refresh interval in ticks for far-away/no-viewer nametags.")
+        private int maxInterval = 100;
+
+        @Comment("Curve exponent for interval growth. 1 = linear, 2 = gentle near / stronger far.")
+        private double curve = 2.0;
     }
 
     // ─── Nested types ─────────────────────────────────────────────────────────
