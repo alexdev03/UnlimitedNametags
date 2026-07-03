@@ -1627,13 +1627,13 @@ public class NameTagManager implements UntNametagManagerPaper {
     }
 
     public void updateDisplaysForPlayer(@NotNull Player player) {
+        final Set<UUID> tracked = plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId());
         nameTags.values().forEach(tags -> tags.forEach(display -> {
             final PaperNametagRow row = paperRow(display);
             final Player owner = row.getOwner();
             if (owner == player) {
                 return;
             }
-            final Set<UUID> tracked = plugin.getTrackerManager().getTrackedPlayers(owner.getUniqueId());
 
             if (player.getLocation().getWorld() != owner.getLocation().getWorld()) {
                 return;
@@ -1643,7 +1643,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 return;
             }
 
-            if (!tracked.contains(player.getUniqueId())) {
+            if (!tracked.contains(owner.getUniqueId())) {
                 return;
             }
 

@@ -152,6 +152,63 @@ public class TrackerManager {
         }
     }
 
+    public void reconcileTrackedState(@NotNull Player player) {
+        final Map<UUID, Player> onlinePlayers = plugin.getPlayerListener().getOnlinePlayers();
+        final UUID playerId = player.getUniqueId();
+
+        final Set<UUID> currentTargets = new HashSet<>();
+        for (Player target : onlinePlayers.values()) {
+            if (target.equals(player)) {
+                continue;
+            }
+            if (target.getTrackedBy().contains(player)) {
+                currentTargets.add(target.getUniqueId());
+            }
+        }
+
+        final Set<UUID> cachedTargets = new HashSet<>(trackedPlayers.get(playerId));
+        final Set<UUID> targetsToRemove = new HashSet<>(cachedTargets);
+        targetsToRemove.removeAll(currentTargets);
+        final Set<UUID> targetsToAdd = new HashSet<>(currentTargets);
+        targetsToAdd.removeAll(cachedTargets);
+
+        for (UUID targetId : targetsToRemove) {
+            final Player target = onlinePlayers.get(targetId);
+            if (target != null) {
+                removePlayerInternal(player, target);
+            }
+        }
+        for (UUID targetId : targetsToAdd) {
+            final Player target = onlinePlayers.get(targetId);
+            if (target != null) {
+                handleAdd(player, target);
+            }
+        }
+
+        final Set<UUID> currentViewers = player.getTrackedBy().stream()
+                .map(Player::getUniqueId)
+                .filter(viewerId -> !viewerId.equals(playerId))
+                .collect(java.util.stream.Collectors.toSet());
+        final Set<UUID> cachedViewers = new HashSet<>(trackedBy.get(playerId));
+        final Set<UUID> viewersToRemove = new HashSet<>(cachedViewers);
+        viewersToRemove.removeAll(currentViewers);
+        final Set<UUID> viewersToAdd = new HashSet<>(currentViewers);
+        viewersToAdd.removeAll(cachedViewers);
+
+        for (UUID viewerId : viewersToRemove) {
+            final Player viewer = onlinePlayers.get(viewerId);
+            if (viewer != null) {
+                removePlayerInternal(viewer, player);
+            }
+        }
+        for (UUID viewerId : viewersToAdd) {
+            final Player viewer = onlinePlayers.get(viewerId);
+            if (viewer != null) {
+                handleAdd(viewer, player);
+            }
+        }
+    }
+
     /**
      * Retrieves the list of players currently tracking the specified target.
      * Uses the reverse map for O(1) performance.

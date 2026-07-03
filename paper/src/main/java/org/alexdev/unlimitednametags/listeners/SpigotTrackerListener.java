@@ -8,10 +8,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class SpigotTrackerListener implements Listener {
 
@@ -24,11 +26,11 @@ public class SpigotTrackerListener implements Listener {
 
     private void startCheckTask() {
         plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
+            final Map<UUID, Set<UUID>> currentlyTrackedByViewer = currentTrackedTargetsByViewer();
+
             for (Player player : Bukkit.getOnlinePlayers()) {
                 final Set<UUID> trackedPlayers = plugin.getTrackerManager().getTrackedPlayers(player.getUniqueId());
-                final Set<UUID> current = player.getTrackedBy().stream()
-                        .map(Player::getUniqueId)
-                        .collect(Collectors.toSet());
+                final Set<UUID> current = currentlyTrackedByViewer.getOrDefault(player.getUniqueId(), Set.of());
 
                 final Set<UUID> toRemove = Sets.difference(trackedPlayers, current);
                 final Set<UUID> toAdd = Sets.difference(current, trackedPlayers);
@@ -44,6 +46,20 @@ public class SpigotTrackerListener implements Listener {
                         .forEach(p -> plugin.getTrackerManager().handleAdd(player, p));
             }
         }, 0, 5);
+    }
+
+    private Map<UUID, Set<UUID>> currentTrackedTargetsByViewer() {
+        final Map<UUID, Set<UUID>> trackedByViewer = new HashMap<>();
+        for (Player target : Bukkit.getOnlinePlayers()) {
+            for (Player viewer : target.getTrackedBy()) {
+                if (viewer.equals(target)) {
+                    continue;
+                }
+                trackedByViewer.computeIfAbsent(viewer.getUniqueId(), ignored -> new HashSet<>())
+                        .add(target.getUniqueId());
+            }
+        }
+        return trackedByViewer;
     }
 
     @EventHandler
