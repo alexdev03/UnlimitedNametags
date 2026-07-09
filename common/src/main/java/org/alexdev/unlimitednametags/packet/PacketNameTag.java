@@ -45,6 +45,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     private final int entityId;
     private final UUID entityIdUuid;
     private final Set<UUID> blocked;
+    private final Set<UUID> forceRefreshViewers;
     private long lastUpdate;
     @Setter
     private boolean visible;
@@ -109,6 +110,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         this.createdDisplayType = displayGroup.resolvedDisplayType();
         this.perPlayerEntity = new WrapperPerPlayerEntity(buildBaseSupplier());
         this.blocked = Sets.newConcurrentHashSet();
+        this.forceRefreshViewers = Sets.newConcurrentHashSet();
         this.lastUpdate = System.currentTimeMillis();
         this.animationLeftQuat = new Quaternion4f(0f, 0f, 0f, 1f);
         this.animationEpochMs = System.currentTimeMillis();
@@ -465,13 +467,19 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             return false;
         }
 
-        if (force) {
+        final boolean effectiveForce = force || forceRefreshViewers.contains(viewerId);
+        if (effectiveForce) {
             entity.refresh();
             MetadataFlushHelper.clearPending(entity.getEntityMeta().getMetadata());
+            forceRefreshViewers.remove(viewerId);
             return true;
         }
 
         return MetadataFlushHelper.flushPending(entity);
+    }
+
+    void markViewerNeedsFullRefresh(@NotNull final UUID viewerId) {
+        forceRefreshViewers.add(viewerId);
     }
 
     public void flushAllViewers(final boolean force) {
@@ -479,10 +487,12 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             if (entity == null || blocked.contains(viewerId)) {
                 return;
             }
-            if (force) {
+            final boolean effectiveForce = force || forceRefreshViewers.contains(viewerId);
+            if (effectiveForce) {
                 if (entity.isSpawned()) {
                     entity.refresh();
                     MetadataFlushHelper.clearPending(entity.getEntityMeta().getMetadata());
+                    forceRefreshViewers.remove(viewerId);
                 }
             } else {
                 MetadataFlushHelper.flushPending(entity);
@@ -870,6 +880,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (tn != null) {
             tn.onViewerRemoved(viewerId);
         }
+        forceRefreshViewers.remove(viewerId);
         final User user = platform.resolveUser(viewerId);
         if (user == null) {
             perPlayerEntity.getEntities().remove(viewerId);
@@ -908,7 +919,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         }
         final TextNametagSupport tn = textNametag();
         if (tn != null) {
-            tn.onViewerRemoved(viewerId);
+            tn.onViewerDetached(viewerId);
         }
         perPlayerEntity.getEntities().remove(viewerId);
     }
@@ -937,6 +948,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
 
     public void remove() {
         removed = true;
+        forceRefreshViewers.clear();
         final TextNametagSupport tn = textNametag();
         if (tn != null) {
             tn.dispose();
@@ -962,6 +974,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (tn != null) {
             tn.onViewerRemoved(viewerId);
         }
+        forceRefreshViewers.remove(viewerId);
         perPlayerEntity.getEntities().remove(viewerId);
         runtime.removePassenger(viewerId, entityId);
     }

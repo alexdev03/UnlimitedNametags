@@ -420,6 +420,16 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
     }
 
+    public boolean isBlocked(@NotNull Player player) {
+        return blocked.contains(player.getUniqueId());
+    }
+
+    private boolean shouldSuppressNametag(@NotNull Player player) {
+        return isBlocked(player)
+                || player.hasPotionEffect(PotionEffectType.INVISIBILITY)
+                || player.getGameMode() == GameMode.SPECTATOR;
+    }
+
     public void clearCache(@NotNull UUID uuid) {
         blocked.remove(uuid);
         creating.remove(uuid);
@@ -780,6 +790,12 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
 
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenRun(() -> {
+            if (shouldSuppressNametag(player)) {
+                removePlayer(player);
+                creating.remove(player.getUniqueId());
+                pendingRowCreations.remove(player.getUniqueId());
+                return;
+            }
             final List<ResolvedDisplayRow> rows = collectResolvedRows(futures);
             final float helmetExtraOffset = plugin.getPlaceholderManager().computeHelmetExtraOffset(player);
             runDeferredDisplayBatch(rows, false, () -> {
@@ -1370,6 +1386,10 @@ public class NameTagManager implements UntNametagManagerPaper {
     }
 
     private void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<Player> tracked, boolean ensureCreated, boolean includeOwner) {
+        if (shouldSuppressNametag(player)) {
+            removeAllViewers(player);
+            return;
+        }
         final CopyOnWriteArrayList<PacketNameTag> tagList = nameTags.get(player.getUniqueId());
         final List<PacketNameTag> packetNameTags = tagList == null ? List.of() : tagList;
         for (PacketNameTag packetNameTag : packetNameTags) {
@@ -1602,9 +1622,14 @@ public class NameTagManager implements UntNametagManagerPaper {
             showToOwner(player);
             return;
         }
+        boolean updated = false;
         for (PaperNametagRow packetNameTag : getPacketDisplays(target)) {
             packetNameTag.hideFromPlayerSilently(player);
             packetNameTag.showToPlayer(player);
+            updated = true;
+        }
+        if (updated) {
+            refresh(target, false);
         }
     }
 

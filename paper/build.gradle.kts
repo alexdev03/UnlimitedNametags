@@ -113,7 +113,7 @@ tasks.named<Delete>("clean").configure {
 tasks.jar {
     manifest {
         attributes["paperweight-mappings-namespace"] = "mojang"
-    }
+    }-
 }
 
 tasks.build {
@@ -129,6 +129,7 @@ tasks {
             modrinth("luckperms", "v5.4.145-bukkit")
             modrinth("multiverse-core", "4.3.14")
             modrinth("essentialsx", "2.22.0")
+            modrinth("pworlds", "2.1.0")
             //url("https://ci.ender.zone/job/EssentialsX/lastSuccessfulBuild/artifact/jars/EssentialsX-2.22.0-dev+112-5baf239.jar")
             github("MiniPlaceholders", "MiniPlaceholders", "3.2.0", "MiniPlaceholders-Paper-3.2.0.jar")
 //            url("https://ci.codemc.io/job/retrooper/job/packetevents/892/artifact/build/libs/packetevents-spigot-2.12.3-SNAPSHOT.jar")

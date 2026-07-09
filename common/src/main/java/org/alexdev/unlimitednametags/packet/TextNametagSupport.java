@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
@@ -52,29 +53,36 @@ final class TextNametagSupport {
             return false;
         }
 
-        relationalCache.put(viewerId, text);
         final User user = host.getPlatform().resolveUser(viewerId);
         if (user == null) {
             return false;
         }
 
-        modifyTextForViewer(user, meta -> meta.setText(text));
+        if (!modifyTextForViewer(user, meta -> meta.setText(text))) {
+            return false;
+        }
+
+        relationalCache.put(viewerId, text);
+        host.markViewerNeedsFullRefresh(viewerId);
         host.touchLastUpdate();
         return true;
     }
 
-    void modifyTextForViewer(@Nullable final User user, @NotNull final Consumer<TextDisplayMeta> consumer) {
+    boolean modifyTextForViewer(@Nullable final User user, @NotNull final Consumer<TextDisplayMeta> consumer) {
         if (host.isRemoved() || user == null) {
-            return;
+            return false;
         }
 
+        final AtomicBoolean modified = new AtomicBoolean(false);
         host.getPerPlayerEntity().modify(user, e -> {
             if (e == null) {
                 return;
             }
             final TextDisplayMeta meta = (TextDisplayMeta) e.getEntityMeta();
             consumer.accept(meta);
+            modified.set(true);
         });
+        return modified.get();
     }
 
     void modifyTextForOwner(@NotNull final Consumer<TextDisplayMeta> consumer) {
@@ -124,6 +132,11 @@ final class TextNametagSupport {
     void onViewerRemoved(@NotNull final UUID viewerId) {
         relationalCache.remove(viewerId);
         calculatedTextCache.remove(viewerId);
+        obscuredPresentationByViewer.remove(viewerId);
+    }
+
+    void onViewerDetached(@NotNull final UUID viewerId) {
+        relationalCache.remove(viewerId);
         obscuredPresentationByViewer.remove(viewerId);
     }
 

@@ -117,6 +117,9 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
         if (ownerPlayer == null) {
             return "owner is not loaded or online";
         }
+        if (plugin.getNametagManager().isBlocked(ownerPlayer)) {
+            return "owner is blocked";
+        }
         if (!viewerSupportsTextDisplay(viewerId)) {
             return "viewer client does not support text displays";
         }
