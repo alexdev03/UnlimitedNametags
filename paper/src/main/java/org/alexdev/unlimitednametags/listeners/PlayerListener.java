@@ -1,6 +1,7 @@
 package org.alexdev.unlimitednametags.listeners;
 
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
+import com.github.retrooper.packetevents.PacketEvents;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
@@ -8,6 +9,7 @@ import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.hook.PackSendHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -37,6 +39,7 @@ public class PlayerListener implements PackSendHandler {
     private final Map<UUID, UUID> teleportSyncRunIds;
     private final Map<UUID, UUID> zeroDamageRecoveryRunIds;
     private final Map<UUID, MyScheduledTask> respawnShowTasks;
+    private final Map<UUID, Location> playerWorlds;
     private static final long[] TELEPORT_SYNC_DELAYS = {5L, 20L, 60L, 100L};
 
     public PlayerListener(UnlimitedNameTags plugin) {
@@ -49,7 +52,9 @@ public class PlayerListener implements PackSendHandler {
         this.teleportSyncRunIds = Maps.newConcurrentMap();
         this.zeroDamageRecoveryRunIds = Maps.newConcurrentMap();
         this.respawnShowTasks = Maps.newConcurrentMap();
+        this.playerWorlds = Maps.newConcurrentMap();
         this.loadRespawnSafetyTask();
+        this.loadFoliaTeleportEvent();
         this.loadEntityIds();
     }
 
@@ -86,6 +91,42 @@ public class PlayerListener implements PackSendHandler {
             cancelRespawnShow(died);
             plugin.getNametagManager().showToTrackedPlayers(player);
         }), 1, 1);
+    }
+
+    /**
+     *
+    * Folia does not fire {@link PlayerTeleportEvent} for async teleports, so we poll player locations every tick and detect world changes
+     * or large distance changes to trigger the same logic as a teleport event.
+    *
+     */
+    private void loadFoliaTeleportEvent() {
+        if (!isFolia()) {
+            return;
+        }
+
+        plugin.getLogger().info("Folia detected, using async teleport event for teleport sync");
+        plugin.getTaskScheduler().runTaskTimerAsynchronously(() -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                final UUID uuid = player.getUniqueId();
+                final Location lastLocation = playerWorlds.getOrDefault(uuid, player.getLocation());
+                final Location currentLocation = player.getLocation();
+                if (!lastLocation.getWorld().equals(currentLocation.getWorld())
+                        || lastLocation.distanceSquared(currentLocation) > 64*64) {
+                    handlePositionChange(player, lastLocation, currentLocation);
+                }
+
+                playerWorlds.put(uuid, currentLocation);
+            }
+        }, 1, 1);
+    }
+
+    private boolean isFolia() {
+        try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     public Optional<Player> getPlayerFromEntityId(int entityId) {
@@ -323,15 +364,19 @@ public class PlayerListener implements PackSendHandler {
         });
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onTeleport(@NotNull PlayerTeleportEvent event) {
-        final boolean worldChange = event.getFrom().getWorld() != event.getTo().getWorld();
+    private void handlePositionChange(@NotNull Player player, @NotNull Location pos1, @NotNull Location pos2) {
+        final boolean worldChange = pos1.getWorld() != pos2.getWorld();
 
         if (worldChange) {
-            plugin.getTrackerManager().forceUntrack(event.getPlayer());
+            plugin.getTrackerManager().forceUntrack(player);
         }
 
-        scheduleTeleportSync(event.getPlayer());
+        scheduleTeleportSync(player);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTeleport(@NotNull PlayerTeleportEvent event) {
+        handlePositionChange(event.getPlayer(), event.getFrom(), event.getTo());
     }
 
     public void logicElytra(Player player) {
