@@ -39,4 +39,9 @@ class DistanceRefreshCullingTest {
         assertTrue(DistanceRefreshCulling.shouldRefresh(40, 40));
         assertTrue(DistanceRefreshCulling.shouldRefresh(80, 40));
     }
+
+    @Test
+    void refreshesWhenElapsedIsNegativeAfterClockReset() {
+        assertTrue(DistanceRefreshCulling.shouldRefresh(-80, 40));
+    }
 }
