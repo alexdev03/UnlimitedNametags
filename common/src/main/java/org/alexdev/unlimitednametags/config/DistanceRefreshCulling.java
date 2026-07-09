@@ -45,7 +45,7 @@ public final class DistanceRefreshCulling {
     }
 
     public static boolean shouldRefresh(final long elapsedTicks, final int effectiveInterval) {
-        return elapsedTicks >= Math.max(1, effectiveInterval);
+        return elapsedTicks < 0 || elapsedTicks >= Math.max(1, effectiveInterval);
     }
 
     private static double clamp01(final double value) {
