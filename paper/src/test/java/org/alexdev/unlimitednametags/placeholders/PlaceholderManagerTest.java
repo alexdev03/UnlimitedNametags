@@ -3,6 +3,7 @@ package org.alexdev.unlimitednametags.placeholders;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlaceholderManagerTest {
 
@@ -17,5 +18,6 @@ class PlaceholderManagerTest {
         );
 
         assertEquals("&cAlice", result);
+        assertTrue(PlaceholderManager.containsRelationalPlaceholders("Alice%rel_suffix%"));
     }
 }

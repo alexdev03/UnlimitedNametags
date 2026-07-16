@@ -331,8 +331,10 @@ public class PlaceholderManager {
                         .map(s -> replacePlaceholders(s, player, null))
                         .toList()
                 : strings;
+        final boolean hasRelationalPlaceholders = enableRelationalPlaceholders
+                && baseStrings.stream().anyMatch(PlaceholderManager::containsRelationalPlaceholders);
 
-        if (enableRelationalPlaceholders) {
+        if (hasRelationalPlaceholders) {
             final Map<Player, Component> result = Maps.newHashMapWithExpectedSize(relationalPlayers.size());
             for (Player viewer : relationalPlayers) {
                 final List<Component> processedLines = baseStrings.stream()
