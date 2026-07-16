@@ -6,7 +6,6 @@ import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringMap;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
-import net.kyori.adventure.text.TextReplacementConfig;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.config.Advanced;
 import org.alexdev.unlimitednametags.config.Formatter;
@@ -34,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -270,13 +270,10 @@ public class PlaceholderManager {
                         .toList()
                 : strings;
 
-        final List<Component> baseComponents = baseStrings.stream()
+        final List<Component> processedLines = baseStrings.stream()
+                .map(line -> resolveRelationalPlaceholdersInText(line, owner, viewer))
                 .map(this::formatPhases)
                 .map(line -> format(line, owner))
-                .toList();
-
-        final List<Component> processedLines = baseComponents.stream()
-                .map(component -> resolveRelationalPlaceholdersInComponent(component, owner, viewer))
                 .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
                 .toList();
 
@@ -284,22 +281,35 @@ public class PlaceholderManager {
     }
 
     @NotNull
-    private Component resolveRelationalPlaceholdersInComponent(@NotNull Component component, @NotNull Player owner, @NotNull Player viewer) {
-        if (!papiManager.isPapiEnabled()) {
-            return component;
+    private String resolveRelationalPlaceholdersInText(@NotNull String text, @NotNull Player owner, @NotNull Player viewer) {
+        if (!papiManager.isPapiEnabled() || !containsRelationalPlaceholders(text)) {
+            return text;
         }
-        return component.replaceText(TextReplacementConfig.builder()
-                .match(RELATIONAL_PATTERN)
-                .replacement((matchResult, builder) -> {
-                    final String placeholder = matchResult.group();
-                    final String resolved = papiManager.setRelationalPlaceholders(viewer, owner, placeholder);
-                    final String customReplacement = getReplacement(placeholder, resolved);
-                    final String replacementText = customReplacement == null
-                            ? resolved
-                            : resolveCustomReplacement(customReplacement, owner, viewer);
-                    return format(replacementText, owner);
-                })
-                .build());
+
+        return replaceRelationalPlaceholders(text, placeholder -> {
+            final String resolved = papiManager.setRelationalPlaceholders(viewer, owner, placeholder);
+            final String customReplacement = getReplacement(placeholder, resolved);
+            return customReplacement == null
+                    ? resolved
+                    : resolveCustomReplacement(customReplacement, owner, viewer);
+        });
+    }
+
+    @NotNull
+    static String replaceRelationalPlaceholders(@NotNull String text, @NotNull Function<String, String> replacementResolver) {
+        final StringBuilder builder = new StringBuilder(text.length() + 32);
+        final Matcher matcher = RELATIONAL_PATTERN.matcher(text);
+        int lastAppendPosition = 0;
+
+        while (matcher.find()) {
+            builder.append(text, lastAppendPosition, matcher.start());
+            final String placeholder = matcher.group();
+            builder.append(replacementResolver.apply(placeholder));
+            lastAppendPosition = matcher.end();
+        }
+
+        builder.append(text, lastAppendPosition, text.length());
+        return builder.toString();
     }
 
     @NotNull
@@ -322,23 +332,22 @@ public class PlaceholderManager {
                         .toList()
                 : strings;
 
-        final List<Component> baseComponents = baseStrings.stream()
-                .map(this::formatPhases)
-                .map(line -> format(line, player))
-                .toList();
-
         if (enableRelationalPlaceholders) {
             final Map<Player, Component> result = Maps.newHashMapWithExpectedSize(relationalPlayers.size());
             for (Player viewer : relationalPlayers) {
-                final List<Component> processedLines = baseComponents.stream()
-                        .map(component -> resolveRelationalPlaceholdersInComponent(component, player, viewer))
+                final List<Component> processedLines = baseStrings.stream()
+                        .map(line -> resolveRelationalPlaceholdersInText(line, player, viewer))
+                        .map(this::formatPhases)
+                        .map(line -> format(line, player))
                         .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
                         .toList();
                 result.put(viewer, joinLines(processedLines));
             }
             return result;
         } else {
-            final List<Component> processedLines = baseComponents.stream()
+            final List<Component> processedLines = baseStrings.stream()
+                    .map(this::formatPhases)
+                    .map(line -> format(line, player))
                     .filter(c -> !removeEmptyLines || !c.equals(Component.empty()))
                     .toList();
 
