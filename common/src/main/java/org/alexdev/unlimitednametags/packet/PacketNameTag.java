@@ -777,13 +777,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             tn.refreshViewerIfCached(viewerId);
         }
 
-        runtime.runTaskLaterAsync(() -> {
-            final User user = platform.resolveUser(viewerId);
-            if (user == null) {
-                return;
-            }
-            sendPassengersPacket(user);
-        }, 1);
+        runtime.schedulePassengersPacket(viewerId, ownerId);
     }
 
     private boolean isEligibleToShow(@NotNull UUID viewerId) {
@@ -822,13 +816,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             e.spawn(location);
         });
 
-        runtime.runTaskLaterAsync(() -> {
-            final User ownerUser = platform.resolveUser(ownerId);
-            if (ownerUser == null) {
-                return;
-            }
-            sendPassengersPacket(ownerUser);
-        }, 1);
+        runtime.schedulePassengersPacket(ownerId, ownerId);
     }
 
     public void sendPassengersPacket(@NotNull User viewerUser) {
@@ -843,12 +831,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             return;
         }
 
-        getViewers().forEach(viewerId -> {
-            final User user = platform.resolveUser(viewerId);
-            if (user != null) {
-                sendPassengersPacket(user);
-            }
-        });
+        getViewers().forEach(viewerId -> runtime.schedulePassengersPacket(viewerId, ownerId));
     }
 
     private void setPosition() {
