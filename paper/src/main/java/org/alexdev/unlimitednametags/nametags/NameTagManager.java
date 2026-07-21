@@ -169,6 +169,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 .stream()
                 .flatMap(Collection::stream)
                 .map(tag -> paperRow(tag).getOwner())
+                .filter(Objects::nonNull)
                 .distinct()
                 .filter(p -> plugin.getHook(HMCCosmeticsHook.class).map(h -> !h.hasBackpack(p)).orElse(true))
                 .forEach(player -> getPacketDisplays(player).stream()
@@ -425,7 +426,8 @@ public class NameTagManager implements UntNametagManagerPaper {
     }
 
     private boolean shouldSuppressNametag(@NotNull Player player) {
-        return isBlocked(player)
+        return !player.isOnline()
+                || isBlocked(player)
                 || player.hasPotionEffect(PotionEffectType.INVISIBILITY)
                 || player.getGameMode() == GameMode.SPECTATOR;
     }
@@ -711,6 +713,10 @@ public class NameTagManager implements UntNametagManagerPaper {
     }
 
     private boolean preAddChecks(@NotNull Player player, boolean canBlock) {
+        if (!player.isOnline()) {
+            return false;
+        }
+
         final CopyOnWriteArrayList<PacketNameTag> existing = nameTags.get(player.getUniqueId());
         if (existing != null && !existing.isEmpty()) {
             if (debug) {

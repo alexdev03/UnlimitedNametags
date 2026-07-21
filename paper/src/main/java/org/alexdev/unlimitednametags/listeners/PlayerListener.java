@@ -117,7 +117,7 @@ public class PlayerListener implements PackSendHandler {
 
                 playerWorlds.put(uuid, currentLocation);
             }
-        }, 1, 1);
+        }, 1, 10);
     }
 
     private boolean isFolia() {
@@ -168,10 +168,16 @@ public class PlayerListener implements PackSendHandler {
     public void onJoin(@NotNull PlayerJoinEvent event) {
         onlinePlayers.put(event.getPlayer().getUniqueId(), event.getPlayer());
         playerNameId.put(event.getPlayer().getName(), event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler()
-                .runTaskLaterAsynchronously(() -> plugin.getNametagManager().addPlayer(event.getPlayer(), true), 6);
-        plugin.getTaskScheduler().runTaskLater(
-                () -> plugin.getNametagManager().applyPreferencesFromPersistentData(event.getPlayer()), 22L);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            if (event.getPlayer().isOnline()) {
+                plugin.getNametagManager().addPlayer(event.getPlayer(), true);
+            }
+        }, 6);
+        plugin.getTaskScheduler().runTaskLater(() -> {
+            if (event.getPlayer().isOnline()) {
+                plugin.getNametagManager().applyPreferencesFromPersistentData(event.getPlayer());
+            }
+        }, 22L);
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
@@ -190,6 +196,7 @@ public class PlayerListener implements PackSendHandler {
             diedPlayers.remove(event.getPlayer().getUniqueId());
             onlinePlayers.remove(event.getPlayer().getUniqueId());
             playerEntityId.remove(event.getPlayer().getEntityId());
+            playerWorlds.remove(event.getPlayer().getUniqueId());
         });
     }
 

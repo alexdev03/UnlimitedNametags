@@ -60,26 +60,35 @@ public interface PaperNametagRow extends UntNametagDisplay, NametagAnimationTarg
 
     @Override
     default void hideFromPlayer(@NotNull Player player) {
-        final boolean visible = fireVisibilityEvent(getOwner(), player, false, canPlayerSee(player));
+        final Player owner = getOwner();
+        if (owner == null) {
+            packet().hideFromViewer(player.getUniqueId());
+            return;
+        }
+        final boolean visible = fireVisibilityEvent(owner, player, false, canPlayerSee(player));
         if (visible) {
             return;
         }
         packet().hideFromViewer(player.getUniqueId());
-        fireLifecycleEvent(new PlayerNametagHideEvent(getOwner(), player, this, !getPlugin().getServer().isPrimaryThread()));
+        fireLifecycleEvent(new PlayerNametagHideEvent(owner, player, this, !getPlugin().getServer().isPrimaryThread()));
     }
 
     @Override
     default void showToPlayer(@NotNull Player player) {
-        final boolean visible = fireVisibilityEvent(getOwner(), player, true, canPlayerSee(player));
+        final Player owner = getOwner();
+        if (owner == null) {
+            return;
+        }
+        final boolean visible = fireVisibilityEvent(owner, player, true, canPlayerSee(player));
         if (!visible) {
             if (getPlugin().getNametagManager().isDebug()) {
                 getPlugin().getLogger().info("Visibility event prevented showing nametag of "
-                        + getOwner().getName() + " to " + player.getName());
+                        + owner.getName() + " to " + player.getName());
             }
             return;
         }
         packet().showToViewer(player.getUniqueId());
-        fireLifecycleEvent(new PlayerNametagShowEvent(getOwner(), player, this, !getPlugin().getServer().isPrimaryThread()));
+        fireLifecycleEvent(new PlayerNametagShowEvent(owner, player, this, !getPlugin().getServer().isPrimaryThread()));
     }
 
     @Override
@@ -149,7 +158,10 @@ public interface PaperNametagRow extends UntNametagDisplay, NametagAnimationTarg
     }
 
     default void notifyRefreshedForPlayer(@NotNull Player player) {
-        fireLifecycleEvent(new PlayerNametagRefreshEvent(getOwner(), player, this, !getPlugin().getServer().isPrimaryThread()));
+        final Player owner = getOwner();
+        if (owner != null) {
+            fireLifecycleEvent(new PlayerNametagRefreshEvent(owner, player, this, !getPlugin().getServer().isPrimaryThread()));
+        }
     }
 
     default void refreshForPlayer(@NotNull Player player, final boolean force) {
