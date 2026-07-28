@@ -355,6 +355,9 @@ public class Settings {
             boolean relationalConditions,
             @Nullable NametagDisplayType displayType,
             @Nullable String itemMaterial,
+            @Nullable Integer customModelData,
+            @Nullable String itemModel,
+            @Nullable String nexoId,
             @Nullable String blockMaterial,
             @Nullable String itemDisplayMode,
             @Nullable DisplayAnimation animation,
@@ -365,6 +368,10 @@ public class Settings {
 
         public DisplayGroup {
             final NametagDisplayType resolved = displayType != null ? displayType : NametagDisplayType.TEXT;
+            if (resolved == NametagDisplayType.ITEM && (nexoId == null || nexoId.isBlank())
+                    && customModelData != null && itemModel != null && !itemModel.isBlank()) {
+                throw new IllegalArgumentException("ITEM display group cannot set both customModelData and itemModel");
+            }
             if (resolved != NametagDisplayType.TEXT) {
                 lines = List.of();
             } else {
@@ -373,6 +380,20 @@ public class Settings {
                         .toList();
             }
             background = isRedundantOmittedBackground(background) ? null : background;
+        }
+
+        /**
+         * Binary-compatible constructor for integrations compiled before ITEM custom sources were added.
+         */
+        public DisplayGroup(List<NametagLine> lines, @Nullable Background background, float scale, float yOffset,
+                @Nullable String when, boolean relationalConditions, @Nullable NametagDisplayType displayType,
+                @Nullable String itemMaterial, @Nullable String blockMaterial, @Nullable String itemDisplayMode,
+                @Nullable DisplayAnimation animation, @Nullable Integer animationInterval,
+                @Nullable AbstractDisplayMeta.BillboardConstraints billboard, @Nullable GlowOverride glow,
+                @Nullable Integer glowInterval) {
+            this(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial,
+                    null, null, null, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow,
+                    glowInterval);
         }
 
         /**
@@ -445,42 +466,42 @@ public class Settings {
         // ─── with* helpers ────────────────────────────────────────────────────
 
         public DisplayGroup withBackground(@Nullable Background background) {
-            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withScale(float scale) {
-            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         @NotNull
         public DisplayGroup withAnimation(@Nullable DisplayAnimation animation) {
-            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withLines(@NotNull List<NametagLine> lines) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withWhen(@Nullable String when) {
-            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withBillboard(@Nullable AbstractDisplayMeta.BillboardConstraints billboard) {
-            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         public DisplayGroup withYOffset(float yOffset) {
-            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         @NotNull
         public DisplayGroup withGlow(@Nullable GlowOverride glow) {
-            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         @NotNull
         public DisplayGroup withGlowInterval(@Nullable Integer glowInterval) {
-            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return copy(background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         private DisplayGroup copy(
@@ -491,6 +512,9 @@ public class Settings {
                 boolean relationalConditions,
                 @Nullable NametagDisplayType displayType,
                 @Nullable String itemMaterial,
+                @Nullable Integer customModelData,
+                @Nullable String itemModel,
+                @Nullable String nexoId,
                 @Nullable String blockMaterial,
                 @Nullable String itemDisplayMode,
                 @Nullable DisplayAnimation animation,
@@ -498,7 +522,7 @@ public class Settings {
                 @Nullable AbstractDisplayMeta.BillboardConstraints billboard,
                 @Nullable GlowOverride glow,
                 @Nullable Integer glowInterval) {
-            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+            return new DisplayGroup(lines, background, scale, yOffset, when, relationalConditions, displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
         }
 
         // ─── Builder ──────────────────────────────────────────────────────────
@@ -522,6 +546,9 @@ public class Settings {
             private boolean relationalConditions = false;
             private @Nullable NametagDisplayType displayType = null;
             private @Nullable String itemMaterial = null;
+            private @Nullable Integer customModelData = null;
+            private @Nullable String itemModel = null;
+            private @Nullable String nexoId = null;
             private @Nullable String blockMaterial = null;
             private @Nullable String itemDisplayMode = null;
             private @Nullable DisplayAnimation animation = null;
@@ -542,6 +569,9 @@ public class Settings {
                 this.relationalConditions = base.relationalConditions();
                 this.displayType = base.displayType();
                 this.itemMaterial = base.itemMaterial();
+                this.customModelData = base.customModelData();
+                this.itemModel = base.itemModel();
+                this.nexoId = base.nexoId();
                 this.blockMaterial = base.blockMaterial();
                 this.itemDisplayMode = base.itemDisplayMode();
                 this.animation = base.animation();
@@ -601,6 +631,21 @@ public class Settings {
                 return this;
             }
 
+            public Builder customModelData(@Nullable Integer value) {
+                this.customModelData = value;
+                return this;
+            }
+
+            public Builder itemModel(@Nullable String model) {
+                this.itemModel = model;
+                return this;
+            }
+
+            public Builder nexoId(@Nullable String id) {
+                this.nexoId = id;
+                return this;
+            }
+
             public Builder blockMaterial(@Nullable String mat) {
                 this.blockMaterial = mat;
                 return this;
@@ -639,7 +684,7 @@ public class Settings {
             @NotNull
             public DisplayGroup build() {
                 return new DisplayGroup(List.copyOf(lines), background, scale, yOffset, when, relationalConditions,
-                        displayType, itemMaterial, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
+                        displayType, itemMaterial, customModelData, itemModel, nexoId, blockMaterial, itemDisplayMode, animation, animationInterval, billboard, glow, glowInterval);
             }
         }
     }

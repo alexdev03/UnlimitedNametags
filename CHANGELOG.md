@@ -10,6 +10,7 @@
 
 ### Added
 
+- **ITEM display custom sources**: `DisplayGroup` accepts either `customModelData` or `itemModel` on `itemMaterial`; when Nexo is enabled, `nexoId` resolves the complete Nexo item. The previous Java constructor remains binary-compatible.
 - **Per-line TEXT visibility**: each `NametagLine` can define `when` (JEXL, PlaceholderAPI-expanded) in addition to the group-level `DisplayGroup.when`. The group-level condition is evaluated first; then each line condition decides whether that line contributes to the final multi-line component.
 - **`common` packet core**: `PacketNameTag`, package-private `TextPacketNameTag`, `ItemPacketNameTag`, `BlockPacketNameTag`, `TextNametagSupport` (UUID + PacketEvents/EntityLib, no Bukkit). Platform bridges: `NametagRuntime`, `NametagPlatformBridge`, `NametagMaterialBridge` with Bukkit implementations in **`paper`**. **`paper`** exposes thin `PaperTextPacketNameTag` / `PaperItemPacketNameTag` / `PaperBlockPacketNameTag` (extend common types, implement `PaperNametagRow`) and **`PacketNameTags.create(...)`** for `UNTPaperAPI` / `Player` APIs.
 

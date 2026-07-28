@@ -1223,8 +1223,8 @@ public class NameTagManager implements UntNametagManagerPaper {
 
         return switch (row.displayGroup().resolvedDisplayType()) {
             case TEXT -> hasRenderableText(row.components().get(viewer));
-            case ITEM -> isMaterialVisible(owner, row.displayGroup().itemMaterial(), true);
-            case BLOCK -> isMaterialVisible(owner, row.displayGroup().blockMaterial(), false);
+            case ITEM -> isItemVisible(owner, row.displayGroup());
+            case BLOCK -> isBlockVisible(owner, row.displayGroup().blockMaterial());
         };
     }
 
@@ -1245,34 +1245,30 @@ public class NameTagManager implements UntNametagManagerPaper {
 
         return switch (row.displayGroup().resolvedDisplayType()) {
             case TEXT -> hasRenderableText(row.ownerComponent());
-            case ITEM -> isMaterialVisible(player, row.displayGroup().itemMaterial(), true);
-            case BLOCK -> isMaterialVisible(player, row.displayGroup().blockMaterial(), false);
+            case ITEM -> isItemVisible(player, row.displayGroup());
+            case BLOCK -> isBlockVisible(player, row.displayGroup().blockMaterial());
         };
     }
 
-    private boolean isMaterialVisible(@NotNull Player player, String rawMaterial, boolean item) {
+    private boolean isBlockVisible(@NotNull Player player, String rawMaterial) {
         final String raw = (rawMaterial == null || rawMaterial.isBlank()) ? "STONE" : rawMaterial;
         final String expanded = plugin.getPlaceholderManager().expandForOwner(player, raw).trim();
 
-        if (item) {
-            try {
-                if (org.alexdev.unlimitednametags.platform.BukkitNametagMaterialBridge.resolveItemFromRegistry(expanded) != null) {
-                    return true;
-                }
-            } catch (Throwable ignored) {}
-        } else {
-            try {
-                if (org.alexdev.unlimitednametags.platform.BukkitNametagMaterialBridge.resolveBlockFromRegistry(expanded) != null) {
-                    return true;
-                }
-            } catch (Throwable ignored) {}
-        }
+        try {
+            if (org.alexdev.unlimitednametags.platform.BukkitNametagMaterialBridge.resolveBlockFromRegistry(expanded) != null) {
+                return true;
+            }
+        } catch (Throwable ignored) {}
 
         final Material material = Material.matchMaterial(expanded, false);
-        if (material == null) {
-            return false;
-        }
-        return item ? material.isItem() : material.isBlock() && !material.isAir();
+        return material != null && material.isBlock() && !material.isAir();
+    }
+
+    private boolean isItemVisible(@NotNull Player player, @NotNull Settings.DisplayGroup group) {
+        final String material = group.itemMaterial() == null || group.itemMaterial().isBlank()
+                ? "STONE" : group.itemMaterial();
+        return plugin.getNametagMaterialBridge().resolveItemStack(player.getUniqueId(), material,
+                group.customModelData(), group.itemModel(), group.nexoId()) != null;
     }
 
     private float estimateDisplayGroupHeight(@NotNull ResolvedDisplayRow row, float lineHeight) {

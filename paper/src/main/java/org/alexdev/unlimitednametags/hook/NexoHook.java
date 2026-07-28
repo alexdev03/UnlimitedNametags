@@ -131,6 +131,11 @@ public class NexoHook extends Hook implements Listener, CreativeHook, HatHookPap
         return CreativeHook.super.findModel(item);
     }
 
+    @Nullable
+    public ItemStack itemFromId(@NotNull String id) {
+        return NexoItems.optionalItemFromId(id).map(ItemBuilder::build).orElse(null);
+    }
+
     @EventHandler
     public void onLoad(NexoItemsLoadedEvent event) {
         cmdCache.clear();

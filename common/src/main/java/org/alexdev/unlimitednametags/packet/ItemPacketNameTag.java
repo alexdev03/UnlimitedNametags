@@ -78,7 +78,8 @@ class ItemPacketNameTag extends PacketNameTag {
             raw = "STONE";
         }
         final String expanded = getRuntime().expandPlaceholdersForOwner(getOwnerId(), raw);
-        final Object resolved = getMaterials().resolveItemStack(getOwnerId(), expanded);
+        final Object resolved = getMaterials().resolveItemStack(getOwnerId(), expanded,
+                group.customModelData(), group.itemModel(), group.nexoId());
         final ItemStack peStack = resolved instanceof ItemStack stack ? stack : ItemStack.EMPTY;
         final ItemDisplayMeta.DisplayType displayType = parseItemDisplayMode(group.itemDisplayMode());
         getPerPlayerEntity().execute(e -> {
