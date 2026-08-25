@@ -427,6 +427,7 @@ public class NameTagManager implements UntNametagManagerPaper {
 
     private boolean shouldSuppressNametag(@NotNull Player player) {
         return !player.isOnline()
+                || !plugin.getConfigManager().getSettings().getWorlds().isEnabled(player.getWorld().getName())
                 || isBlocked(player)
                 || player.hasPotionEffect(PotionEffectType.INVISIBILITY)
                 || player.getGameMode() == GameMode.SPECTATOR;
@@ -714,6 +715,10 @@ public class NameTagManager implements UntNametagManagerPaper {
 
     private boolean preAddChecks(@NotNull Player player, boolean canBlock) {
         if (!player.isOnline()) {
+            return false;
+        }
+
+        if (!plugin.getConfigManager().getSettings().getWorlds().isEnabled(player.getWorld().getName())) {
             return false;
         }
 
@@ -1477,6 +1482,13 @@ public class NameTagManager implements UntNametagManagerPaper {
         }));
         plugin.getTaskScheduler()
                 .runTaskAsynchronously(() -> plugin.getPlayerListener().getOnlinePlayers().values().forEach(p -> {
+                    if (!settings.getWorlds().isEnabled(p.getWorld().getName())) {
+                        removePlayer(p);
+                        return;
+                    }
+                    if (!hasNametagRows(p.getUniqueId())) {
+                        addPlayer(p, false);
+                    }
                     setYOffset(p, yOffset);
                     setViewDistance(p, viewDistance);
                     applyBillboardsFromEffectiveNametag(p);

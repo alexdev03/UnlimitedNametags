@@ -9,9 +9,9 @@ public final class SettingsConfigVersion {
     }
 
     /**
-     * Latest schema: version 7 introduces distance refresh culling settings.
+     * Latest schema: version 8 introduces per-world activation settings.
      */
-    public static final int CURRENT = 7;
+    public static final int CURRENT = 8;
 
     /**
      * {@code displayGroups} with {@link Settings.DisplayGroup}, structured {@code lines} as {@code {text, when?}} objects.

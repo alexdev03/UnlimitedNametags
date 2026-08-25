@@ -181,6 +181,18 @@ public class PlayerListener implements PackSendHandler {
         playerEntityId.put(event.getPlayer().getEntityId(), event.getPlayer().getUniqueId());
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onChangedWorld(@NotNull PlayerChangedWorldEvent event) {
+        final Player player = event.getPlayer();
+        plugin.getNametagManager().removePlayer(player);
+        plugin.getPacketEventsListener().onWorldChange(player);
+        plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            if (player.isOnline()) {
+                plugin.getNametagManager().addPlayer(player, false);
+            }
+        }, 1L);
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
         plugin.getPacketEventsListener().removePlayerData(event.getPlayer());

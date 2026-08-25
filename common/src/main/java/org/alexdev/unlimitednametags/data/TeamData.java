@@ -16,16 +16,19 @@ public class TeamData {
     private WrapperPlayServerTeams.ScoreBoardTeamInfo teamInfo;
     private final Set<String> members;
     private boolean changedVisibility = false;
+    private final WrapperPlayServerTeams.NameTagVisibility originalVisibility;
 
     public TeamData(@NotNull String teamName, @NotNull WrapperPlayServerTeams.ScoreBoardTeamInfo teamInfo) {
         this.teamName = teamName;
         this.teamInfo = teamInfo;
+        this.originalVisibility = teamInfo.getTagVisibility();
         this.members = Sets.newConcurrentHashSet();
     }
 
     public TeamData(@NotNull String teamName, @NotNull WrapperPlayServerTeams.ScoreBoardTeamInfo teamInfo, @NotNull Set<String> members) {
         this.teamName = teamName;
         this.teamInfo = teamInfo;
+        this.originalVisibility = teamInfo.getTagVisibility();
         this.members = Sets.newConcurrentHashSet(members);
     }
 

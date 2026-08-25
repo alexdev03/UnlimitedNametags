@@ -84,6 +84,7 @@ public final class SettingsYamlMigrator {
                 case 4 -> changed |= migrateV4ToV5(root, log);
                 case 5 -> changed |= migrateV5ToV6(root, log);
                 case 6 -> changed |= migrateV6ToV7(root, log);
+                case 7 -> changed |= migrateV7ToV8(root, log);
                 default -> throw new IllegalStateException("Missing settings migrator from v" + v + " to v" + (v + 1));
             }
         }
@@ -759,6 +760,18 @@ public final class SettingsYamlMigrator {
         culling.put("curve", 2.0);
         performance.put("distanceRefreshCulling", culling);
         log.info("Added distance refresh culling settings (v7).");
+        return true;
+    }
+
+    private static boolean migrateV7ToV8(Map<String, Object> root, Logger log) {
+        if (root.containsKey("worlds")) {
+            return false;
+        }
+        final Map<String, Object> worlds = new LinkedHashMap<>();
+        worlds.put("mode", "BLACKLIST");
+        worlds.put("list", List.of());
+        root.put("worlds", worlds);
+        log.info("Added per-world activation settings (v8).");
         return true;
     }
 

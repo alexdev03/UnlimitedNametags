@@ -7,6 +7,7 @@ import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
+import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerInput;
@@ -164,6 +165,11 @@ public class PacketEventsListener extends PacketListenerAbstract {
             return false;
         }
 
+        if (!(event.getPlayer() instanceof Player player)
+                || !plugin.getConfigManager().getSettings().getWorlds().isEnabled(player.getWorld().getName())) {
+            return false;
+        }
+
         return event.getUser().getClientVersion().isNewerThan(ClientVersion.V_1_19_3);
     }
 
@@ -264,6 +270,28 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     public void removePlayerData(@NotNull Player player) {
         teams.remove(player.getUniqueId());
+    }
+
+    public void onWorldChange(@NotNull Player player) {
+        final Map<String, TeamData> viewerTeams = getTeams(player.getUniqueId());
+        final boolean enabled = plugin.getConfigManager().getSettings().getWorlds()
+                .isEnabled(player.getWorld().getName());
+        final User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+        if (user == null) {
+            return;
+        }
+        viewerTeams.forEach((teamName, teamData) -> {
+            final boolean shouldHide = enabled && teamData.getMembers().stream().anyMatch(this::existsPlayer);
+            if (shouldHide == teamData.isChangedVisibility() || teamData.getTeamInfo() == null) {
+                return;
+            }
+            teamData.getTeamInfo().setTagVisibility(shouldHide
+                    ? WrapperPlayServerTeams.NameTagVisibility.NEVER
+                    : teamData.getOriginalVisibility());
+            teamData.setChangedVisibility(shouldHide);
+            user.sendPacket(new WrapperPlayServerTeams(teamName, WrapperPlayServerTeams.TeamMode.UPDATE,
+                    teamData.getTeamInfo(), teamData.getMembers()));
+        });
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

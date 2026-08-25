@@ -25,11 +25,14 @@ public class Settings {
             "1 = flat NameTag, 2 = displayGroups with string lines, 3 = displayGroups with structured lines,",
             "4 = unified Background (no type: discriminator) + sectioned settings,",
             "5 = throughWallMode, 6 = glowAnimations + per-row glow,",
-            "7 = distance refresh culling (current)."
+            "7 = distance refresh culling, 8 = per-world activation."
     })
     private int configVersion = SettingsConfigVersion.CURRENT;
 
     private Map<String, NameTag> nameTags = defaultNameTags();
+
+    @Comment("Worlds where UnlimitedNameTags is active.")
+    private WorldSelection worlds = new WorldSelection();
 
     @Comment({
             "Reusable glow animation presets. Reference from displayGroups via glow.type: reference.",
