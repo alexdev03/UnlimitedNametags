@@ -44,6 +44,8 @@ public interface NametagRuntime {
 
     void runTaskLaterAsync(@NotNull Runnable task, long delayTicks);
 
+    void schedulePassengersPacket(@NotNull java.util.UUID viewerId, @NotNull java.util.UUID ownerId);
+
     float scaledDisplayScale(@NotNull java.util.UUID ownerId, float displayGroupScale);
 
     void removePassenger(@NotNull java.util.UUID viewerId, int displayEntityId);
