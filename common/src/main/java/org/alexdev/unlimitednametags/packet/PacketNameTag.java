@@ -150,7 +150,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     protected abstract @NotNull Function<User, WrapperEntity> buildBaseSupplier();
 
     /**
-     * After {@code metadata.copyFrom(owner)}, fix per-type fields (text component, item stack, block id).
+     * After copying the owner's metadata snapshot, fix per-type fields (text component, item stack, block id).
      */
     protected abstract void applyViewerOwnerMetadata(@NotNull WrapperEntity viewerEntity, @NotNull WrapperEntity ownerEntity);
 
@@ -1038,7 +1038,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         }
         final me.tofaa.entitylib.meta.Metadata metadata = wrapper.getEntityMeta().getMetadata();
         final me.tofaa.entitylib.meta.Metadata ownerMetadata = ownerEntity.getEntityMeta().getMetadata();
-        metadata.copyFrom(ownerMetadata);
+        MetadataSnapshotCopier.copy(ownerMetadata, metadata);
         applyViewerOwnerMetadata(wrapper, ownerEntity);
         metadata.setNotifyAboutChanges(false);
     }
