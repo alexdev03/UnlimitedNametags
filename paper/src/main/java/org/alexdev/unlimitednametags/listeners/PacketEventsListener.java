@@ -2,8 +2,10 @@ package org.alexdev.unlimitednametags.listeners;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.event.UserDisconnectEvent;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
@@ -12,6 +14,9 @@ import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerInput;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerCamera;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnPlayer;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
@@ -29,14 +34,28 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     private final UnlimitedNameTags plugin;
     private final Map<UUID, Map<String, TeamData>> teams;
+    private final PacketListenerAbstract passengerObserver;
 
     public PacketEventsListener(UnlimitedNameTags plugin) {
+        super(PacketListenerPriority.HIGHEST);
         this.plugin = plugin;
         this.teams = Maps.newConcurrentMap();
+        this.passengerObserver = new PacketListenerAbstract(PacketListenerPriority.MONITOR) {
+            @Override
+            public void onPacketSend(PacketSendEvent event) {
+                if (event.isCancelled() || plugin.getPacketManager() == null
+                        || event.getPacketType() != PacketType.Play.Server.SET_PASSENGERS) return;
+                final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(event);
+                // Cache accepted writes before the next packet, even if socket completion is delayed.
+                plugin.getPlayerListener().getPlayerFromEntityId(packet.getEntityId()).ifPresent(owner ->
+                        plugin.getPacketManager().observePassengers(event.getUser(), owner, packet.getPassengers()));
+            }
+        };
     }
 
     public void onEnable() {
         PacketEvents.getAPI().getEventManager().registerListener(this);
+        PacketEvents.getAPI().getEventManager().registerListener(passengerObserver);
     }
 
     @NotNull
@@ -45,6 +64,8 @@ public class PacketEventsListener extends PacketListenerAbstract {
     }
 
     public void onPacketSend(@NotNull PacketSendEvent event) {
+        if (event.isCancelled() || plugin.getPacketManager() == null || plugin.getNametagManager() == null) return;
+        observeEntities(event);
         if (event.getPacketType() == PacketType.Play.Server.TEAMS) {
             handleTeams(event);
         } else if (event.getPacketType() == PacketType.Play.Server.SET_PASSENGERS) {
@@ -119,46 +140,59 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     private void handlePassengers(@NotNull PacketSendEvent event) {
         final WrapperPlayServerSetPassengers packet = new WrapperPlayServerSetPassengers(event);
-        final Optional<? extends Player> player = plugin.getPlayerListener().getPlayerFromEntityId(packet.getEntityId());
-        if (player.isEmpty()) {
+        final Optional<? extends Player> owner = plugin.getPlayerListener().getPlayerFromEntityId(packet.getEntityId());
+        if (owner.isEmpty()) return;
+        final int[] original = packet.getPassengers();
+        if (!plugin.getPacketManager().knowsOwner(event.getUser(), owner.get())
+                && Arrays.stream(original).anyMatch(plugin.getPacketManager()::isRow)) {
+            event.setCancelled(true);
             return;
         }
-
-        final List<Integer> passengers = collectPassengers(packet.getPassengers());
-        final Collection<PaperNametagRow> packetNameTags = plugin.getNametagManager().getPacketDisplays(player.get());
-        if (packetNameTags.isEmpty()) {
-            plugin.getPacketManager().setPassengers(player.get(), passengers);
-            return;
-        }
-
-        final List<Integer> displayEntityIds = packetNameTags.stream()
-                .map(row -> ((PacketNameTag) row).displayEntityId())
-                .toList();
-        final Set<Integer> displayEntityIdSet = new HashSet<>(displayEntityIds);
-        final List<Integer> vanillaPassengers = passengers.stream()
-                .filter(passenger -> !displayEntityIdSet.contains(passenger))
-                .toList();
-        final List<Integer> updatedPassengers = new ArrayList<>(vanillaPassengers.size() + displayEntityIds.size());
-        updatedPassengers.addAll(vanillaPassengers);
-        updatedPassengers.addAll(displayEntityIds);
-
-        if (!updatedPassengers.equals(passengers)) {
-            packet.setPassengers(updatedPassengers.stream().mapToInt(Integer::intValue).toArray());
+        final int[] passengers = plugin.getPacketManager().passengers(event.getUser(), owner.get(), original);
+        if (!Arrays.equals(original, passengers)) {
+            packet.setPassengers(passengers);
             event.markForReEncode(true);
         }
-
-        plugin.getPacketManager().setPassengers(player.get(), vanillaPassengers);
     }
 
-    @NotNull
-    private List<Integer> collectPassengers(int[] passengers) {
-        final List<Integer> passengerList = new ArrayList<>(passengers.length);
-        for (int passenger : passengers) {
-            passengerList.add(passenger);
+    private void observeEntities(@NotNull PacketSendEvent event) {
+        final User user = event.getUser();
+        if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY
+                || event.getPacketType() == PacketType.Play.Server.SPAWN_PLAYER) {
+            final int id = event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY
+                    ? new WrapperPlayServerSpawnEntity(event).getEntityId()
+                    : new WrapperPlayServerSpawnPlayer(event).getEntityId();
+            if (plugin.getPacketManager().isRow(id)) {
+                final Optional<PaperNametagRow> row = plugin.getNametagManager().getPacketDisplayByEntityId(id);
+                if (row.isEmpty() || row.get().getOwner() == null
+                        || !plugin.getPacketManager().knowsOwner(user, row.get().getOwner())
+                        || !((PacketNameTag) row.get()).canViewerSee(user.getUUID())) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+            final Runnable spawned = plugin.getPacketManager().trackSpawn(user, id);
+            event.getTasksAfterSend().add(() -> {
+                if (!event.isCancelled()) spawned.run();
+            });
+        } else if (event.getPacketType() == PacketType.Play.Server.DESTROY_ENTITIES) {
+            // Invalidate at encoding time: later writes must not mount an owner awaiting socket flush.
+            for (int id : new WrapperPlayServerDestroyEntities(event).getEntityIds()) {
+                plugin.getPacketManager().destroyed(user, id);
+                if (plugin.getPacketManager().isCurrent(user)) {
+                    plugin.getPlayerListener().getPlayerFromEntityId(id).ifPresent(owner ->
+                            plugin.getNametagManager().getPacketDisplays(owner).forEach(row ->
+                                    ((PacketNameTag) row).hideFromViewer(user.getUUID())));
+                }
+            }
+        } else if (event.getPacketType() == PacketType.Play.Server.RESPAWN) {
+            plugin.getPacketManager().reset(user);
+            if (plugin.getPacketManager().isCurrent(user)) {
+                plugin.getNametagManager().removeViewer(user.getUUID());
+            }
         }
-
-        return passengerList;
     }
+
 
     private boolean preTeamsChecks(@NotNull PacketSendEvent event) {
         if (!plugin.getConfigManager().getSettings().getBehavior().isDisableDefaultNameTag()) {
@@ -326,7 +360,13 @@ public class PacketEventsListener extends PacketListenerAbstract {
         return plugin.getPlayerListener().getPlayerNameId().containsKey(name);
     }
 
+    @Override
+    public void onUserDisconnect(UserDisconnectEvent event) {
+        if (plugin.getPacketManager() != null) plugin.getPacketManager().reset(event.getUser());
+    }
+
     public void onDisable() {
+        PacketEvents.getAPI().getEventManager().unregisterListener(passengerObserver);
         PacketEvents.getAPI().getEventManager().unregisterListener(this);
     }
 }

@@ -123,7 +123,7 @@ public final class BukkitNametagRuntime implements NametagRuntime {
         if (viewer != null) {
             plugin.getPacketManager().removePassenger(viewer, displayEntityId);
         } else {
-            plugin.getPacketManager().removePassenger(displayEntityId);
+            plugin.getPacketManager().removePassenger(viewerId, displayEntityId);
         }
     }
 

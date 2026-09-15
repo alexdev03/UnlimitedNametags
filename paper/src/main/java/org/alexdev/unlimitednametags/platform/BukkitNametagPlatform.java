@@ -138,6 +138,10 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
         }
 
         final boolean isOwnerViewer = viewerId.equals(owner);
+        if (!isOwnerViewer && (!plugin.getPacketManager().knowsOwner(resolveUser(viewerId), ownerPlayer)
+                || plugin.getTrackerManager().isTrackingVetoed(viewerId, owner))) {
+            return "owner spawn has not been sent to this viewer";
+        }
         if (!isOwnerViewer && !viewer.hasPermission("unt.shownametags")) {
             return "viewer lacks permission unt.shownametags";
         }

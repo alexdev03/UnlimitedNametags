@@ -208,7 +208,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         }
     }
 
-    public void modifyOwnerEntity(@NotNull Consumer<WrapperEntity> consumer) {
+    public synchronized void modifyOwnerEntity(@NotNull Consumer<WrapperEntity> consumer) {
         if (removed) {
             return;
         }
@@ -221,7 +221,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         modifyEntity(ownerUser, consumer);
     }
 
-    protected void modifyAbstractAll(@NotNull Consumer<AbstractDisplayMeta> consumer) {
+    protected synchronized void modifyAbstractAll(@NotNull Consumer<AbstractDisplayMeta> consumer) {
         if (removed) {
             return;
         }
@@ -233,7 +233,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         });
     }
 
-    public void modifyEntity(@Nullable User user, @NotNull Consumer<WrapperEntity> consumer) {
+    public synchronized void modifyEntity(@Nullable User user, @NotNull Consumer<WrapperEntity> consumer) {
         if (removed) {
             return;
         }
@@ -246,7 +246,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         consumer.accept(entity);
     }
 
-    public void modifyEntity(@NotNull Consumer<WrapperEntity> consumer) {
+    public synchronized void modifyEntity(@NotNull Consumer<WrapperEntity> consumer) {
         if (removed) {
             return;
         }
@@ -259,8 +259,8 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     }
 
     @Nullable
-    private WrapperEntity resolveEntity(@Nullable final User user) {
-        if (user == null || user.getUUID() == null) {
+    private synchronized WrapperEntity resolveEntity(@Nullable final User user) {
+        if (removed || user == null || user.getUUID() == null) {
             return null;
         }
         return perPlayerEntity.getEntityOf(user);
@@ -452,7 +452,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
      *
      * @return {@code true} if a packet was sent
      */
-    public boolean flushViewerMetadata(@NotNull final UUID viewerId, final boolean force) {
+    public synchronized boolean flushViewerMetadata(@NotNull final UUID viewerId, final boolean force) {
         if (removed || blocked.contains(viewerId)) {
             return false;
         }
@@ -482,7 +482,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         forceRefreshViewers.add(viewerId);
     }
 
-    public void flushAllViewers(final boolean force) {
+    public synchronized void flushAllViewers(final boolean force) {
         perPlayerEntity.getEntities().forEach((viewerId, entity) -> {
             if (entity == null || blocked.contains(viewerId)) {
                 return;
@@ -735,7 +735,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         modifyAbstractAll(meta -> meta.setViewRange(range));
     }
 
-    public void showToViewer(@NotNull UUID viewerId) {
+    public synchronized void showToViewer(@NotNull UUID viewerId) {
         if (!isEligibleToShow(viewerId)) {
             if (runtime.isNametagDebug()) {
                 final String viewerName = platform.playerName(viewerId);
@@ -777,17 +777,14 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             tn.refreshViewerIfCached(viewerId);
         }
 
-        runtime.runTaskLaterAsync(() -> {
-            final User user = platform.resolveUser(viewerId);
-            if (user == null) {
-                return;
-            }
-            sendPassengersPacket(user);
-        }, 1);
+        // The transport orders and validates the mount after the queued spawn.
+        if (viewerUser != null) {
+            sendPassengersPacket(viewerUser);
+        }
     }
 
     private boolean isEligibleToShow(@NotNull UUID viewerId) {
-        if (blocked.contains(viewerId)) {
+        if (removed || blocked.contains(viewerId)) {
             return false;
         }
         return platform.isEligibleToShow(ownerId, viewerId, visible, getViewers().contains(viewerId));
@@ -807,7 +804,10 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         return entityId;
     }
 
-    public void spawnForOwner() {
+    public synchronized void spawnForOwner() {
+        if (removed) {
+            return;
+        }
         this.visible = true;
         final User user = platform.resolveUser(ownerId);
         if (user == null) {
@@ -822,17 +822,11 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
             e.spawn(location);
         });
 
-        runtime.runTaskLaterAsync(() -> {
-            final User ownerUser = platform.resolveUser(ownerId);
-            if (ownerUser == null) {
-                return;
-            }
-            sendPassengersPacket(ownerUser);
-        }, 1);
+        sendPassengersPacket(user);
     }
 
-    public void sendPassengersPacket(@NotNull User viewerUser) {
-        if (removed) {
+    public synchronized void sendPassengersPacket(@NotNull User viewerUser) {
+        if (removed || !canViewerSee(viewerUser.getUUID()) || platform.resolveUser(viewerUser.getUUID()) != viewerUser) {
             return;
         }
         runtime.sendPassengersPacket(viewerUser, ownerId);
@@ -872,33 +866,31 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         return platform.offsetDisplayLocation(scale);
     }
 
-    public void hideFromViewer(@NotNull UUID viewerId) {
-        if (blocked.contains(viewerId)) {
-            return;
-        }
+    public synchronized void hideFromViewer(@NotNull UUID viewerId) {
         final TextNametagSupport tn = textNametag();
         if (tn != null) {
             tn.onViewerRemoved(viewerId);
         }
-        forceRefreshViewers.remove(viewerId);
-        final User user = platform.resolveUser(viewerId);
-        if (user == null) {
-            perPlayerEntity.getEntities().remove(viewerId);
-            return;
-        }
-        final WrapperEntity wrapperEntity = resolveEntity(user);
-        if (wrapperEntity != null) {
-            wrapperEntity.removeViewer(user);
-        }
-        if (!viewerId.equals(ownerId)) {
-            perPlayerEntity.getEntities().remove(user.getUUID());
-        }
+        releaseViewer(viewerId);
+    }
 
+    private void releaseViewer(@NotNull UUID viewerId) {
+        forceRefreshViewers.remove(viewerId);
+        final WrapperEntity entity = perPlayerEntity.getEntities().get(viewerId);
+        if (entity != null) {
+            // Destroy before forgetting, including blocked and temporarily unresolved users.
+            entity.removeViewer(viewerId);
+            entity.remove();
+            // The owner's hidden wrapper also holds the metadata template for other viewers.
+            if (removed || !viewerId.equals(ownerId)) {
+                perPlayerEntity.getEntities().remove(viewerId, entity);
+            }
+        }
         runtime.removePassenger(viewerId, entityId);
     }
 
     public void clearViewers() {
-        getViewers().forEach(this::hideFromViewer);
+        new HashSet<>(perPlayerEntity.getEntities().keySet()).forEach(this::hideFromViewer);
     }
 
     public void showToViewers(@NotNull Set<UUID> viewerIds) {
@@ -913,27 +905,23 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         flushViewerMetadata(viewerId, force);
     }
 
-    public void hideFromViewerSilently(@NotNull UUID viewerId) {
-        if (blocked.contains(viewerId)) {
-            return;
-        }
+    public synchronized void hideFromViewerSilently(@NotNull UUID viewerId) {
         final TextNametagSupport tn = textNametag();
         if (tn != null) {
             tn.onViewerDetached(viewerId);
         }
-        final WrapperEntity wrapperEntity = perPlayerEntity.getEntities().get(viewerId);
-        if (wrapperEntity != null) {
-            wrapperEntity.removeViewer(viewerId);
-            perPlayerEntity.getEntities().remove(viewerId, wrapperEntity);
+        releaseViewer(viewerId);
+    }
+
+    public synchronized boolean canViewerSee(@NotNull UUID viewerId) {
+        final WrapperEntity entity = perPlayerEntity.getEntities().get(viewerId);
+        return !removed && entity != null && entity.isSpawned() && entity.getViewers().contains(viewerId);
+    }
+
+    public synchronized void spawnViewer(@NotNull UUID viewerId) {
+        if (removed) {
+            return;
         }
-        runtime.removePassenger(viewerId, entityId);
-    }
-
-    public boolean canViewerSee(@NotNull UUID viewerId) {
-        return getViewers().contains(viewerId);
-    }
-
-    public void spawnViewer(@NotNull UUID viewerId) {
         this.visible = true;
         final User user = platform.resolveUser(viewerId);
         if (user == null) {
@@ -951,37 +939,20 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         flushAllViewers(false);
     }
 
-    public void remove() {
+    public synchronized void remove() {
         removed = true;
         forceRefreshViewers.clear();
         final TextNametagSupport tn = textNametag();
         if (tn != null) {
             tn.dispose();
         }
-        perPlayerEntity.getEntities().keySet().forEach(viewerId -> {
-            final User user = platform.resolveUser(viewerId);
-            if (user != null && user.getChannel() != null) {
-                final WrapperEntity entity = resolveEntity(user);
-                if (entity != null) {
-                    entity.removeViewer(user);
-                }
-            }
-        });
-
-        perPlayerEntity.getEntities().values().forEach(WrapperEntity::remove);
-        perPlayerEntity.getEntities().clear();
+        new HashSet<>(perPlayerEntity.getEntities().keySet()).forEach(this::releaseViewer);
 
         runtime.removePassengerFromAll(entityId);
     }
 
-    public void handleQuit(@NotNull UUID viewerId) {
-        final TextNametagSupport tn = textNametag();
-        if (tn != null) {
-            tn.onViewerRemoved(viewerId);
-        }
-        forceRefreshViewers.remove(viewerId);
-        perPlayerEntity.getEntities().remove(viewerId);
-        runtime.removePassenger(viewerId, entityId);
+    public synchronized void handleQuit(@NotNull UUID viewerId) {
+        hideFromViewer(viewerId);
     }
 
     /**
@@ -1098,7 +1069,9 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         }
     }
 
-    public Set<UUID> getViewers() {
-        return Collections.unmodifiableSet(perPlayerEntity.getEntities().keySet());
+    public synchronized Set<UUID> getViewers() {
+        final Set<UUID> viewers = new HashSet<>();
+        perPlayerEntity.getEntities().keySet().stream().filter(this::canViewerSee).forEach(viewers::add);
+        return Collections.unmodifiableSet(viewers);
     }
 }

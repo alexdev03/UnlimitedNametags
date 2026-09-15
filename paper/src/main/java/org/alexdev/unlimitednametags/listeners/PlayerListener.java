@@ -2,6 +2,7 @@ package org.alexdev.unlimitednametags.listeners;
 
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.protocol.player.User;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
@@ -135,7 +136,8 @@ public class PlayerListener implements PackSendHandler {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(plugin.getServer().getPlayer(player));
+        return Optional.ofNullable(plugin.getServer().getPlayer(player))
+                .filter(online -> online.getEntityId() == entityId);
     }
 
     /**
@@ -201,15 +203,17 @@ public class PlayerListener implements PackSendHandler {
         cancelTeleportSync(event.getPlayer().getUniqueId());
         zeroDamageRecoveryRunIds.remove(event.getPlayer().getUniqueId());
         cancelRespawnShow(event.getPlayer().getUniqueId());
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-            plugin.getNametagManager().removePlayer(event.getPlayer());
-            plugin.getNametagManager().clearCache(event.getPlayer().getUniqueId());
-            plugin.getPlaceholderManager().removePlayer(event.getPlayer());
-            diedPlayers.remove(event.getPlayer().getUniqueId());
-            onlinePlayers.remove(event.getPlayer().getUniqueId());
-            playerEntityId.remove(event.getPlayer().getEntityId());
-            playerWorlds.remove(event.getPlayer().getUniqueId());
-        });
+        // Finish old-session cleanup before a rejoin with the same UUID can be registered.
+        plugin.getTrackerManager().handleQuit(event.getPlayer());
+        final User quittingUser = PacketEvents.getAPI().getPlayerManager().getUser(event.getPlayer());
+        if (quittingUser != null) plugin.getPacketManager().reset(quittingUser);
+        plugin.getNametagManager().removePlayer(event.getPlayer());
+        plugin.getNametagManager().clearCache(event.getPlayer().getUniqueId());
+        plugin.getPlaceholderManager().removePlayer(event.getPlayer());
+        diedPlayers.remove(event.getPlayer().getUniqueId());
+        onlinePlayers.remove(event.getPlayer().getUniqueId(), event.getPlayer());
+        playerEntityId.remove(event.getPlayer().getEntityId());
+        playerWorlds.remove(event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

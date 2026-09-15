@@ -4,7 +4,6 @@ import lombok.Getter;
 import org.alexdev.unlimitednametags.UnlimitedNameTags;
 import org.alexdev.unlimitednametags.data.ConcurrentSetMultimap;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -13,6 +12,7 @@ import java.util.*;
 public class TrackerManager {
 
     private final UnlimitedNameTags plugin;
+    private final ConcurrentSetMultimap<UUID, UUID> trackingVetoes = new ConcurrentSetMultimap<>();
 
     /**
      * Map associating a player (key) with the players they are tracking (value).
@@ -37,35 +37,41 @@ public class TrackerManager {
     }
 
     private void loadTracker() {
-        Bukkit.getOnlinePlayers().forEach(player -> {
-            // Unsafe call, but run only on startup
-            List<Entity> nearbyEntities = player.getNearbyEntities(
-                    Bukkit.getViewDistance() * 16,
-                    256,
-                    Bukkit.getViewDistance() * 16);
+        // Existing nearby entities are not evidence of a client-side player spawn.
+        Bukkit.getOnlinePlayers().forEach(target -> target.getTrackedBy().forEach(viewer -> {
+            trackedPlayers.put(viewer.getUniqueId(), target.getUniqueId());
+            trackedBy.put(target.getUniqueId(), viewer.getUniqueId());
+        }));
+    }
 
-            for (Entity entity : nearbyEntities) {
-                if (entity instanceof Player target) {
-                    trackedPlayers.put(player.getUniqueId(), target.getUniqueId());
-                    trackedBy.put(target.getUniqueId(), player.getUniqueId());
-                }
-            }
-        });
+    public boolean isTrackingVetoed(UUID viewer, UUID owner) {
+        return trackingVetoes.containsEntry(viewer, owner);
+    }
+
+    public void setTrackingVeto(Player viewer, Player owner, boolean veto) {
+        if (veto) {
+            trackingVetoes.put(viewer.getUniqueId(), owner.getUniqueId());
+            removePlayerInternal(viewer, owner);
+        } else {
+            trackingVetoes.remove(viewer.getUniqueId(), owner.getUniqueId());
+        }
     }
 
     public void onDisable() {
         trackedPlayers.clear();
         trackedBy.clear();
+        trackingVetoes.clear();
     }
 
     /**
      * Handles adding a target to a player's tracking list.
-     * Updates both direct and reverse maps asynchronously.
+     * Updates both direct and reverse maps.
      *
      * @param player The observer player.
      * @param target The target player being observed.
      */
     public void handleAdd(@NotNull Player player, @NotNull Player target) {
+        if (isTrackingVetoed(player.getUniqueId(), target.getUniqueId())) return;
         if (player.hasMetadata("NPC") || target.hasMetadata("NPC"))
             return;
         if (target.hasPotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY))
@@ -88,6 +94,7 @@ public class TrackerManager {
      * @param target The target player being observed.
      */
     public void handleRemove(@NotNull Player player, @NotNull Player target) {
+        trackingVetoes.remove(player.getUniqueId(), target.getUniqueId());
         removePlayerInternal(player, target);
     }
 
@@ -104,27 +111,27 @@ public class TrackerManager {
      * @param player The player who is quitting.
      */
     public void handleQuit(@NotNull Player player) {
-        plugin.getTaskScheduler().runTaskAsynchronously(() -> {
-            UUID quittingUuid = player.getUniqueId();
+        UUID quittingUuid = player.getUniqueId();
+        trackingVetoes.removeAll(quittingUuid);
+        trackingVetoes.keySet().forEach(viewer -> trackingVetoes.remove(viewer, quittingUuid));
 
-            // 1. Remove the player from the lists of those who were watching them.
-            // trackedBy.removeAll returns who was watching the quitting player.
-            Set<UUID> watchers = trackedBy.removeAll(quittingUuid);
-            if (watchers != null) {
-                for (UUID watcherUuid : watchers) {
-                    trackedPlayers.remove(watcherUuid, quittingUuid);
-                }
+        // 1. Remove the player from the lists of those who were watching them.
+        // trackedBy.removeAll returns who was watching the quitting player.
+        Set<UUID> watchers = trackedBy.removeAll(quittingUuid);
+        if (watchers != null) {
+            for (UUID watcherUuid : watchers) {
+                trackedPlayers.remove(watcherUuid, quittingUuid);
             }
+        }
 
-            // 2. Remove the lists of players the quitting player was watching.
-            // trackedPlayers.removeAll returns who the quitting player was watching.
-            Set<UUID> targets = trackedPlayers.removeAll(quittingUuid);
-            if (targets != null) {
-                for (UUID targetUuid : targets) {
-                    trackedBy.remove(targetUuid, quittingUuid);
-                }
+        // 2. Remove the lists of players the quitting player was watching.
+        // trackedPlayers.removeAll returns who the quitting player was watching.
+        Set<UUID> targets = trackedPlayers.removeAll(quittingUuid);
+        if (targets != null) {
+            for (UUID targetUuid : targets) {
+                trackedBy.remove(targetUuid, quittingUuid);
             }
-        });
+        }
     }
 
     /**
@@ -161,7 +168,8 @@ public class TrackerManager {
             if (target.equals(player)) {
                 continue;
             }
-            if (target.getTrackedBy().contains(player)) {
+            if (target.getTrackedBy().contains(player)
+                    && !isTrackingVetoed(playerId, target.getUniqueId())) {
                 currentTargets.add(target.getUniqueId());
             }
         }
@@ -187,7 +195,7 @@ public class TrackerManager {
 
         final Set<UUID> currentViewers = player.getTrackedBy().stream()
                 .map(Player::getUniqueId)
-                .filter(viewerId -> !viewerId.equals(playerId))
+                .filter(viewerId -> !viewerId.equals(playerId) && !isTrackingVetoed(viewerId, playerId))
                 .collect(java.util.stream.Collectors.toSet());
         final Set<UUID> cachedViewers = new HashSet<>(trackedBy.get(playerId));
         final Set<UUID> viewersToRemove = new HashSet<>(cachedViewers);
