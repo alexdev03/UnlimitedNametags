@@ -301,6 +301,9 @@ public class NameTagManager implements UntNametagManagerPaper {
                         continue;
                     }
                     final Player owner = paperRow(tag).getOwner();
+                    if (owner == null || !owner.isOnline()) {
+                        continue;
+                    }
                     final boolean shiftBlocked = shiftSystemBlocked.getOrDefault(owner.getUniqueId(), false);
                     final boolean sneakEff = tag.isSneaking() && !shiftBlocked;
                     tag.applyObscuredLineOfSightPresentation(true, sneakB, obscB, maxSq, sneakEff);
@@ -319,6 +322,10 @@ public class NameTagManager implements UntNametagManagerPaper {
                         if (viewer.getUniqueId().equals(owner.getUniqueId())) {
                             continue;
                         }
+                        if (!viewer.isOnline() || viewer.getWorld() != owner.getWorld()) {
+                            tag.hideFromViewer(viewer.getUniqueId());
+                            continue;
+                        }
                         final double distSq = viewer.getLocation().distanceSquared(owner.getLocation());
                         final boolean withinRange = distSq <= maxSq;
                         final boolean hasLoS = withinRange && viewer.hasLineOfSight(owner);
@@ -329,7 +336,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                             }
                         } else {
                             if (row.canPlayerSee(viewer)) {
-                                row.hideFromPlayer(viewer);
+                                tag.hideFromViewer(viewer.getUniqueId());
                             }
                         }
                     }
@@ -565,13 +572,10 @@ public class NameTagManager implements UntNametagManagerPaper {
      */
     public void hideAllOthersNametagsFromViewer(@NotNull Player viewer) {
         nameTags.values().forEach(tags -> tags.forEach(display -> {
-            final PaperNametagRow row = paperRow(display);
-            if (row.getOwner().getUniqueId().equals(viewer.getUniqueId())) {
+            if (display.getOwnerId().equals(viewer.getUniqueId())) {
                 return;
             }
-            if (row.canPlayerSee(viewer)) {
-                row.hideFromPlayer(viewer);
-            }
+            display.hideFromViewer(viewer.getUniqueId());
         }));
     }
 
@@ -995,7 +999,9 @@ public class NameTagManager implements UntNametagManagerPaper {
         if (force || meta.getBackgroundColor() != backgroundColor) {
             meta.setBackgroundColor(backgroundColor);
         }
-        if (force || meta.isSeeThrough() != seeThrough) {
+        // OBSCURED owns this flag per viewer; placeholder refreshes must not reset it.
+        if (throughWallMode != Settings.ThroughWallMode.OBSCURED
+                && (force || meta.isSeeThrough() != seeThrough)) {
             meta.setSeeThrough(seeThrough);
         }
     }
@@ -1687,7 +1693,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         nameTags.values().forEach(tags -> tags.forEach(display -> {
             final PaperNametagRow row = paperRow(display);
             final Player owner = row.getOwner();
-            if (owner == player) {
+            if (owner == null || owner == player) {
                 return;
             }
 

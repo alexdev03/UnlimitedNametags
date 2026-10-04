@@ -173,10 +173,15 @@ final class TextNametagSupport {
             }
 
             final ViewerTextSnap prev = obscuredPresentationByViewer.get(viewerId);
-            if (prev != null && prev.opacity() == opacity && prev.seeThrough() == seeThroughMeta) {
+            final var entity = host.getPerPlayerEntity().getEntities().get(viewerId);
+            if (entity == null) {
                 continue;
             }
-            obscuredPresentationByViewer.put(viewerId, new ViewerTextSnap(opacity, seeThroughMeta));
+            final TextDisplayMeta current = (TextDisplayMeta) entity.getEntityMeta();
+            if (prev != null && prev.opacity() == opacity && prev.seeThrough() == seeThroughMeta
+                    && current.getTextOpacity() == opacity && current.isSeeThrough() == seeThroughMeta) {
+                continue;
+            }
 
             final User user = host.getPlatform().resolveUser(viewerId);
             if (user == null) {
@@ -184,10 +189,13 @@ final class TextNametagSupport {
             }
             final byte opacityFinal = opacity;
             final boolean seeThroughFinal = seeThroughMeta;
-            modifyTextForViewer(user, m -> {
+            if (!modifyTextForViewer(user, m -> {
                 m.setTextOpacity(opacityFinal);
                 m.setSeeThrough(seeThroughFinal);
-            });
+            })) {
+                continue;
+            }
+            obscuredPresentationByViewer.put(viewerId, new ViewerTextSnap(opacity, seeThroughMeta));
             host.refreshForViewer(viewerId);
         }
     }

@@ -53,10 +53,15 @@ dependencies {
     annotationProcessor(libs.lombok)
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
+    testImplementation("org.mockito:mockito-core:5.23.0")
+    testImplementation(libs.entityLib) {
+        exclude(group = "com.github.retrooper", module = "packetevents-spigot")
+        exclude(group = "com.github.retrooper", module = "packetevents-api")
+    }
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation(libs.paperApi)
-    testRuntimeOnly(libs.packeteventsSpigot)
+    testImplementation(libs.packeteventsSpigot)
 }
 
 tasks.withType<Test>().configureEach {
@@ -175,6 +180,7 @@ tasks {
 }
 
 tasks.processResources {
+    inputs.property("pluginVersion", project.version.toString())
     var compiled = true
     if (rootProject.file("license.txt").exists()) {
         compiled = false

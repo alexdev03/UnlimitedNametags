@@ -21,6 +21,7 @@ public class PacketManager {
     private final Map<User, PassengerState> connections = new ConcurrentHashMap<>();
     // Retain retired IDs until shutdown so late third-party mounts cannot revive removed rows.
     private final Set<Integer> rowIds = ConcurrentHashMap.newKeySet();
+    private final Map<Integer, Set<Integer>> ownerRows = new ConcurrentHashMap<>();
     private volatile boolean closed;
 
     public PacketManager(@NotNull UnlimitedNameTags plugin) {
@@ -32,6 +33,7 @@ public class PacketManager {
         closed = true;
         connections.clear();
         rowIds.clear();
+        ownerRows.clear();
     }
 
     public boolean isCurrent(User user) {
@@ -78,6 +80,21 @@ public class PacketManager {
     }
 
     public boolean isRow(int entityId) { return rowIds.contains(entityId); }
+
+    public void registerRow(int ownerEntityId, int rowEntityId) {
+        ownerRows.computeIfAbsent(ownerEntityId, ignored -> ConcurrentHashMap.newKeySet()).add(rowEntityId);
+    }
+
+    /** Remove passengers explicitly: destroying their vehicle alone can leave them at its last position. */
+    public int[] includeOwnedRows(int[] destroyedIds) {
+        final Set<Integer> result = new LinkedHashSet<>();
+        for (int id : destroyedIds) {
+            result.add(id);
+            final Set<Integer> rows = ownerRows.get(id);
+            if (rows != null) result.addAll(rows);
+        }
+        return result.stream().mapToInt(Integer::intValue).toArray();
+    }
 
     public void setPassengers(@NotNull Player owner, @NotNull List<Integer> passengers) {
         // Compatibility API for explicit owner-wide updates; intercepted packets use the viewer overload.

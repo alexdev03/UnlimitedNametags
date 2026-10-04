@@ -31,6 +31,14 @@ public final class BukkitNametagRuntime implements NametagRuntime {
     }
 
     @Override
+    public void registerRow(@NotNull UUID ownerId, int displayEntityId) {
+        final Player owner = plugin.getPlayerListener().getPlayer(ownerId);
+        if (owner != null) {
+            plugin.getPacketManager().registerRow(owner.getEntityId(), displayEntityId);
+        }
+    }
+
+    @Override
     @NotNull
     public Settings settings() {
         return plugin.getConfigManager().getSettings();

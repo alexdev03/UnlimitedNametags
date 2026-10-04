@@ -117,6 +117,14 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
         if (ownerPlayer == null) {
             return "owner is not loaded or online";
         }
+        if (!ownerPlayer.isOnline() || ownerPlayer.isDead()
+                || ownerPlayer.getGameMode() == org.bukkit.GameMode.SPECTATOR
+                || ownerPlayer.hasPotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY)) {
+            return "owner state suppresses nametags";
+        }
+        if (!plugin.getConfigManager().getSettings().getWorlds().isEnabled(ownerPlayer.getWorld().getName())) {
+            return "nametags are disabled in the owner's world";
+        }
         if (plugin.getNametagManager().isBlocked(ownerPlayer)) {
             return "owner is blocked";
         }
@@ -138,6 +146,18 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
         }
 
         final boolean isOwnerViewer = viewerId.equals(owner);
+        if (isOwnerViewer && !plugin.getNametagManager().isEffectiveShowOwnNametag(ownerPlayer)) {
+            return "own nametag is disabled";
+        }
+        final var visibility = plugin.getConfigManager().getSettings().getVisibility();
+        if (!isOwnerViewer && visibility.getThroughWallMode()
+                == org.alexdev.unlimitednametags.config.Settings.ThroughWallMode.HIDE) {
+            final double maxDistance = visibility.getThroughWallSettings().getMaxDistance();
+            if (viewer.getLocation().distanceSquared(ownerPlayer.getLocation()) > maxDistance * maxDistance
+                    || !viewer.hasLineOfSight(ownerPlayer)) {
+                return "HIDE wall visibility suppresses nametags";
+            }
+        }
         if (!isOwnerViewer && (!plugin.getPacketManager().knowsOwner(resolveUser(viewerId), ownerPlayer)
                 || plugin.getTrackerManager().isTrackingVetoed(viewerId, owner))) {
             return "owner spawn has not been sent to this viewer";
@@ -148,7 +168,7 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
         if (isOwnerViewer && !viewer.hasPermission("unt.showownnametag")) {
             return "viewer lacks permission unt.showownnametag";
         }
-        if (plugin.getNametagManager().isHiddenOtherNametags(viewer)) {
+        if (!isOwnerViewer && plugin.getNametagManager().isHiddenOtherNametags(viewer)) {
             return "viewer has hidden other nametags";
         }
         if (!isOwnerViewer && plugin.getNametagManager().isHidingOwnNametagFromOthers(ownerPlayer)) {

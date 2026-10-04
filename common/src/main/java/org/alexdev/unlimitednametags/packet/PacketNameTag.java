@@ -105,6 +105,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         this.materials = materials;
         this.ownerId = ownerId;
         this.entityId = runtime.nextEntityId();
+        runtime.registerRow(ownerId, entityId);
         this.entityIdUuid = UUID.randomUUID();
         this.displayGroup = displayGroup;
         this.createdDisplayType = displayGroup.resolvedDisplayType();

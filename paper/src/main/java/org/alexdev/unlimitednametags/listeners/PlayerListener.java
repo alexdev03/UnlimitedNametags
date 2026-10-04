@@ -250,9 +250,12 @@ public class PlayerListener implements PackSendHandler {
                 return;
             }
 
-            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            plugin.getTaskScheduler().runTaskLater(player, () -> {
+                if (!isCurrentVisibleSession(player)) {
+                    return;
+                }
                 plugin.getNametagManager().unblockPlayer(player);
-                plugin.getNametagManager().showToTrackedPlayers(player);
+                recoverNametagVisibility(player);
             }, 3);
 
         }
@@ -260,11 +263,17 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
-        if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().unblockPlayer(e.getPlayer());
-            plugin.getNametagManager().showToTrackedPlayers(e.getPlayer());
-        } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
+        if (e.getNewGameMode() == GameMode.SPECTATOR) {
             plugin.getNametagManager().removeAllViewers(e.getPlayer());
+        } else if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
+            final Player player = e.getPlayer();
+            plugin.getTaskScheduler().runTaskLater(player, () -> {
+                if (!isCurrentVisibleSession(player)) {
+                    return;
+                }
+                plugin.getNametagManager().unblockPlayer(player);
+                recoverNametagVisibility(player);
+            }, 1L);
         }
     }
 
@@ -448,13 +457,7 @@ public class PlayerListener implements PackSendHandler {
     }
 
     private void recoverNametagVisibility(@NotNull Player player) {
-        if (!player.isOnline() || player.isDead()) {
-            return;
-        }
-        if (player.getGameMode() == GameMode.SPECTATOR) {
-            return;
-        }
-        if (player.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
+        if (!isCurrentVisibleSession(player)) {
             return;
         }
         plugin.getTrackerManager().reconcileTrackedState(player);
@@ -463,6 +466,12 @@ public class PlayerListener implements PackSendHandler {
         if (plugin.getNametagManager().isEffectiveShowOwnNametag(player)) {
             plugin.getNametagManager().showToOwner(player);
         }
+    }
+
+    private boolean isCurrentVisibleSession(@NotNull Player player) {
+        return onlinePlayers.get(player.getUniqueId()) == player && player.isOnline() && !player.isDead()
+                && player.getGameMode() != GameMode.SPECTATOR
+                && !player.hasPotionEffect(PotionEffectType.INVISIBILITY);
     }
 
     private void cancelTeleportSync(@NotNull UUID uuid) {
