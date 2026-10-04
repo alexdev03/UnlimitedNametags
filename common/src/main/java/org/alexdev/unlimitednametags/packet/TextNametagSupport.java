@@ -125,6 +125,28 @@ final class TextNametagSupport {
         modifyTextAll(meta -> meta.setTextOpacity(b));
     }
 
+    /** Use the depth-tested text path in clear sight without disabling configured wall visibility. */
+    void applySeeThroughLineOfSightPresentation(final boolean wallSeeThrough) {
+        if (host.isRemoved()) return;
+        for (final UUID viewerId : new ArrayList<>(host.getViewers())) {
+            applySeeThroughLineOfSightPresentationForViewer(viewerId, wallSeeThrough);
+        }
+    }
+
+    void applySeeThroughLineOfSightPresentationForViewer(final UUID viewerId, final boolean wallSeeThrough) {
+        if (host.isRemoved() || host.getPlatform().viewerLacksTextDisplaySupport(viewerId)
+                || host.getPlatform().distanceSquaredSameWorld(host.getOwnerId(), viewerId) < 0) return;
+        final var entity = host.getPerPlayerEntity().getEntities().get(viewerId);
+        if (entity == null) return;
+        final boolean seeThrough = wallSeeThrough && !viewerId.equals(host.getOwnerId())
+                && !host.getPlatform().hasLineOfSight(viewerId, host.getOwnerId());
+        final TextDisplayMeta meta = (TextDisplayMeta) entity.getEntityMeta();
+        if (meta.isSeeThrough() == seeThrough) return;
+        if (modifyTextForViewer(host.getPlatform().resolveUser(viewerId), m -> m.setSeeThrough(seeThrough))) {
+            host.refreshForViewer(viewerId);
+        }
+    }
+
     void clearObscuredPresentationTracking() {
         obscuredPresentationByViewer.clear();
     }

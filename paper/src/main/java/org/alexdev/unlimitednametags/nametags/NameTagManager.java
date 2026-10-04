@@ -219,7 +219,8 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
 
         final Settings.Visibility visibility = plugin.getConfigManager().getSettings().getVisibility();
-        if (visibility.getThroughWallMode() == Settings.ThroughWallMode.OBSCURED || visibility.getThroughWallMode() == Settings.ThroughWallMode.HIDE) {
+        if (visibility.getThroughWallMode() == Settings.ThroughWallMode.OBSCURED || visibility.getThroughWallMode() == Settings.ThroughWallMode.HIDE
+                || visibility.isPreferNormalTextWithLineOfSight()) {
             final int obscuredInterval = Math.max(1, visibility.getThroughWallSettings().getCheckInterval());
             final MyScheduledTask obscured = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                     this::tickThroughWalls,
@@ -287,6 +288,11 @@ public class NameTagManager implements UntNametagManagerPaper {
         final Settings s = plugin.getConfigManager().getSettings();
         final Settings.ThroughWallMode mode = s.getVisibility().getThroughWallMode();
         if (mode == Settings.ThroughWallMode.SEE_THROUGH) {
+            if (s.getVisibility().isPreferNormalTextWithLineOfSight()) {
+                for (final CopyOnWriteArrayList<PacketNameTag> tags : nameTags.values()) {
+                    for (final PacketNameTag tag : tags) applyNormalDepthPresentation(tag);
+                }
+            }
             return;
         }
         final double maxDistance = s.getVisibility().getThroughWallSettings().getMaxDistance();
@@ -976,6 +982,34 @@ public class NameTagManager implements UntNametagManagerPaper {
                 return;
             }
             packetNameTag.modifyTextForViewer(user, m -> applyTextVisualState(packetNameTag, displayGroup, m, force));
+            applyNormalDepthPresentationForViewer(packetNameTag, p);
+        });
+    }
+
+    private void applyNormalDepthPresentation(@NotNull PacketNameTag tag) {
+        final Settings.Visibility visibility = plugin.getConfigManager().getSettings().getVisibility();
+        if (visibility.getThroughWallMode() == Settings.ThroughWallMode.SEE_THROUGH
+                && visibility.isPreferNormalTextWithLineOfSight() && tag.isTextDisplay()) {
+            for (UUID viewerId : tag.getViewers()) {
+                final Player viewer = plugin.getPlayerListener().getPlayer(viewerId);
+                if (viewer != null) applyNormalDepthPresentationForViewer(tag, viewer);
+            }
+        }
+    }
+
+    private void applyNormalDepthPresentationForViewer(@NotNull PacketNameTag tag, @NotNull Player viewer) {
+        final Settings.Visibility visibility = plugin.getConfigManager().getSettings().getVisibility();
+        if (visibility.getThroughWallMode() != Settings.ThroughWallMode.SEE_THROUGH
+                || !visibility.isPreferNormalTextWithLineOfSight() || !tag.isTextDisplay()) return;
+        // Placeholder sweeps are async; perform the new line-of-sight reads on the viewer's scheduler.
+        plugin.getTaskScheduler().runTask(viewer, () -> {
+            final Settings.Visibility current = plugin.getConfigManager().getSettings().getVisibility();
+            if (!viewer.isOnline() || plugin.getPlayerListener().getPlayer(viewer.getUniqueId()) != viewer
+                    || tag.isRemoved() || !tag.getViewers().contains(viewer.getUniqueId())
+                    || current.getThroughWallMode() != Settings.ThroughWallMode.SEE_THROUGH
+                    || !current.isPreferNormalTextWithLineOfSight()) return;
+            tag.applySeeThroughLineOfSightPresentationForViewer(viewer.getUniqueId(),
+                    tag.getDisplayGroup().effectiveBackground().seeThrough() && !tag.isSneaking());
         });
     }
 
@@ -1001,6 +1035,8 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
         // OBSCURED owns this flag per viewer; placeholder refreshes must not reset it.
         if (throughWallMode != Settings.ThroughWallMode.OBSCURED
+                && !(throughWallMode == Settings.ThroughWallMode.SEE_THROUGH
+                    && plugin.getConfigManager().getSettings().getVisibility().isPreferNormalTextWithLineOfSight())
                 && (force || meta.isSeeThrough() != seeThrough)) {
             meta.setSeeThrough(seeThrough);
         }
@@ -1482,6 +1518,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 } else {
                     applyTextVisualState(packetNameTag, packetNameTag.getDisplayGroup(), false);
                     packetNameTag.setTextOpacity(sneaking ? sneakB : (byte) -1);
+                    applyNormalDepthPresentation(packetNameTag);
                 }
             }
             packetNameTag.refresh();
@@ -1500,6 +1537,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 applyTextVisualState(tag, tag.getDisplayGroup(), true);
                 if (throughWallMode != Settings.ThroughWallMode.OBSCURED) {
                     tag.setTextOpacity(tag.isSneaking() ? sneakOpacity : (byte) -1);
+                    applyNormalDepthPresentation(tag);
                 }
             }
         }));

@@ -70,6 +70,87 @@ class TextNametagSupportTest {
 
     private void apply() { support.applyObscuredLineOfSightPresentation(true, (byte) 70, (byte) 80, 64.0, false); }
 
+    private void applyNormalDepth(boolean allowed) throws Exception {
+        var method = TextNametagSupport.class.getDeclaredMethod("applySeeThroughLineOfSightPresentation", boolean.class);
+        method.setAccessible(true);
+        method.invoke(support, allowed);
+    }
+
+    @Test void clearSightUsesNormalDepthWithoutChangingOpacity() throws Exception {
+        seeThrough.set(true);
+        opacity.set(70);
+        when(platform.hasLineOfSight(viewer, owner)).thenReturn(true);
+        applyNormalDepth(true);
+        assertFalse(seeThrough.get());
+        assertEquals(70, opacity.get());
+        verify(host).refreshForViewer(viewer);
+    }
+
+    @Test void blockedSightRetainsConfiguredThroughWallRendering() throws Exception {
+        applyNormalDepth(true);
+        assertTrue(seeThrough.get());
+        applyNormalDepth(false);
+        assertFalse(seeThrough.get());
+    }
+
+    @Test void normalDepthRepairSurvivesAStyleResetWithoutRedundantWrites() throws Exception {
+        when(platform.hasLineOfSight(viewer, owner)).thenReturn(true);
+        applyNormalDepth(true);
+        verify(host, never()).refreshForViewer(viewer);
+        seeThrough.set(true);
+        applyNormalDepth(true);
+        applyNormalDepth(true);
+        assertFalse(seeThrough.get());
+        verify(host).refreshForViewer(viewer);
+    }
+
+    @Test void crossWorldAndUnsupportedViewersAreNotModified() throws Exception {
+        when(platform.distanceSquaredSameWorld(owner, viewer)).thenReturn(-1.0);
+        applyNormalDepth(true);
+        verify(host, never()).refreshForViewer(viewer);
+        when(platform.distanceSquaredSameWorld(owner, viewer)).thenReturn(4.0);
+        when(platform.viewerLacksTextDisplaySupport(viewer)).thenReturn(true);
+        applyNormalDepth(true);
+        verify(host, never()).refreshForViewer(viewer);
+    }
+
+    @Test void missingConnectionCanRetryNormalDepthPresentation() throws Exception {
+        when(platform.resolveUser(viewer)).thenReturn(null);
+        applyNormalDepth(true);
+        assertFalse(seeThrough.get());
+        when(platform.resolveUser(viewer)).thenReturn(user);
+        applyNormalDepth(true);
+        assertTrue(seeThrough.get());
+    }
+
+    @Test void clearAndBlockedViewersKeepIndependentNormalDepthStates() throws Exception {
+        UUID second = UUID.randomUUID();
+        User secondUser = mock(User.class);
+        WrapperEntity secondWrapper = mock(WrapperEntity.class);
+        TextDisplayMeta secondMeta = mock(TextDisplayMeta.class);
+        when(secondWrapper.getEntityMeta()).thenReturn(secondMeta);
+        displays.getEntities().put(second, secondWrapper);
+        when(host.getViewers()).thenReturn(Set.of(viewer, second));
+        when(platform.resolveUser(second)).thenReturn(secondUser);
+        when(platform.distanceSquaredSameWorld(owner, second)).thenReturn(4.0);
+        when(platform.hasLineOfSight(second, owner)).thenReturn(true);
+        when(secondMeta.isSeeThrough()).thenReturn(true);
+        doAnswer(call -> { call.<Consumer<WrapperEntity>>getArgument(1).accept(secondWrapper); return null; })
+                .when(displays).modify(eq(secondUser), any());
+        applyNormalDepth(true);
+        assertTrue(seeThrough.get());
+        verify(secondMeta).setSeeThrough(false);
+        verify(secondMeta, never()).setTextOpacity(anyByte());
+    }
+
+    @Test void ownNametagUsesNormalDepthEvenWithoutAnOwnerRay() throws Exception {
+        when(host.getOwnerId()).thenReturn(viewer);
+        seeThrough.set(true);
+        applyNormalDepth(true);
+        assertFalse(seeThrough.get());
+        verify(platform, never()).hasLineOfSight(any(), any());
+    }
+
     @Test void repeatedStateAvoidsRedundantWrites() {
         apply(); apply();
         assertEquals(80, opacity.get());

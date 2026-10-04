@@ -4,6 +4,10 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.netty.channel.ChannelHelper;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
+import com.github.retrooper.packetevents.protocol.entity.pose.EntityPose;
 import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
 import me.tofaa.entitylib.APIConfig;
 import me.tofaa.entitylib.EntityLib;
@@ -144,6 +148,26 @@ public class PacketManager {
     public void removePassenger(@NotNull Player player, int passenger) {
         User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
         if (user != null) destroyed(user, passenger);
+    }
+
+    /** Retry only authoritative pose metadata; never set a server pose or infer one from the environment. */
+    public void sendPoseSnapshot(@NotNull Player owner, @NotNull EntityPose pose,
+            @NotNull java.util.function.BooleanSupplier stillCurrent) {
+        final int ownerEntityId = owner.getEntityId();
+        for (Player tracked : plugin.getTrackerManager().getWhoTracks(owner)) {
+            final User viewer = PacketEvents.getAPI().getPlayerManager().getUser(tracked);
+            if (!knowsOwner(viewer, owner) || owner.getUniqueId().equals(viewer.getUUID())) continue;
+            final PassengerState state = connections.get(viewer);
+            if (state == null) continue;
+            final long generation = state.generation(ownerEntityId);
+            if (generation < 0) continue;
+            ChannelHelper.runInEventLoop(viewer.getChannel(), () -> {
+                if (!stillCurrent.getAsBoolean() || !isCurrent(viewer) || connections.get(viewer) != state
+                        || state.generation(ownerEntityId) != generation || !knowsOwner(viewer, owner)) return;
+                viewer.sendPacket(new WrapperPlayServerEntityMetadata(ownerEntityId,
+                        List.of(new EntityData<>(6, EntityDataTypes.ENTITY_POSE, pose))));
+            });
+        }
     }
 
     public void removePassenger(@NotNull UUID viewerId, int passenger) {

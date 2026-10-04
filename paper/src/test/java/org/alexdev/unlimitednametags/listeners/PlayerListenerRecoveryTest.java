@@ -45,15 +45,97 @@ class PlayerListenerRecoveryTest {
         TestInstances.set(plugin, "taskScheduler", scheduler);
         TestInstances.set(listener, "plugin", plugin);
         TestInstances.set(listener, "onlinePlayers", online);
+        TestInstances.set(listener, "poseRetryRunIds", new ConcurrentHashMap<>());
         when(player.getUniqueId()).thenReturn(id);
         when(player.isOnline()).thenReturn(true);
         when(player.getGameMode()).thenReturn(GameMode.SURVIVAL);
         online.put(id, player);
+        when(tags.getPacketDisplays(player)).thenReturn(java.util.List.of(mock(org.alexdev.unlimitednametags.packet.PaperNametagRow.class)));
     }
     private void recover() throws Exception {
         Method method = PlayerListener.class.getDeclaredMethod("recoverNametagVisibility", Player.class);
         method.setAccessible(true);
         method.invoke(listener, player);
+    }
+
+    private void poseEvent() throws Exception {
+        var event = new org.bukkit.event.entity.EntityPoseChangeEvent(player, org.bukkit.entity.Pose.STANDING);
+        var method = PlayerListener.class.getDeclaredMethod("onPoseChange", org.bukkit.event.entity.EntityPoseChangeEvent.class);
+        method.invoke(listener, event);
+    }
+
+    @Test void poseRetryUsesOwnersSchedulerAndAuthoritativeNewPose() throws Exception {
+        var packets = mock(org.alexdev.unlimitednametags.packet.PacketManager.class);
+        TestInstances.set(listener.getPlugin(), "packetManager", packets);
+        when(player.getPose()).thenReturn(org.bukkit.entity.Pose.SWIMMING);
+        poseEvent();
+        verifyNoInteractions(packets);
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskLater(eq(player), task.capture(), eq(1L));
+        when(player.getPose()).thenReturn(org.bukkit.entity.Pose.SNEAKING);
+        task.getValue().run();
+        var writes = mockingDetails(packets).getInvocations().stream()
+                .filter(i -> i.getMethod().getName().equals("sendPoseSnapshot")).toList();
+        org.junit.jupiter.api.Assertions.assertEquals(1, writes.size());
+        org.junit.jupiter.api.Assertions.assertEquals(com.github.retrooper.packetevents.protocol.entity.pose.EntityPose.CROUCHING,
+                writes.get(0).getArgument(1));
+        verify(player, never()).setPose(any());
+    }
+
+    @Test void poseRetryRejectsReplacementSession() throws Exception {
+        poseEvent();
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskLater(eq(player), task.capture(), eq(1L));
+        online.put(id, mock(Player.class));
+        task.getValue().run();
+        verify(player, never()).getPose();
+    }
+
+    @Test void poseRetryRejectsHiddenOwner() throws Exception {
+        poseEvent();
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskLater(eq(player), task.capture(), eq(1L));
+        when(player.hasPotionEffect(PotionEffectType.INVISIBILITY)).thenReturn(true);
+        task.getValue().run();
+        verify(player, never()).getPose();
+    }
+
+    @Test void latestTransitionInvalidatesBothPendingCallbacksAndQueuedWrites() throws Exception {
+        var packets = mock(org.alexdev.unlimitednametags.packet.PacketManager.class);
+        TestInstances.set(listener.getPlugin(), "packetManager", packets);
+        when(player.getPose()).thenReturn(org.bukkit.entity.Pose.SWIMMING);
+        poseEvent();
+        ArgumentCaptor<Runnable> tasks = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskLater(eq(player), tasks.capture(), eq(1L));
+        tasks.getValue().run();
+        var write = mockingDetails(packets).getInvocations().iterator().next();
+        java.util.function.BooleanSupplier valid = write.getArgument(2);
+        org.junit.jupiter.api.Assertions.assertTrue(valid.getAsBoolean());
+        poseEvent();
+        org.junit.jupiter.api.Assertions.assertFalse(valid.getAsBoolean());
+        tasks.getValue().run();
+        org.junit.jupiter.api.Assertions.assertEquals(1, mockingDetails(packets).getInvocations().size());
+    }
+
+    @Test void poseRetryPreservesLegitimateSwimmingAndDoesNotSetServerPose() throws Exception {
+        var packets = mock(org.alexdev.unlimitednametags.packet.PacketManager.class);
+        TestInstances.set(listener.getPlugin(), "packetManager", packets);
+        when(player.getPose()).thenReturn(org.bukkit.entity.Pose.SWIMMING);
+        poseEvent();
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskLater(eq(player), task.capture(), eq(1L));
+        task.getValue().run();
+        verify(packets).sendPoseSnapshot(eq(player), eq(com.github.retrooper.packetevents.protocol.entity.pose.EntityPose.SWIMMING), any());
+        verify(player, never()).setPose(any());
+    }
+
+    @Test void ownerWithoutNametagRowsDoesNotReceivePoseRetry() throws Exception {
+        when(tags.getPacketDisplays(player)).thenReturn(java.util.List.of());
+        poseEvent();
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskLater(eq(player), task.capture(), eq(1L));
+        task.getValue().run();
+        verify(player, never()).getPose();
     }
     @Test void currentVisibleSessionReconcilesBeforeShowing() throws Exception {
         recover();

@@ -966,6 +966,11 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         }
     }
 
+    public void applySeeThroughLineOfSightPresentationForViewer(@NotNull UUID viewer, final boolean wallSeeThrough) {
+        final TextNametagSupport t = textNametag();
+        if (t != null) t.applySeeThroughLineOfSightPresentationForViewer(viewer, wallSeeThrough);
+    }
+
     /**
      * When {@code obscuredNametagThroughWalls} is enabled, updates per-viewer text opacity and seeThrough from line-of-sight (sync periodic task).
      */

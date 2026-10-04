@@ -22,6 +22,7 @@ final class PassengerState {
         return true;
     }
     synchronized boolean knows(int id) { return spawned.containsKey(id); }
+    synchronized long generation(int id) { return spawned.getOrDefault(id, -1L); }
 
     synchronized void destroy(int id) {
         spawned.remove(id);

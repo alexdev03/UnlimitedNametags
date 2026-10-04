@@ -3,6 +3,7 @@ package org.alexdev.unlimitednametags.listeners;
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.protocol.entity.pose.EntityPose;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
@@ -18,6 +19,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
+import org.bukkit.event.entity.EntityPoseChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
@@ -41,6 +43,7 @@ public class PlayerListener implements PackSendHandler {
     private final Map<UUID, UUID> zeroDamageRecoveryRunIds;
     private final Map<UUID, MyScheduledTask> respawnShowTasks;
     private final Map<UUID, Location> playerWorlds;
+    private final Map<UUID, UUID> poseRetryRunIds = Maps.newConcurrentMap();
     private static final long[] TELEPORT_SYNC_DELAYS = {5L, 20L, 60L, 100L};
 
     public PlayerListener(UnlimitedNameTags plugin) {
@@ -197,6 +200,7 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
+        poseRetryRunIds.remove(event.getPlayer().getUniqueId());
         plugin.getPacketEventsListener().removePlayerData(event.getPlayer());
         playerNameId.remove(event.getPlayer().getName());
         diedPlayers.remove(event.getPlayer().getUniqueId());
@@ -474,6 +478,28 @@ public class PlayerListener implements PackSendHandler {
                 && !player.hasPotionEffect(PotionEffectType.INVISIBILITY);
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPoseChange(@NotNull EntityPoseChangeEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        final UUID ownerId = player.getUniqueId();
+        final UUID token = UUID.randomUUID();
+        poseRetryRunIds.put(ownerId, token);
+        plugin.getTaskScheduler().runTaskLater(player, () -> {
+            if (!token.equals(poseRetryRunIds.get(ownerId)) || !isCurrentVisibleSession(player)
+                    || plugin.getNametagManager().getPacketDisplays(player).isEmpty()) return;
+            final String poseName = player.getPose().name();
+            final EntityPose pose;
+            try {
+                // Bukkit names the crouching pose SNEAKING; protocol names must not be assumed identical.
+                pose = EntityPose.valueOf(poseName.equals("SNEAKING") ? "CROUCHING" : poseName);
+            } catch (IllegalArgumentException unsupportedPose) {
+                return;
+            }
+            plugin.getPacketManager().sendPoseSnapshot(player, pose,
+                    () -> token.equals(poseRetryRunIds.get(ownerId)) && onlinePlayers.get(ownerId) == player);
+        }, 1L);
+    }
+
     private void cancelTeleportSync(@NotNull UUID uuid) {
         final MyScheduledTask task = teleportSyncTasks.remove(uuid);
         if (task != null) {
@@ -488,6 +514,7 @@ public class PlayerListener implements PackSendHandler {
     }
 
     public void close() {
+        poseRetryRunIds.clear();
         diedPlayers.clear();
         playerEntityId.clear();
         playerNameId.clear();

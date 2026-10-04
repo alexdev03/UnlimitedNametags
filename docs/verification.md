@@ -29,3 +29,13 @@ Use two viewers including an affected client and record Minecraft/mod versions. 
 6. Check companion-provided rank, guild, bounty, selected-tag text, and per-viewer overrides remain intact.
 
 Server unit/adapter tests do not establish client rendering acceptance. Arbitrary client mods can override rendering; the server fix must not require disabling EntityCulling.
+
+## Ticket 388 follow-up, 2026-10-04
+
+The canonical wrapper clean build passes 90 tests (37 common, 53 Paper). A separate clean build against the locally available PacketEvents 2.14.0 artifact also passes 90 tests. The declared Paper API/build profile remains 26.2, compiler/test toolchain JDK 25 and wrapper runtime JDK 23. This is compile/adapter evidence, not a freshly inspected production runtime or a live Folia/client acceptance result.
+
+Before implementation, five new text-presentation regressions and three pose-callback regressions fail against the prior reviewed branch. These failures expose missing mitigation/retry behavior, not historical proof of the water or pose root cause. Further tests verify normal-depth/blocked per-viewer separation, opacity preservation, unchanged default setting, style ownership, viewer-scoped scheduler/session guards, legitimate swimming and crouching, one-field pose payloads, and rejection after disconnect, tracking veto, state reset, entity removal/re-spawn, or a newer transition. Eight earlier regression failures are retained as local prove evidence; additional tests were added during refinement.
+
+External EARS and git diff --check pass. There is still no repository-local EARS/state helper; requirements/tasks plus external delivery records state this limitation. Source/CI/artifact evidence for the published head belongs in the task's external DELIVERY.md and delivery-state.json.
+
+No production or staging server changes occurred. The water option is disabled by default and must be enabled only in the staging test configuration for this mitigation. Pose retry is guarded and does not modify authoritative pose/hitboxes. The two ticket symptoms remain pending client acceptance using ticket-388-acceptance.md; neither tests nor CI establish them fixed in production.

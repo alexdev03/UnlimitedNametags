@@ -25,4 +25,13 @@ WHILE HIDE mode has no line of sight or exceeds its configured range THE SYSTEM 
 ### REQ-008 - Recording preference
 WHILE a viewer has disabled other players' nametags THE SYSTEM SHALL remove only those nametag displays and preserve the viewer's separate own-tag preference.
 
+### REQ-009 - Water rendering mitigation
+WHERE preferNormalTextWithLineOfSight is enabled WHILE a viewer has clear line of sight THE SYSTEM SHALL render SEE_THROUGH text with normal depth and retain configured wall visibility for blocked viewers, without altering text opacity.
+
+### REQ-010 - Pose reconciliation
+WHEN a visible nametag owner changes pose THE SYSTEM SHALL retry the owner's authoritative pose metadata after the event takes effect, only to current sessions that still track that owner.
+
+### REQ-011 - Pose integrity
+THE SYSTEM SHALL preserve legitimate swimming, crawling, crouching, sleeping, and flying poses and SHALL NOT change server pose or hitboxes to reconcile a viewer.
+
 Reproduce teleports, world transfers, tracking-distance removal, vanish/invisibility, quit/rejoin, and repeated transfers with EntityCulling enabled and disabled. Observe the player and every row from a second client. See verification.md for current local evidence and remaining client acceptance; compilation alone does not establish either.

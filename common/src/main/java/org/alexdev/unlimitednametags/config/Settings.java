@@ -204,6 +204,13 @@ public class Settings {
         })
         private ThroughWallMode throughWallMode = ThroughWallMode.SEE_THROUGH;
 
+        @Comment({
+                "Opt-in mitigation for SEE_THROUGH text disappearing against water on some clients.",
+                "Use normal depth with clear line of sight; retain each row's configured seeThrough behind walls.",
+                "Does not change opacity or guarantee rendering with every client shader/mod."
+        })
+        private boolean preferNormalTextWithLineOfSight = false;
+
         @Comment("Settings applied when throughWallMode is set to OBSCURED or HIDE.")
         private ThroughWallSettings throughWallSettings = new ThroughWallSettings();
     }

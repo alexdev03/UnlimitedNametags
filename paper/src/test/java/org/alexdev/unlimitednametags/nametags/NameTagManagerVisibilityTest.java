@@ -68,6 +68,50 @@ class NameTagManagerVisibilityTest {
     @Test void hideModeStillAppliesNormalDepthDuringRefresh() throws Exception {
         refreshStyle(Settings.ThroughWallMode.HIDE, true);
     }
+
+    @Test void waterMitigationIsOptInAndStyleRefreshPreservesPerViewerFlags() throws Exception {
+        org.junit.jupiter.api.Assertions.assertFalse(settings.getVisibility().isPreferNormalTextWithLineOfSight());
+        TestInstances.set(settings.getVisibility(), "preferNormalTextWithLineOfSight", true);
+        PacketNameTag row = mock(PacketNameTag.class);
+        TextDisplayMeta meta = mock(TextDisplayMeta.class);
+        Method method = NameTagManager.class.getDeclaredMethod("applyTextVisualState",
+                PacketNameTag.class, Settings.DisplayGroup.class, TextDisplayMeta.class, boolean.class);
+        method.setAccessible(true);
+        method.invoke(manager, row, Settings.DisplayGroup.builder().build(), meta, true);
+        verify(meta, never()).setSeeThrough(anyBoolean());
+        verify(meta, never()).setTextOpacity(anyByte());
+    }
+
+    @Test void normalDepthPresentationRunsOnViewersSchedulerAndRejectsReconnect() throws Exception {
+        TestInstances.set(settings.getVisibility(), "preferNormalTextWithLineOfSight", true);
+        var scheduler = mock(com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler.class);
+        var listener = mock(org.alexdev.unlimitednametags.listeners.PlayerListener.class);
+        var pluginField = NameTagManager.class.getDeclaredField("plugin");
+        pluginField.setAccessible(true);
+        var plugin = (UnlimitedNameTags) pluginField.get(manager);
+        TestInstances.set(plugin, "taskScheduler", scheduler);
+        TestInstances.set(plugin, "playerListener", listener);
+        Player viewer = mock(Player.class);
+        UUID viewerId = UUID.randomUUID();
+        when(viewer.getUniqueId()).thenReturn(viewerId);
+        when(viewer.isOnline()).thenReturn(true);
+        when(listener.getPlayer(viewerId)).thenReturn(viewer);
+        PacketNameTag row = mock(PacketNameTag.class);
+        when(row.isTextDisplay()).thenReturn(true);
+        when(row.getViewers()).thenReturn(java.util.Set.of(viewerId));
+        when(row.getDisplayGroup()).thenReturn(Settings.DisplayGroup.builder().build());
+        var method = NameTagManager.class.getDeclaredMethod("applyNormalDepthPresentationForViewer", PacketNameTag.class, Player.class);
+        method.setAccessible(true);
+        method.invoke(manager, row, viewer);
+        org.mockito.ArgumentCaptor<Runnable> task = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTask(eq(viewer), task.capture());
+        verify(row, never()).applySeeThroughLineOfSightPresentationForViewer(any(), anyBoolean());
+        task.getValue().run();
+        verify(row).applySeeThroughLineOfSightPresentationForViewer(eq(viewerId), anyBoolean());
+        when(listener.getPlayer(viewerId)).thenReturn(mock(Player.class));
+        task.getValue().run();
+        verify(row, times(1)).applySeeThroughLineOfSightPresentationForViewer(eq(viewerId), anyBoolean());
+    }
     @Test void recordingHidesAllocatedOtherRowsEvenWithNoOwnerOrVisibleWrapper() throws Exception {
         UUID viewerId = UUID.randomUUID();
         UUID otherId = UUID.randomUUID();
