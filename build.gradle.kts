@@ -48,7 +48,7 @@ subprojects {
 
     tasks.withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
-        options.release.set(17)
+        options.release.set(25)
     }
     tasks.withType<Javadoc>().configureEach {
         options.encoding = "UTF-8"
