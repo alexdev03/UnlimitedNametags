@@ -125,6 +125,28 @@ final class TextNametagSupport {
         modifyTextAll(meta -> meta.setTextOpacity(b));
     }
 
+    /** Use the depth-tested text path in clear sight without disabling configured wall visibility. */
+    void applySeeThroughLineOfSightPresentation(final boolean wallSeeThrough) {
+        if (host.isRemoved()) return;
+        for (final UUID viewerId : new ArrayList<>(host.getViewers())) {
+            applySeeThroughLineOfSightPresentationForViewer(viewerId, wallSeeThrough);
+        }
+    }
+
+    void applySeeThroughLineOfSightPresentationForViewer(final UUID viewerId, final boolean wallSeeThrough) {
+        if (host.isRemoved() || host.getPlatform().viewerLacksTextDisplaySupport(viewerId)
+                || host.getPlatform().distanceSquaredSameWorld(host.getOwnerId(), viewerId) < 0) return;
+        final var entity = host.getPerPlayerEntity().getEntities().get(viewerId);
+        if (entity == null) return;
+        final boolean seeThrough = wallSeeThrough && !viewerId.equals(host.getOwnerId())
+                && !host.getPlatform().hasLineOfSight(viewerId, host.getOwnerId());
+        final TextDisplayMeta meta = (TextDisplayMeta) entity.getEntityMeta();
+        if (meta.isSeeThrough() == seeThrough) return;
+        if (modifyTextForViewer(host.getPlatform().resolveUser(viewerId), m -> m.setSeeThrough(seeThrough))) {
+            host.refreshForViewer(viewerId);
+        }
+    }
+
     void clearObscuredPresentationTracking() {
         obscuredPresentationByViewer.clear();
     }
@@ -173,10 +195,15 @@ final class TextNametagSupport {
             }
 
             final ViewerTextSnap prev = obscuredPresentationByViewer.get(viewerId);
-            if (prev != null && prev.opacity() == opacity && prev.seeThrough() == seeThroughMeta) {
+            final var entity = host.getPerPlayerEntity().getEntities().get(viewerId);
+            if (entity == null) {
                 continue;
             }
-            obscuredPresentationByViewer.put(viewerId, new ViewerTextSnap(opacity, seeThroughMeta));
+            final TextDisplayMeta current = (TextDisplayMeta) entity.getEntityMeta();
+            if (prev != null && prev.opacity() == opacity && prev.seeThrough() == seeThroughMeta
+                    && current.getTextOpacity() == opacity && current.isSeeThrough() == seeThroughMeta) {
+                continue;
+            }
 
             final User user = host.getPlatform().resolveUser(viewerId);
             if (user == null) {
@@ -184,10 +211,13 @@ final class TextNametagSupport {
             }
             final byte opacityFinal = opacity;
             final boolean seeThroughFinal = seeThroughMeta;
-            modifyTextForViewer(user, m -> {
+            if (!modifyTextForViewer(user, m -> {
                 m.setTextOpacity(opacityFinal);
                 m.setSeeThrough(seeThroughFinal);
-            });
+            })) {
+                continue;
+            }
+            obscuredPresentationByViewer.put(viewerId, new ViewerTextSnap(opacity, seeThroughMeta));
             host.refreshForViewer(viewerId);
         }
     }

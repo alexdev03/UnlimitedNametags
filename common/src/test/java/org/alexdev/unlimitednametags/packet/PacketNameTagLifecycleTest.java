@@ -33,6 +33,10 @@ class PacketNameTagLifecycleTest {
         return wrapper;
     }
 
+    @Test void allocatedRowRegistersOwnerForRemovalCleanup() {
+        verify(runtime).registerRow(owner, row.getEntityId());
+    }
+
     @Test void metadataOnlyWrapperIsNotVisible() {
         allocated(false, false);
         assertFalse(row.canViewerSee(viewer));

@@ -219,7 +219,8 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
 
         final Settings.Visibility visibility = plugin.getConfigManager().getSettings().getVisibility();
-        if (visibility.getThroughWallMode() == Settings.ThroughWallMode.OBSCURED || visibility.getThroughWallMode() == Settings.ThroughWallMode.HIDE) {
+        if (visibility.getThroughWallMode() == Settings.ThroughWallMode.OBSCURED || visibility.getThroughWallMode() == Settings.ThroughWallMode.HIDE
+                || visibility.isPreferNormalTextWithLineOfSight()) {
             final int obscuredInterval = Math.max(1, visibility.getThroughWallSettings().getCheckInterval());
             final MyScheduledTask obscured = plugin.getTaskScheduler().runTaskTimerAsynchronously(
                     this::tickThroughWalls,
@@ -287,6 +288,11 @@ public class NameTagManager implements UntNametagManagerPaper {
         final Settings s = plugin.getConfigManager().getSettings();
         final Settings.ThroughWallMode mode = s.getVisibility().getThroughWallMode();
         if (mode == Settings.ThroughWallMode.SEE_THROUGH) {
+            if (s.getVisibility().isPreferNormalTextWithLineOfSight()) {
+                for (final CopyOnWriteArrayList<PacketNameTag> tags : nameTags.values()) {
+                    for (final PacketNameTag tag : tags) applyNormalDepthPresentation(tag);
+                }
+            }
             return;
         }
         final double maxDistance = s.getVisibility().getThroughWallSettings().getMaxDistance();
@@ -301,6 +307,9 @@ public class NameTagManager implements UntNametagManagerPaper {
                         continue;
                     }
                     final Player owner = paperRow(tag).getOwner();
+                    if (owner == null || !owner.isOnline()) {
+                        continue;
+                    }
                     final boolean shiftBlocked = shiftSystemBlocked.getOrDefault(owner.getUniqueId(), false);
                     final boolean sneakEff = tag.isSneaking() && !shiftBlocked;
                     tag.applyObscuredLineOfSightPresentation(true, sneakB, obscB, maxSq, sneakEff);
@@ -319,6 +328,10 @@ public class NameTagManager implements UntNametagManagerPaper {
                         if (viewer.getUniqueId().equals(owner.getUniqueId())) {
                             continue;
                         }
+                        if (!viewer.isOnline() || viewer.getWorld() != owner.getWorld()) {
+                            tag.hideFromViewer(viewer.getUniqueId());
+                            continue;
+                        }
                         final double distSq = viewer.getLocation().distanceSquared(owner.getLocation());
                         final boolean withinRange = distSq <= maxSq;
                         final boolean hasLoS = withinRange && viewer.hasLineOfSight(owner);
@@ -329,7 +342,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                             }
                         } else {
                             if (row.canPlayerSee(viewer)) {
-                                row.hideFromPlayer(viewer);
+                                tag.hideFromViewer(viewer.getUniqueId());
                             }
                         }
                     }
@@ -565,13 +578,10 @@ public class NameTagManager implements UntNametagManagerPaper {
      */
     public void hideAllOthersNametagsFromViewer(@NotNull Player viewer) {
         nameTags.values().forEach(tags -> tags.forEach(display -> {
-            final PaperNametagRow row = paperRow(display);
-            if (row.getOwner().getUniqueId().equals(viewer.getUniqueId())) {
+            if (display.getOwnerId().equals(viewer.getUniqueId())) {
                 return;
             }
-            if (row.canPlayerSee(viewer)) {
-                row.hideFromPlayer(viewer);
-            }
+            display.hideFromViewer(viewer.getUniqueId());
         }));
     }
 
@@ -972,6 +982,34 @@ public class NameTagManager implements UntNametagManagerPaper {
                 return;
             }
             packetNameTag.modifyTextForViewer(user, m -> applyTextVisualState(packetNameTag, displayGroup, m, force));
+            applyNormalDepthPresentationForViewer(packetNameTag, p);
+        });
+    }
+
+    private void applyNormalDepthPresentation(@NotNull PacketNameTag tag) {
+        final Settings.Visibility visibility = plugin.getConfigManager().getSettings().getVisibility();
+        if (visibility.getThroughWallMode() == Settings.ThroughWallMode.SEE_THROUGH
+                && visibility.isPreferNormalTextWithLineOfSight() && tag.isTextDisplay()) {
+            for (UUID viewerId : tag.getViewers()) {
+                final Player viewer = plugin.getPlayerListener().getPlayer(viewerId);
+                if (viewer != null) applyNormalDepthPresentationForViewer(tag, viewer);
+            }
+        }
+    }
+
+    private void applyNormalDepthPresentationForViewer(@NotNull PacketNameTag tag, @NotNull Player viewer) {
+        final Settings.Visibility visibility = plugin.getConfigManager().getSettings().getVisibility();
+        if (visibility.getThroughWallMode() != Settings.ThroughWallMode.SEE_THROUGH
+                || !visibility.isPreferNormalTextWithLineOfSight() || !tag.isTextDisplay()) return;
+        // Placeholder sweeps are async; perform the new line-of-sight reads on the viewer's scheduler.
+        plugin.getTaskScheduler().runTask(viewer, () -> {
+            final Settings.Visibility current = plugin.getConfigManager().getSettings().getVisibility();
+            if (!viewer.isOnline() || plugin.getPlayerListener().getPlayer(viewer.getUniqueId()) != viewer
+                    || tag.isRemoved() || !tag.getViewers().contains(viewer.getUniqueId())
+                    || current.getThroughWallMode() != Settings.ThroughWallMode.SEE_THROUGH
+                    || !current.isPreferNormalTextWithLineOfSight()) return;
+            tag.applySeeThroughLineOfSightPresentationForViewer(viewer.getUniqueId(),
+                    tag.getDisplayGroup().effectiveBackground().seeThrough() && !tag.isSneaking());
         });
     }
 
@@ -995,7 +1033,11 @@ public class NameTagManager implements UntNametagManagerPaper {
         if (force || meta.getBackgroundColor() != backgroundColor) {
             meta.setBackgroundColor(backgroundColor);
         }
-        if (force || meta.isSeeThrough() != seeThrough) {
+        // OBSCURED owns this flag per viewer; placeholder refreshes must not reset it.
+        if (throughWallMode != Settings.ThroughWallMode.OBSCURED
+                && !(throughWallMode == Settings.ThroughWallMode.SEE_THROUGH
+                    && plugin.getConfigManager().getSettings().getVisibility().isPreferNormalTextWithLineOfSight())
+                && (force || meta.isSeeThrough() != seeThrough)) {
             meta.setSeeThrough(seeThrough);
         }
     }
@@ -1476,6 +1518,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 } else {
                     applyTextVisualState(packetNameTag, packetNameTag.getDisplayGroup(), false);
                     packetNameTag.setTextOpacity(sneaking ? sneakB : (byte) -1);
+                    applyNormalDepthPresentation(packetNameTag);
                 }
             }
             packetNameTag.refresh();
@@ -1494,6 +1537,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 applyTextVisualState(tag, tag.getDisplayGroup(), true);
                 if (throughWallMode != Settings.ThroughWallMode.OBSCURED) {
                     tag.setTextOpacity(tag.isSneaking() ? sneakOpacity : (byte) -1);
+                    applyNormalDepthPresentation(tag);
                 }
             }
         }));
@@ -1687,7 +1731,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         nameTags.values().forEach(tags -> tags.forEach(display -> {
             final PaperNametagRow row = paperRow(display);
             final Player owner = row.getOwner();
-            if (owner == player) {
+            if (owner == null || owner == player) {
                 return;
             }
 

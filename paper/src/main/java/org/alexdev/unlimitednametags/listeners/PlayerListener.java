@@ -3,6 +3,7 @@ package org.alexdev.unlimitednametags.listeners;
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.protocol.entity.pose.EntityPose;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.Getter;
@@ -18,6 +19,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
+import org.bukkit.event.entity.EntityPoseChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffectType;
@@ -41,6 +43,7 @@ public class PlayerListener implements PackSendHandler {
     private final Map<UUID, UUID> zeroDamageRecoveryRunIds;
     private final Map<UUID, MyScheduledTask> respawnShowTasks;
     private final Map<UUID, Location> playerWorlds;
+    private final Map<UUID, UUID> poseRetryRunIds = Maps.newConcurrentMap();
     private static final long[] TELEPORT_SYNC_DELAYS = {5L, 20L, 60L, 100L};
 
     public PlayerListener(UnlimitedNameTags plugin) {
@@ -197,6 +200,7 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(@NotNull PlayerQuitEvent event) {
+        poseRetryRunIds.remove(event.getPlayer().getUniqueId());
         plugin.getPacketEventsListener().removePlayerData(event.getPlayer());
         playerNameId.remove(event.getPlayer().getName());
         diedPlayers.remove(event.getPlayer().getUniqueId());
@@ -250,9 +254,12 @@ public class PlayerListener implements PackSendHandler {
                 return;
             }
 
-            plugin.getTaskScheduler().runTaskLaterAsynchronously(() -> {
+            plugin.getTaskScheduler().runTaskLater(player, () -> {
+                if (!isCurrentVisibleSession(player)) {
+                    return;
+                }
                 plugin.getNametagManager().unblockPlayer(player);
-                plugin.getNametagManager().showToTrackedPlayers(player);
+                recoverNametagVisibility(player);
             }, 3);
 
         }
@@ -260,11 +267,17 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
-        if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().unblockPlayer(e.getPlayer());
-            plugin.getNametagManager().showToTrackedPlayers(e.getPlayer());
-        } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
+        if (e.getNewGameMode() == GameMode.SPECTATOR) {
             plugin.getNametagManager().removeAllViewers(e.getPlayer());
+        } else if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
+            final Player player = e.getPlayer();
+            plugin.getTaskScheduler().runTaskLater(player, () -> {
+                if (!isCurrentVisibleSession(player)) {
+                    return;
+                }
+                plugin.getNametagManager().unblockPlayer(player);
+                recoverNametagVisibility(player);
+            }, 1L);
         }
     }
 
@@ -448,13 +461,7 @@ public class PlayerListener implements PackSendHandler {
     }
 
     private void recoverNametagVisibility(@NotNull Player player) {
-        if (!player.isOnline() || player.isDead()) {
-            return;
-        }
-        if (player.getGameMode() == GameMode.SPECTATOR) {
-            return;
-        }
-        if (player.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
+        if (!isCurrentVisibleSession(player)) {
             return;
         }
         plugin.getTrackerManager().reconcileTrackedState(player);
@@ -463,6 +470,34 @@ public class PlayerListener implements PackSendHandler {
         if (plugin.getNametagManager().isEffectiveShowOwnNametag(player)) {
             plugin.getNametagManager().showToOwner(player);
         }
+    }
+
+    private boolean isCurrentVisibleSession(@NotNull Player player) {
+        return onlinePlayers.get(player.getUniqueId()) == player && player.isOnline() && !player.isDead()
+                && player.getGameMode() != GameMode.SPECTATOR
+                && !player.hasPotionEffect(PotionEffectType.INVISIBILITY);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPoseChange(@NotNull EntityPoseChangeEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        final UUID ownerId = player.getUniqueId();
+        final UUID token = UUID.randomUUID();
+        poseRetryRunIds.put(ownerId, token);
+        plugin.getTaskScheduler().runTaskLater(player, () -> {
+            if (!token.equals(poseRetryRunIds.get(ownerId)) || !isCurrentVisibleSession(player)
+                    || plugin.getNametagManager().getPacketDisplays(player).isEmpty()) return;
+            final String poseName = player.getPose().name();
+            final EntityPose pose;
+            try {
+                // Bukkit names the crouching pose SNEAKING; protocol names must not be assumed identical.
+                pose = EntityPose.valueOf(poseName.equals("SNEAKING") ? "CROUCHING" : poseName);
+            } catch (IllegalArgumentException unsupportedPose) {
+                return;
+            }
+            plugin.getPacketManager().sendPoseSnapshot(player, pose,
+                    () -> token.equals(poseRetryRunIds.get(ownerId)) && onlinePlayers.get(ownerId) == player);
+        }, 1L);
     }
 
     private void cancelTeleportSync(@NotNull UUID uuid) {
@@ -479,6 +514,7 @@ public class PlayerListener implements PackSendHandler {
     }
 
     public void close() {
+        poseRetryRunIds.clear();
         diedPlayers.clear();
         playerEntityId.clear();
         playerNameId.clear();

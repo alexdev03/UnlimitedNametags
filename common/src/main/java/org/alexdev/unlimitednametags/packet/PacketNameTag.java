@@ -105,6 +105,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         this.materials = materials;
         this.ownerId = ownerId;
         this.entityId = runtime.nextEntityId();
+        runtime.registerRow(ownerId, entityId);
         this.entityIdUuid = UUID.randomUUID();
         this.displayGroup = displayGroup;
         this.createdDisplayType = displayGroup.resolvedDisplayType();
@@ -963,6 +964,11 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (t != null) {
             t.clearObscuredPresentationTracking();
         }
+    }
+
+    public void applySeeThroughLineOfSightPresentationForViewer(@NotNull UUID viewer, final boolean wallSeeThrough) {
+        final TextNametagSupport t = textNametag();
+        if (t != null) t.applySeeThroughLineOfSightPresentationForViewer(viewer, wallSeeThrough);
     }
 
     /**

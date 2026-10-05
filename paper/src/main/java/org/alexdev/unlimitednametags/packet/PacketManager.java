@@ -4,6 +4,10 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.netty.channel.ChannelHelper;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
+import com.github.retrooper.packetevents.protocol.entity.pose.EntityPose;
 import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
 import me.tofaa.entitylib.APIConfig;
 import me.tofaa.entitylib.EntityLib;
@@ -21,6 +25,7 @@ public class PacketManager {
     private final Map<User, PassengerState> connections = new ConcurrentHashMap<>();
     // Retain retired IDs until shutdown so late third-party mounts cannot revive removed rows.
     private final Set<Integer> rowIds = ConcurrentHashMap.newKeySet();
+    private final Map<Integer, Set<Integer>> ownerRows = new ConcurrentHashMap<>();
     private volatile boolean closed;
 
     public PacketManager(@NotNull UnlimitedNameTags plugin) {
@@ -32,6 +37,7 @@ public class PacketManager {
         closed = true;
         connections.clear();
         rowIds.clear();
+        ownerRows.clear();
     }
 
     public boolean isCurrent(User user) {
@@ -78,6 +84,21 @@ public class PacketManager {
     }
 
     public boolean isRow(int entityId) { return rowIds.contains(entityId); }
+
+    public void registerRow(int ownerEntityId, int rowEntityId) {
+        ownerRows.computeIfAbsent(ownerEntityId, ignored -> ConcurrentHashMap.newKeySet()).add(rowEntityId);
+    }
+
+    /** Remove passengers explicitly: destroying their vehicle alone can leave them at its last position. */
+    public int[] includeOwnedRows(int[] destroyedIds) {
+        final Set<Integer> result = new LinkedHashSet<>();
+        for (int id : destroyedIds) {
+            result.add(id);
+            final Set<Integer> rows = ownerRows.get(id);
+            if (rows != null) result.addAll(rows);
+        }
+        return result.stream().mapToInt(Integer::intValue).toArray();
+    }
 
     public void setPassengers(@NotNull Player owner, @NotNull List<Integer> passengers) {
         // Compatibility API for explicit owner-wide updates; intercepted packets use the viewer overload.
@@ -127,6 +148,26 @@ public class PacketManager {
     public void removePassenger(@NotNull Player player, int passenger) {
         User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
         if (user != null) destroyed(user, passenger);
+    }
+
+    /** Retry only authoritative pose metadata; never set a server pose or infer one from the environment. */
+    public void sendPoseSnapshot(@NotNull Player owner, @NotNull EntityPose pose,
+            @NotNull java.util.function.BooleanSupplier stillCurrent) {
+        final int ownerEntityId = owner.getEntityId();
+        for (Player tracked : plugin.getTrackerManager().getWhoTracks(owner)) {
+            final User viewer = PacketEvents.getAPI().getPlayerManager().getUser(tracked);
+            if (!knowsOwner(viewer, owner) || owner.getUniqueId().equals(viewer.getUUID())) continue;
+            final PassengerState state = connections.get(viewer);
+            if (state == null) continue;
+            final long generation = state.generation(ownerEntityId);
+            if (generation < 0) continue;
+            ChannelHelper.runInEventLoop(viewer.getChannel(), () -> {
+                if (!stillCurrent.getAsBoolean() || !isCurrent(viewer) || connections.get(viewer) != state
+                        || state.generation(ownerEntityId) != generation || !knowsOwner(viewer, owner)) return;
+                viewer.sendPacket(new WrapperPlayServerEntityMetadata(ownerEntityId,
+                        List.of(new EntityData<>(6, EntityDataTypes.ENTITY_POSE, pose))));
+            });
+        }
     }
 
     public void removePassenger(@NotNull UUID viewerId, int passenger) {
