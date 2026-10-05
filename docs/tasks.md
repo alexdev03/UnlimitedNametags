@@ -1,5 +1,9 @@
 # Nametag rendering and lifecycle tasks
 
+## CodeFactor review cleanup
+
+- [x] INFRA: incorporate fetched canonical main 7917484 and address the seven current CodeFactor findings on PR #101 without changing runtime behavior. Existing Mockito 5.23.0 constructor-free CALLS_REAL_METHODS fixtures replace the unsupported Unsafe import; split the six compound statement lines. The pose fixture reuses that real-method mock rather than trying to spy an existing mock. This is test/build hygiene, not a newly claimed behavioral red/green cycle. Requirements REQ-001 through REQ-011 remain the regression contract. Canonical wrapper clean build and actual PacketEvents 2.14.0 compatibility each pass 90 tests; external EARS and diff checks pass. Record hosted checks separately. No project-local state tooling exists.
+
 Baseline: upstream main 9f54d4fb27419eff741221ee8cd7583898562a35.
 
 - [x] Spec: retain REQ-001 through REQ-008 and distinguish server behavior from client acceptance.

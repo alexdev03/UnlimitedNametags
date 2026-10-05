@@ -1,5 +1,9 @@
 # Verification evidence
 
+## CodeFactor cleanup and current upstream
+
+Fetched and incorporated canonical main 791748484fd8e9ce959de16a6553f93da1c37570. The seven published CodeFactor findings were six compound statement lines and one unsupported Unsafe import, all in tests. Split the statements and use the existing Mockito dependency's constructor-free real-method fixtures; the pose fixture now avoids spying that existing mock. No gameplay source changed. Canonical wrapper clean build and separate actual PacketEvents 2.14.0 clean build each pass all 90 tests (zero failures/errors). External EARS and whitespace checks pass. Fresh hosted CI/CodeFactor and client acceptance remain separate gates; no deployment occurred.
+
 ## Status
 
 Local verification performed 2026-10-04:

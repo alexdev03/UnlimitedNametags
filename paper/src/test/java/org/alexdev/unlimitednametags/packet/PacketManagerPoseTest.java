@@ -56,7 +56,7 @@ class PacketManagerPoseTest {
         PacketManager allocated = TestInstances.allocate(PacketManager.class);
         TestInstances.set(allocated, "plugin", plugin);
         TestInstances.set(allocated, "connections", connections);
-        manager = spy(allocated);
+        manager = allocated;
         doReturn(true).when(manager).knowsOwner(viewer, owner);
         doReturn(true).when(manager).isCurrent(viewer);
         state.spawn(7);

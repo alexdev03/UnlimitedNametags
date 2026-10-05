@@ -1,6 +1,5 @@
 package org.alexdev.unlimitednametags;
 
-import sun.misc.Unsafe;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import io.papermc.paper.registry.RegistryAccess;
@@ -12,9 +11,7 @@ import static org.mockito.Mockito.*;
 public final class TestInstances {
     private TestInstances() {}
     public static <T> T allocate(Class<T> type) throws Exception {
-        Field field = Unsafe.class.getDeclaredField("theUnsafe");
-        field.setAccessible(true);
-        return type.cast(((Unsafe) field.get(null)).allocateInstance(type));
+        return mock(type, CALLS_REAL_METHODS);
     }
     public static void set(Object target, String name, Object value) throws Exception {
         Field field = target.getClass().getDeclaredField(name);

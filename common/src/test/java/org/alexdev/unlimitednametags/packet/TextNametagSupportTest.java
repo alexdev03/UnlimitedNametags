@@ -58,9 +58,15 @@ class TextNametagSupportTest {
         when(platform.distanceSquaredSameWorld(owner, viewer)).thenReturn(4.0);
         when(metadata.getTextOpacity()).thenAnswer(invocation -> (byte) opacity.get());
         when(metadata.isSeeThrough()).thenAnswer(invocation -> seeThrough.get());
-        doAnswer(invocation -> { opacity.set(invocation.getArgument(0, Byte.class)); return null; })
+        doAnswer(invocation -> {
+            opacity.set(invocation.getArgument(0, Byte.class));
+            return null;
+        })
                 .when(metadata).setTextOpacity(anyByte());
-        doAnswer(invocation -> { seeThrough.set(invocation.getArgument(0)); return null; })
+        doAnswer(invocation -> {
+            seeThrough.set(invocation.getArgument(0));
+            return null;
+        })
                 .when(metadata).setSeeThrough(anyBoolean());
         doAnswer(invocation -> {
             invocation.<Consumer<WrapperEntity>>getArgument(1).accept(wrapper);
@@ -135,7 +141,10 @@ class TextNametagSupportTest {
         when(platform.distanceSquaredSameWorld(owner, second)).thenReturn(4.0);
         when(platform.hasLineOfSight(second, owner)).thenReturn(true);
         when(secondMeta.isSeeThrough()).thenReturn(true);
-        doAnswer(call -> { call.<Consumer<WrapperEntity>>getArgument(1).accept(secondWrapper); return null; })
+        doAnswer(call -> {
+            call.<Consumer<WrapperEntity>>getArgument(1).accept(secondWrapper);
+            return null;
+        })
                 .when(displays).modify(eq(secondUser), any());
         applyNormalDepth(true);
         assertTrue(seeThrough.get());
@@ -152,7 +161,8 @@ class TextNametagSupportTest {
     }
 
     @Test void repeatedStateAvoidsRedundantWrites() {
-        apply(); apply();
+        apply();
+        apply();
         assertEquals(80, opacity.get());
         assertTrue(seeThrough.get());
         verify(host, times(1)).refreshForViewer(viewer);
@@ -188,7 +198,8 @@ class TextNametagSupportTest {
         doNothing().when(displays).modify(eq(user), any());
         apply();
         doAnswer(invocation -> {
-            invocation.<Consumer<WrapperEntity>>getArgument(1).accept(wrapper); return null;
+            invocation.<Consumer<WrapperEntity>>getArgument(1).accept(wrapper);
+            return null;
         }).when(displays).modify(eq(user), any());
         apply();
         assertEquals(80, opacity.get());
@@ -215,7 +226,8 @@ class TextNametagSupportTest {
         when(platform.distanceSquaredSameWorld(owner, second)).thenReturn(4.0);
         when(platform.hasLineOfSight(second, owner)).thenReturn(true);
         doAnswer(invocation -> {
-            invocation.<Consumer<WrapperEntity>>getArgument(1).accept(secondWrapper); return null;
+            invocation.<Consumer<WrapperEntity>>getArgument(1).accept(secondWrapper);
+            return null;
         }).when(displays).modify(eq(secondUser), any());
         apply();
         assertTrue(seeThrough.get());
