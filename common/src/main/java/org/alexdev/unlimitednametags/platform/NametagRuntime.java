@@ -16,6 +16,10 @@ public interface NametagRuntime {
 
     int nextEntityId();
 
+    /** Retain ownership for destroy-packet cleanup even after a row wrapper is retired. */
+    default void registerRow(@NotNull java.util.UUID ownerId, int displayEntityId) {
+    }
+
     @NotNull
     Settings settings();
 

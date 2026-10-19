@@ -176,8 +176,15 @@ public class PacketEventsListener extends PacketListenerAbstract {
                 if (!event.isCancelled()) spawned.run();
             });
         } else if (event.getPacketType() == PacketType.Play.Server.DESTROY_ENTITIES) {
+            final WrapperPlayServerDestroyEntities destroy = new WrapperPlayServerDestroyEntities(event);
+            final int[] originalIds = destroy.getEntityIds();
+            final int[] destroyedIds = plugin.getPacketManager().includeOwnedRows(originalIds);
+            if (!Arrays.equals(originalIds, destroyedIds)) {
+                destroy.setEntityIds(destroyedIds);
+                event.markForReEncode(true);
+            }
             // Invalidate at encoding time: later writes must not mount an owner awaiting socket flush.
-            for (int id : new WrapperPlayServerDestroyEntities(event).getEntityIds()) {
+            for (int id : destroyedIds) {
                 plugin.getPacketManager().destroyed(user, id);
                 if (plugin.getPacketManager().isCurrent(user)) {
                     plugin.getPlayerListener().getPlayerFromEntityId(id).ifPresent(owner ->

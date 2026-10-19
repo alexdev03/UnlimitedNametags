@@ -105,6 +105,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         this.materials = materials;
         this.ownerId = ownerId;
         this.entityId = runtime.nextEntityId();
+        runtime.registerRow(ownerId, entityId);
         this.entityIdUuid = UUID.randomUUID();
         this.displayGroup = displayGroup;
         this.createdDisplayType = displayGroup.resolvedDisplayType();
@@ -813,6 +814,11 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (user == null) {
             return;
         }
+        if (!isEligibleToShow(ownerId)) {
+            // Preserve the non-spawned metadata template used by every row type and other viewers.
+            resolveEntity(user);
+            return;
+        }
         final Location location = getOffsetPeLocation();
         if (location == null) {
             return;
@@ -927,6 +933,10 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (user == null) {
             return;
         }
+        if (viewerId.equals(ownerId) && !isEligibleToShow(viewerId)) {
+            resolveEntity(user);
+            return;
+        }
 
         final Location location = getOffsetPeLocation();
         if (location == null) {
@@ -963,6 +973,11 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (t != null) {
             t.clearObscuredPresentationTracking();
         }
+    }
+
+    public void applySeeThroughLineOfSightPresentationForViewer(@NotNull UUID viewer, final boolean wallSeeThrough) {
+        final TextNametagSupport t = textNametag();
+        if (t != null) t.applySeeThroughLineOfSightPresentationForViewer(viewer, wallSeeThrough);
     }
 
     /**

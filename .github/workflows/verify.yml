@@ -1,0 +1,42 @@
+name: Verify plugin
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'codex/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler and Gradle runtime JDKs
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            25
+            21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Clean build and regression tests
+        run: bash ./gradlew clean build --console=plain
+      - name: Retain test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            common/build/reports/tests/
+            common/build/test-results/
+            paper/build/reports/tests/
+            paper/build/test-results/
+      - name: Retain unmerged test plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: unlimitednametags-test-plugin
+          path: target/UnlimitedNametags.jar

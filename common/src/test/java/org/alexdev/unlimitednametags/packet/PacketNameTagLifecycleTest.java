@@ -33,6 +33,10 @@ class PacketNameTagLifecycleTest {
         return wrapper;
     }
 
+    @Test void allocatedRowRegistersOwnerForRemovalCleanup() {
+        verify(runtime).registerRow(owner, row.getEntityId());
+    }
+
     @Test void metadataOnlyWrapperIsNotVisible() {
         allocated(false, false);
         assertFalse(row.canViewerSee(viewer));
@@ -81,6 +85,37 @@ class PacketNameTagLifecycleTest {
         row.showToViewer(viewer);
         assertTrue(row.getPerPlayerEntity().getEntities().isEmpty());
         verify(runtime, never()).runTaskLaterAsync(any(), anyLong());
+    }
+
+    @Test void directOwnerSpawnRespectsOwnerEligibilityAndKeepsOtherViewer() {
+        WrapperEntity other = allocated(true, true);
+        User user = mock(User.class);
+        when(user.getUUID()).thenReturn(owner);
+        when(platform.resolveUser(owner)).thenReturn(user);
+        when(platform.offsetDisplayLocation(anyFloat())).thenReturn(
+                new com.github.retrooper.packetevents.protocol.world.Location(0, 64, 0, 0, 0));
+        when(platform.isEligibleToShow(eq(owner), eq(owner), anyBoolean(), anyBoolean())).thenReturn(false);
+        row.spawnForOwner();
+        WrapperEntity template = row.getPerPlayerEntity().getEntities().get(owner);
+        assertNotNull(template);
+        verify(template, never()).spawn(any(com.github.retrooper.packetevents.protocol.world.Location.class));
+        verify(template, never()).addViewer(any(User.class));
+        assertTrue(row.canViewerSee(viewer));
+        verify(other, never()).removeViewer(any(UUID.class));
+    }
+
+    @Test void rawOwnerViewerSpawnCannotBypassMovementOrPreferenceGate() {
+        User user = mock(User.class);
+        when(user.getUUID()).thenReturn(owner);
+        when(platform.resolveUser(owner)).thenReturn(user);
+        when(platform.offsetDisplayLocation(anyFloat())).thenReturn(
+                new com.github.retrooper.packetevents.protocol.world.Location(0, 64, 0, 0, 0));
+        row.setVisible(true);
+        row.spawnViewer(owner);
+        WrapperEntity template = row.getPerPlayerEntity().getEntities().get(owner);
+        assertNotNull(template);
+        verify(template, never()).spawn(any(com.github.retrooper.packetevents.protocol.world.Location.class));
+        verify(template, never()).addViewer(any(User.class));
     }
     @Test void visibleCurrentSessionCanRequestMount() {
         allocated(true, true);

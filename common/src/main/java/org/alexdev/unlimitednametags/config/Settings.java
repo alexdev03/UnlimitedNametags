@@ -191,6 +191,13 @@ public class Settings {
         @Comment("Whether to see your own NameTag (similar to nametag mod of Lunar Client).")
         private boolean showCurrentNameTag = false;
 
+        @Comment({
+                "Temporarily hide only your own nametag during swimming/crawling/prone, gliding, spin attack and flight.",
+                "Applies in every camera view: vanilla clients do not report first/third-person selection.",
+                "Restores your existing own-tag preference afterward; other players' view is unchanged."
+        })
+        private boolean hideOwnNametagWhileSwimmingOrFlying = true;
+
         @Setter
         @Comment("When showCurrentNameTag is false, players may still enable seeing their own nametag via /unt preferences if they have permission.")
         private boolean allowPerPlayerShowOwnWhenGlobalDisabled = false;
@@ -203,6 +210,13 @@ public class Settings {
                 " - HIDE: Nametags are completely hidden and despawned behind walls (anti-wallhack)."
         })
         private ThroughWallMode throughWallMode = ThroughWallMode.SEE_THROUGH;
+
+        @Comment({
+                "Opt-in mitigation for SEE_THROUGH text disappearing against water on some clients.",
+                "Use normal depth with clear line of sight; retain each row's configured seeThrough behind walls.",
+                "Does not change opacity or guarantee rendering with every client shader/mod."
+        })
+        private boolean preferNormalTextWithLineOfSight = false;
 
         @Comment("Settings applied when throughWallMode is set to OBSCURED or HIDE.")
         private ThroughWallSettings throughWallSettings = new ThroughWallSettings();
