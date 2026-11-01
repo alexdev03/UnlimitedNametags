@@ -39,6 +39,7 @@ public class PlayerListener implements PackSendHandler {
     private final Map<UUID, MyScheduledTask> teleportSyncTasks;
     private final Map<UUID, UUID> teleportSyncRunIds;
     private final Map<UUID, UUID> zeroDamageRecoveryRunIds;
+    private final Map<UUID, UUID> gameModeRecoveryRunIds;
     private final Map<UUID, MyScheduledTask> respawnShowTasks;
     private final Map<UUID, Location> playerWorlds;
     private static final long[] TELEPORT_SYNC_DELAYS = {5L, 20L, 60L, 100L};
@@ -52,6 +53,7 @@ public class PlayerListener implements PackSendHandler {
         this.teleportSyncTasks = Maps.newConcurrentMap();
         this.teleportSyncRunIds = Maps.newConcurrentMap();
         this.zeroDamageRecoveryRunIds = Maps.newConcurrentMap();
+        this.gameModeRecoveryRunIds = Maps.newConcurrentMap();
         this.respawnShowTasks = Maps.newConcurrentMap();
         this.playerWorlds = Maps.newConcurrentMap();
         this.loadRespawnSafetyTask();
@@ -202,6 +204,7 @@ public class PlayerListener implements PackSendHandler {
         diedPlayers.remove(event.getPlayer().getUniqueId());
         cancelTeleportSync(event.getPlayer().getUniqueId());
         zeroDamageRecoveryRunIds.remove(event.getPlayer().getUniqueId());
+        gameModeRecoveryRunIds.remove(event.getPlayer().getUniqueId());
         cancelRespawnShow(event.getPlayer().getUniqueId());
         // Finish old-session cleanup before a rejoin with the same UUID can be registered.
         plugin.getTrackerManager().handleQuit(event.getPlayer());
@@ -260,12 +263,31 @@ public class PlayerListener implements PackSendHandler {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameModeChange(@NotNull PlayerGameModeChangeEvent e) {
-        if (e.getPlayer().getGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().unblockPlayer(e.getPlayer());
-            plugin.getNametagManager().showToTrackedPlayers(e.getPlayer());
-        } else if (e.getNewGameMode() == GameMode.SPECTATOR) {
-            plugin.getNametagManager().removeAllViewers(e.getPlayer());
+        final Player player = e.getPlayer();
+        final UUID uuid = player.getUniqueId();
+        if (e.getNewGameMode() == GameMode.SPECTATOR) {
+            gameModeRecoveryRunIds.remove(uuid);
+            plugin.getNametagManager().removeAllViewers(player);
+            return;
         }
+        if (player.getGameMode() != GameMode.SPECTATOR) {
+            return;
+        }
+
+        final UUID runId = UUID.randomUUID();
+        gameModeRecoveryRunIds.put(uuid, runId);
+        plugin.getTaskScheduler().runTaskLater(player, () -> {
+            if (!runId.equals(gameModeRecoveryRunIds.get(uuid))) {
+                return;
+            }
+            gameModeRecoveryRunIds.remove(uuid, runId);
+            if (!player.isOnline() || player.getGameMode() == GameMode.SPECTATOR) {
+                return;
+            }
+
+            plugin.getNametagManager().unblockPlayer(player);
+            plugin.getNametagManager().showToTrackedPlayers(player);
+        }, 1L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
@@ -487,6 +509,7 @@ public class PlayerListener implements PackSendHandler {
         teleportSyncTasks.clear();
         teleportSyncRunIds.clear();
         zeroDamageRecoveryRunIds.clear();
+        gameModeRecoveryRunIds.clear();
         respawnShowTasks.values().forEach(MyScheduledTask::cancel);
         respawnShowTasks.clear();
     }
