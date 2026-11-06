@@ -61,6 +61,8 @@ public class NameTagManager implements UntNametagManagerPaper {
     private final Set<UUID> creating;
     private final Map<UUID, AtomicInteger> pendingRowCreations;
     private final Set<UUID> blocked;
+    /** Owners hidden with /unt hide; kept until /unt show or quit so automatic recoveries do not undo it. */
+    private final Set<UUID> commandHidden;
     private final Set<UUID> hideNametags;
     /** Players who hide their own nametag from themselves (inverse of show-own-to-self preference). */
     private final Set<UUID> hideOwnFromSelf;
@@ -101,6 +103,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         this.creating = Sets.newConcurrentHashSet();
         this.pendingRowCreations = Maps.newConcurrentMap();
         this.blocked = Sets.newConcurrentHashSet();
+        this.commandHidden = Sets.newConcurrentHashSet();
         this.hideNametags = Sets.newConcurrentHashSet();
         this.hideOwnFromSelf = Sets.newConcurrentHashSet();
         this.hideOwnFromOthers = Sets.newConcurrentHashSet();
@@ -425,16 +428,34 @@ public class NameTagManager implements UntNametagManagerPaper {
         return blocked.contains(player.getUniqueId());
     }
 
+    /** /unt hide: hide the owner's nametag from everyone until {@link #showByCommand(Player)}. */
+    public void hideByCommand(@NotNull Player player) {
+        commandHidden.add(player.getUniqueId());
+        removeAllViewers(player);
+    }
+
+    /** /unt show: lift a previous /unt hide and show the nametag to tracked players again. */
+    public void showByCommand(@NotNull Player player) {
+        commandHidden.remove(player.getUniqueId());
+        showToTrackedPlayers(player);
+    }
+
+    public boolean isHiddenByCommand(@NotNull Player player) {
+        return commandHidden.contains(player.getUniqueId());
+    }
+
     private boolean shouldSuppressNametag(@NotNull Player player) {
         return !player.isOnline()
                 || !plugin.getConfigManager().getSettings().getWorlds().isEnabled(player.getWorld().getName())
                 || isBlocked(player)
+                || isHiddenByCommand(player)
                 || player.hasPotionEffect(PotionEffectType.INVISIBILITY)
                 || player.getGameMode() == GameMode.SPECTATOR;
     }
 
     public void clearCache(@NotNull UUID uuid) {
         blocked.remove(uuid);
+        commandHidden.remove(uuid);
         creating.remove(uuid);
         hideNametags.remove(uuid);
         hideOwnFromSelf.remove(uuid);
@@ -751,6 +772,13 @@ public class NameTagManager implements UntNametagManagerPaper {
         if (PacketEvents.getAPI().getPlayerManager().getUser(player) == null) {
             if (debug) {
                 plugin.getLogger().info("Player " + player.getName() + " is not loaded");
+            }
+            return false;
+        }
+
+        if (isHiddenByCommand(player)) {
+            if (debug) {
+                plugin.getLogger().info("Player " + player.getName() + " is hidden with /unt hide, skipping");
             }
             return false;
         }

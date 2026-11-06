@@ -169,7 +169,7 @@ public final class UntBrigadierCommands {
                                 msg(plugin, ctx.getSource().getSender(), "<red>Player not found or not online.</red>");
                                 return 0;
                             }
-                            plugin.getNametagManager().removeAllViewers(target);
+                            plugin.getNametagManager().hideByCommand(target);
                             return Command.SINGLE_SUCCESS;
                         }));
     }
@@ -189,7 +189,7 @@ public final class UntBrigadierCommands {
                                 msg(plugin, ctx.getSource().getSender(), "<red>Player not found or not online.</red>");
                                 return 0;
                             }
-                            plugin.getNametagManager().showToTrackedPlayers(target);
+                            plugin.getNametagManager().showByCommand(target);
                             return Command.SINGLE_SUCCESS;
                         }));
     }

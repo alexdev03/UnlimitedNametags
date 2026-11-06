@@ -120,6 +120,9 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
         if (plugin.getNametagManager().isBlocked(ownerPlayer)) {
             return "owner is blocked";
         }
+        if (plugin.getNametagManager().isHiddenByCommand(ownerPlayer)) {
+            return "owner is hidden with /unt hide";
+        }
         if (!viewerSupportsTextDisplay(viewerId)) {
             return "viewer client does not support text displays";
         }
