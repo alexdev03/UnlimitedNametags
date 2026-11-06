@@ -19,6 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PacketManager {
     private final UnlimitedNameTags plugin;
     private final Map<User, PassengerState> connections = new ConcurrentHashMap<>();
+    /** Level last sent to each connection by JOIN_GAME/RESPAWN; decides whether a respawn keeps client entities. */
+    private final Map<User, String> levels = new ConcurrentHashMap<>();
     // Retain retired IDs until shutdown so late third-party mounts cannot revive removed rows.
     private final Set<Integer> rowIds = ConcurrentHashMap.newKeySet();
     private volatile boolean closed;
@@ -31,6 +33,7 @@ public class PacketManager {
     public void close() {
         closed = true;
         connections.clear();
+        levels.clear();
         rowIds.clear();
     }
 
@@ -75,6 +78,34 @@ public class PacketManager {
     public void reset(User user) {
         // Replace the state to invalidate queued work from the previous world/session.
         connections.remove(user);
+    }
+
+    public void forget(User user) {
+        reset(user);
+        levels.remove(user);
+    }
+
+    public void joined(User user, String level) {
+        if (level == null) levels.remove(user);
+        else levels.put(user, level);
+    }
+
+    /**
+     * Handles an outbound RESPAWN. A respawn into the level the client is already in (profile/skin refreshes
+     * such as SkinsRestorer) keeps every other entity client-side and only re-creates the local player, so the
+     * observed state must survive; anything else (other level, unknown level) starts from scratch.
+     *
+     * @return true when the client keeps its entities
+     */
+    public boolean respawned(User user, String level, int selfEntityId) {
+        final String previous = level == null ? levels.remove(user) : levels.put(user, level);
+        if (level == null || !level.equals(previous)) {
+            reset(user);
+            return false;
+        }
+        final PassengerState state = connections.get(user);
+        if (state != null) state.recreated(selfEntityId);
+        return true;
     }
 
     public boolean isRow(int entityId) { return rowIds.contains(entityId); }

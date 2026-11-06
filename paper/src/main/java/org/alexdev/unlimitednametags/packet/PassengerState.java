@@ -30,6 +30,11 @@ final class PassengerState {
         passengers.replaceAll((owner, ids) -> Arrays.stream(ids).filter(passenger -> passenger != id).toArray());
     }
 
+    /** The client re-created this entity in place (same-level respawn): its passengers were dropped. */
+    synchronized void recreated(int id) {
+        passengers.remove(id);
+    }
+
     synchronized void clear() {
         spawned.clear();
         pendingSpawns.clear();

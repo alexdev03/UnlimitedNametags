@@ -57,7 +57,7 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation(libs.paperApi)
-    testRuntimeOnly(libs.packeteventsSpigot)
+    testImplementation(libs.packeteventsSpigot)
 }
 
 tasks.withType<Test>().configureEach {

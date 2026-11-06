@@ -18,6 +18,8 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSp
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnPlayer;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerJoinGame;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerRespawn;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerTeams;
 import com.google.common.collect.Maps;
@@ -185,8 +187,22 @@ public class PacketEventsListener extends PacketListenerAbstract {
                                     ((PacketNameTag) row).hideFromViewer(user.getUUID())));
                 }
             }
+        } else if (event.getPacketType() == PacketType.Play.Server.JOIN_GAME) {
+            plugin.getPacketManager().joined(user, new WrapperPlayServerJoinGame(event).getWorldName());
         } else if (event.getPacketType() == PacketType.Play.Server.RESPAWN) {
-            plugin.getPacketManager().reset(user);
+            final Player viewer = event.getPlayer() instanceof Player p ? p : null;
+            final String level = new WrapperPlayServerRespawn(event).getWorldName().orElse(null);
+            if (plugin.getPacketManager().respawned(user, viewer == null ? null : level,
+                    viewer == null ? -1 : viewer.getEntityId())) {
+                // Same level: other players and their rows stay on the client. Only the local player was
+                // re-created, so drop the owner's own rows from its view and let the resync mount them again.
+                if (plugin.getPacketManager().isCurrent(user)) {
+                    plugin.getNametagManager().getPacketDisplays(viewer)
+                            .forEach(row -> ((PacketNameTag) row).hideFromViewer(user.getUUID()));
+                    event.getTasksAfterSend().add(() -> plugin.getPlayerListener().scheduleNametagResync(viewer));
+                }
+                return;
+            }
             if (plugin.getPacketManager().isCurrent(user)) {
                 plugin.getNametagManager().removeViewer(user.getUUID());
             }
@@ -362,7 +378,7 @@ public class PacketEventsListener extends PacketListenerAbstract {
 
     @Override
     public void onUserDisconnect(UserDisconnectEvent event) {
-        if (plugin.getPacketManager() != null) plugin.getPacketManager().reset(event.getUser());
+        if (plugin.getPacketManager() != null) plugin.getPacketManager().forget(event.getUser());
     }
 
     public void onDisable() {

@@ -436,6 +436,15 @@ public class PlayerListener implements PackSendHandler {
         });
     }
     
+    /** Re-runs the post-teleport visibility recovery, e.g. after a same-level respawn sent by another plugin. */
+    public void scheduleNametagResync(@NotNull Player player) {
+        plugin.getTaskScheduler().runTask(player, () -> {
+            if (player.isOnline()) {
+                scheduleTeleportSync(player);
+            }
+        });
+    }
+
     private void scheduleTeleportSync(@NotNull Player player) {
         final UUID uuid = player.getUniqueId();
         cancelTeleportSync(uuid);
