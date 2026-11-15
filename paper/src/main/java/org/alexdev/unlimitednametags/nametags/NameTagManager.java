@@ -933,6 +933,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                 if (displayGroup.resolvedDisplayType() == NametagDisplayType.TEXT) {
                     display.text(player, Component.empty());
                 }
+                initRowBase(player, displayGroup, (PacketNameTag) display);
                 display.spawn(player);
 
                 if (isEffectiveShowOwnNametag(player)) {
@@ -1036,6 +1037,28 @@ public class NameTagManager implements UntNametagManagerPaper {
         }
     }
 
+    /**
+     * Base row state that must exist before a row is shown to any viewer: visuals, billboard, the global Y offset
+     * and the view range. Viewers copy the row's metadata when they are shown it, so a row created outside
+     * {@link #addPlayer} (for example by {@link #refresh} while the player was temporarily blocked) would otherwise
+     * be spawned with a zero offset and no view range, and stay that way until {@code /unt reload}.
+     */
+    void initRowBase(@NotNull Player player, @NotNull Settings.DisplayGroup displayGroup, @NotNull PacketNameTag display) {
+        final NametagDisplayType dt = displayGroup.resolvedDisplayType();
+        final Settings.Behavior behavior = plugin.getConfigManager().getSettings().getBehavior();
+        if (dt == NametagDisplayType.TEXT) {
+            display.modifyTextAll(m -> m.setUseDefaultBackground(false));
+        } else {
+            display.syncVisualFromGroup(displayGroup);
+        }
+        display.setBillboard(displayGroup.effectiveBillboard(plugin.getConfigManager().getSettings()));
+        if (dt == NametagDisplayType.TEXT) {
+            applyTextVisualState(display, displayGroup, true);
+        }
+        display.resetOffset(behavior.getYOffset());
+        display.setViewRange(behavior.getViewDistance());
+    }
+
     private void loadDisplay(@NotNull Player player, int groupIndex, @NotNull Component component,
             @NotNull Settings.DisplayGroup displayGroup,
             @NotNull PacketNameTag display,
@@ -1044,20 +1067,10 @@ public class NameTagManager implements UntNametagManagerPaper {
             finishRowCreation(player.getUniqueId());
             final NametagDisplayType dt = displayGroup.resolvedDisplayType();
             if (dt == NametagDisplayType.TEXT) {
-                display.modifyTextAll(m -> m.setUseDefaultBackground(false));
                 paperRow(display).text(player, component);
-            } else {
-                display.syncVisualFromGroup(displayGroup);
             }
-            display.setBillboard(displayGroup.effectiveBillboard(plugin.getConfigManager().getSettings()));
-            if (dt == NametagDisplayType.TEXT) {
-                applyTextVisualState(display, displayGroup, true);
-            }
-
-            display.resetOffset(plugin.getConfigManager().getSettings().getBehavior().getYOffset());
+            initRowBase(player, displayGroup, display);
             display.setHelmetExtraOffset(helmetExtraOffset);
-
-            display.setViewRange(plugin.getConfigManager().getSettings().getBehavior().getViewDistance());
             applyRowGlow(player, groupIndex, display, displayGroup);
 
             if (dt == NametagDisplayType.TEXT) {
@@ -1092,6 +1105,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         if (displayGroup.resolvedDisplayType() == NametagDisplayType.TEXT) {
             neu.text(player, Component.empty());
         }
+        initRowBase(player, displayGroup, (PacketNameTag) neu);
         neu.spawn(player);
         if (isEffectiveShowOwnNametag(player)) {
             neu.showToPlayer(player);
@@ -1427,7 +1441,9 @@ public class NameTagManager implements UntNametagManagerPaper {
     }
 
     public void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<Player> tracked) {
-        showToTrackedPlayers(player, tracked, true, true);
+        // The owner is only a viewer of their own rows when showing the own nametag is in effect; spawning them
+        // otherwise makes the own tag flash for a few ticks until the next refresh hides it again.
+        showToTrackedPlayers(player, tracked, true, isEffectiveShowOwnNametag(player));
     }
 
     private void replayTrackedViewersAfterCreation(@NotNull Player player) {
@@ -1437,7 +1453,7 @@ public class NameTagManager implements UntNametagManagerPaper {
         showToTrackedPlayers(player, plugin.getTrackerManager().getWhoTracks(player), false, isEffectiveShowOwnNametag(player));
     }
 
-    private void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<Player> tracked, boolean ensureCreated, boolean includeOwner) {
+    void showToTrackedPlayers(@NotNull Player player, @NotNull Collection<Player> tracked, boolean ensureCreated, boolean includeOwner) {
         if (shouldSuppressNametag(player)) {
             removeAllViewers(player);
             return;

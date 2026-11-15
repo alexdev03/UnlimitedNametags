@@ -161,7 +161,10 @@ public final class BukkitNametagPlatform implements NametagPlatformBridge {
                 && !plugin.getNametagManager().isPlayerPointingAt(viewer, ownerPlayer)) {
             return "show-while-looking is enabled and viewer is not pointing at owner";
         }
-        if (isOwnerViewer && plugin.getNametagManager().isEffectiveShowOwnNametag(ownerPlayer)) {
+        if (isOwnerViewer && !plugin.getNametagManager().isEffectiveShowOwnNametag(ownerPlayer)) {
+            return "own nametag is not shown to its owner";
+        }
+        if (isOwnerViewer) {
             return null;
         }
 
