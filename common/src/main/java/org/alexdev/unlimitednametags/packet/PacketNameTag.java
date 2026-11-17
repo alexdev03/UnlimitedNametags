@@ -749,7 +749,17 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         if (!viewerId.equals(ownerId)) {
             final User user = platform.resolveUser(viewerId);
             if (user != null) {
-                final WrapperEntity entity = resolveEntity(user);
+                WrapperEntity entity = resolveEntity(user);
+                if (entity == null) {
+                    // The per-player entity may have been removed during a temporary hide
+                    // (clearViewers -> hideFromViewer removes it from the map). Re-create it
+                    // here so applyOwnerData has something to copy into and spawnViewer can
+                    // spawn it; otherwise the nametag never reappears after the hide.
+                    entity = buildBaseSupplier().apply(user);
+                    if (entity != null) {
+                        perPlayerEntity.getEntities().put(viewerId, entity);
+                    }
+                }
                 if (entity != null) {
                     applyOwnerData(entity);
                 }
