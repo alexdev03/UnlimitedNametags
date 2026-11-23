@@ -1214,11 +1214,11 @@ public class NameTagManager implements UntNametagManagerPaper {
 
             for (ResolvedDisplayRow row : rows) {
                 if (!isCompactStackVisible(player, row)) {
-                    row.display().setCompactStackYOffset(hasVisibleRow ? nextYOffset : row.displayGroup().yOffset(), false);
+                    row.display().setCompactStackYOffset(hasVisibleRow ? nextYOffset : row.displayGroup().yOffset() * row.display().getPlayerScale(), false);
                     continue;
                 }
 
-                final float rowYOffset = hasVisibleRow ? nextYOffset : row.displayGroup().yOffset();
+                final float rowYOffset = hasVisibleRow ? nextYOffset : row.displayGroup().yOffset() * row.display().getPlayerScale();
                 row.display().setCompactStackYOffset(rowYOffset, !hasVisibleRow);
                 nextYOffset = rowYOffset + estimateDisplayGroupHeight(row, lineHeight);
                 hasVisibleRow = true;
@@ -1243,11 +1243,10 @@ public class NameTagManager implements UntNametagManagerPaper {
             for (int i = 0; i < rows.size(); i++) {
                 final ResolvedDisplayRow row = rows.get(i);
                 final PacketNameTag display = row.display();
-                final float inc = stackIncreasedOffset(display);
                 final boolean visible = isCompactStackVisibleForViewer(player, viewer, row);
                 final float rowCompactY;
                 final boolean helmetForRow;
-                rowCompactY = hasVisibleRow ? nextYOffset : row.displayGroup().yOffset();
+                rowCompactY = hasVisibleRow ? nextYOffset : row.displayGroup().yOffset() * display.getPlayerScale();
                 if (!visible) {
                     helmetForRow = false;
                 } else {
@@ -1255,7 +1254,7 @@ public class NameTagManager implements UntNametagManagerPaper {
                     nextYOffset = rowCompactY + estimateDisplayGroupHeightForViewer(player, viewer, row, lineHeight);
                     hasVisibleRow = true;
                 }
-                final float baseY = globalYOffset + inc + rowCompactY + (helmetForRow ? helmetExtraOffset : 0f);
+                final float baseY = (globalYOffset + (helmetForRow ? helmetExtraOffset : 0f)) * display.getPlayerScale() + rowCompactY;
                 yByRow.get(i).put(viewer.getUniqueId(), baseY);
             }
         }
@@ -1263,11 +1262,6 @@ public class NameTagManager implements UntNametagManagerPaper {
         for (int i = 0; i < rows.size(); i++) {
             rows.get(i).display().setPerViewerStackBaseY(yByRow.get(i));
         }
-    }
-
-    private static float stackIncreasedOffset(@NotNull PacketNameTag display) {
-        final float sc = display.getScale();
-        return sc > 1f ? sc / 5f : 0f;
     }
 
     private boolean isCompactStackVisibleForViewer(
