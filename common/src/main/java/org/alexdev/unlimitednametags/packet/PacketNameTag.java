@@ -52,7 +52,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     private Settings.DisplayGroup displayGroup;
     private float scale;
     private float offset;
-    private float increasedOffset;
+    private float playerScale;
     private volatile boolean removed;
     @Setter
     private boolean sneaking;
@@ -283,7 +283,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
 
     private void setScale(float scale) {
         this.scale = scale;
-        this.increasedOffset = scale > 1 ? scale / 5 : 0;
+        this.playerScale = platform.resolveDisplayScale(ownerId, 1f);
         recomputeBaseTranslationY();
         applyDisplayTransform();
     }
@@ -366,9 +366,9 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
     }
 
     private void recomputeBaseTranslationY() {
-        final float rowOffset = compactStackLayout ? compactStackYOffset : displayGroup.yOffset();
+        final float rowOffset = compactStackLayout ? compactStackYOffset : displayGroup.yOffset() * playerScale;
         final float helmetOffset = !compactStackLayout || compactStackHelmetOffset ? helmetExtraOffset : 0f;
-        this.baseTranslationY = offset + increasedOffset + rowOffset + helmetOffset;
+        this.baseTranslationY = (offset + helmetOffset) * playerScale + rowOffset;
     }
 
     /**
@@ -1032,7 +1032,7 @@ public abstract class PacketNameTag implements AnimationPoseTarget, NametagPasse
         properties.put("yOffset", String.valueOf(offset));
         properties.put("displayGroupYOffset", String.valueOf(displayGroup.yOffset()));
         properties.put("scale", String.valueOf(meta.getScale()));
-        properties.put("increasedOffset", String.valueOf(increasedOffset));
+        properties.put("playerScale", String.valueOf(playerScale));
         properties.put("helmetExtraOffset", String.valueOf(helmetExtraOffset));
         properties.put("viewRange", String.valueOf(meta.getViewRange()));
         properties.put("glowing", String.valueOf(meta.isGlowing()));
